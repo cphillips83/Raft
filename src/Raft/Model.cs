@@ -6,14 +6,10 @@ using System.Threading.Tasks;
 
 namespace Raft
 {
-
-
-    class Program
+    public class Model
     {
+        private uint _tick;
 
-
-        static void Main(string[] args)
-        {
-        }
+        public uint Tick { get { return _tick; } }
     }
 }
