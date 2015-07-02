@@ -13,26 +13,26 @@ namespace Raft
     public struct VoteRequest
     {
         public int From;
-        public uint Term;
-        public uint LastLogTerm;
-        public uint LastLogIndex;
+        public int Term;
+        public int LastLogTerm;
+        public int LastLogIndex;
     }
 
     public struct VoteRequestReply
     {
         public int From;
-        public uint Term;
+        public int Term;
         public bool Granted;
     }
 
     public struct AppendEntriesRequest
     {
         public int From;
-        public uint Term;
-        public uint CommitIndex;
-        public uint PrevIndex;
-        public uint PrevTerm;
-        public uint PrevLogIndex;
+        public int Term;
+        public int CommitIndex;
+        public int PrevIndex;
+        public int PrevTerm;
+        public int PrevLogIndex;
         public LogEntry[] Entries;
 
     }
@@ -40,8 +40,8 @@ namespace Raft
     public struct AppendEntriesReply
     {
         public int From;
-        public uint Term;
-        public uint MatchIndex;
+        public int Term;
+        public int MatchIndex;
         public bool Success;
     }
 }

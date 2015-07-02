@@ -14,17 +14,19 @@ namespace Raft
         //protected int _rpdDue = 0;
         //protected int _heartBeatDue = 0;
 
-        public Peer()
+        public Peer(int id, bool votedGranted)
         {
             Reset();
+            ID = id;
+            VotedGranted = votedGranted;
         }
 
-        public uint ID { get; set; }
+        public int ID { get; set; }
         public bool VotedGranted { get; set; }
-        public uint MatchIndex { get; set; }
-        public uint NextIndex { get; set; }
-        public uint RpcDue { get; set; }
-        public uint HeartBeartDue { get; set; }
+        public int MatchIndex { get; set; }
+        public int NextIndex { get; set; }
+        public int RpcDue { get; set; }
+        public int HeartBeartDue { get; set; }
 
         public void Reset()
         {
@@ -35,36 +37,17 @@ namespace Raft
             HeartBeartDue = 0;
         }
 
-        public bool CheckRpcTimeout(Model model)
+        public bool CheckRpcTimeout(IModel model)
         {
             return RpcDue < model.Tick;
         }
 
-        public void LeadershipChanged(uint logLength)
+        public void LeadershipChanged(int logLength)
         {
             NextIndex = logLength;
-            RpcDue = uint.MaxValue;
+            RpcDue = int.MaxValue;
             HeartBeartDue = 0;
         }
 
-        public void SendReply(VoteRequestReply reply)
-        {
-
-        }
-
-        public void SendReply(AppendEntriesReply reply)
-        {
-
-        }
-
-        //public void SendRequestVote(VoteRequest request)
-        //{
-            
-        //}
-
-        //public void HandleRequestVoteReply(VoteRequestReply reply)
-        //{
-
-        //}
     }
 }

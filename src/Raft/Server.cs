@@ -17,10 +17,10 @@ namespace Raft
 
     public class Settings
     {
-        public const int RPC_TIMEOUT = 50000;
-        public const int MIN_RPC_LATENCY = 10000;
-        public const int MAX_RPC_LATENCY = 15000;
-        public const int ELECTION_TIMEOUT = 100000;
+        public const int RPC_TIMEOUT = 50;
+        public const int MIN_RPC_LATENCY = 10;
+        public const int MAX_RPC_LATENCY = 15;
+        public const int ELECTION_TIMEOUT = 100;
         public const int NUM_SERVERS = 5;
         public const int BATCH_SIZE = 1;
     }
@@ -30,26 +30,25 @@ namespace Raft
         protected Random _random;
         protected int _id;
         protected ServerState _state;
-        protected uint _term;
+        protected int _term;
         protected int? _votedFor;
         protected Log _log;
-        protected uint _commitIndex;
-        protected uint _electionAlarm;
+        protected int _commitIndex;
+        protected int _electionAlarm;
 
         protected List<Peer> _peers;
 
-
-        public int Quorum { get { return (_peers.Count / 2) + 1; } }
+        public int Quorum { get { return ((_peers.Count + 1) / 2) + 1; } }
 
         public Server(int id)
         {
             _id = id;
             _peers = new List<Peer>();
             _log = new Log();
-            _random = new Random((int)id);
+            _random = new Random(id ^ (int)DateTime.Now.Ticks);
         }
 
-        protected void stepDown(Model model, uint term)
+        protected void stepDown(IModel model, int term)
         {
             _term = term;
             _state = ServerState.Follower;
@@ -58,51 +57,54 @@ namespace Raft
                 _electionAlarm = makeElectionAlarm(model);
         }
 
-        protected void startNewElection(Model model)
+        protected void startNewElection(IModel model)
         {
             if ((_state == ServerState.Follower || _state == ServerState.Candidate) &&
                 isElectionTimeout(model))
             {
+                Console.WriteLine("{0}: Starting new election", _id);
                 _electionAlarm = makeElectionAlarm(model);
                 _term++;
                 _votedFor = _id;
                 _state = ServerState.Candidate;
                 foreach (var peer in _peers)
                     peer.Reset();
-
             }
         }
 
-        protected void sendRequestVote(Model model, Peer peer)
+        protected void sendRequestVote(IModel model, Peer peer)
         {
             if (_state == ServerState.Candidate && peer.CheckRpcTimeout(model))
             {
+                Console.WriteLine("{0}: Requesting vote from {1}", _id, peer.ID);
                 peer.RpcDue = model.Tick + Settings.RPC_TIMEOUT;
-                /* TODO
-                    sendRequest(model, {
-                      from: server.id,
-                      to: peer,
-                      type: 'RequestVote',
-                      term: server.term,
-                      lastLogTerm: logTerm(server.log, server.log.length),
-                      lastLogIndex: server.log.length});
-                 */
+                model.SendRequest(peer, new VoteRequest()
+                {
+                    From = _id,
+                    Term = _term,
+                    LastLogTerm = _log.LastLogterm,
+                    LastLogIndex = _log.Length
+                });
             }
         }
 
-        protected void becomeLeader(Model model)
+        protected void becomeLeader(IModel model)
         {
             if (_state == ServerState.Candidate && _peers.Count(x => x.VotedGranted) >= Quorum)
             {
-                _state = ServerState.Leader;
-                _electionAlarm = uint.MaxValue;
-                foreach (var peer in _peers)
-                    peer.LeadershipChanged(_log.Length);
-
+                var voteCount = _peers.Count(x => x.VotedGranted) + 1;
+                if (voteCount >= Quorum)
+                {
+                    Console.WriteLine("{0}: I am now leader with {1} votes", _id, voteCount);
+                    _state = ServerState.Leader;
+                    _electionAlarm = int.MaxValue;
+                    foreach (var peer in _peers)
+                        peer.LeadershipChanged(_log.Length + 1);
+                }
             }
         }
 
-        protected void sendAppendEntries(Model model, Peer peer)
+        protected void sendAppendEntries(IModel model, Peer peer)
         {
             if (_state == ServerState.Leader &&
                 (peer.HeartBeartDue <= model.Tick ||
@@ -112,26 +114,28 @@ namespace Raft
                 var lastIndex = Math.Min(prevIndex + Settings.BATCH_SIZE, _log.Length);
                 if (peer.MatchIndex + 1 < peer.NextIndex)
                     lastIndex = prevIndex;
-                /* TODO 
-                    sendRequest(model, {
-                        from: server.id,
-                        to: peer,
-                        type: 'AppendEntries',
-                        term: server.term,
-                        prevIndex: prevIndex,
-                        prevTerm: logTerm(server.log, prevIndex),
-                        entries: server.log.slice(prevIndex, lastIndex),
-                        commitIndex: Math.min(server.commitIndex, lastIndex)});
-                 */
+
+                var entries = _log.GetEntries(prevIndex, lastIndex);
+                if (entries.Length > 0)
+                    Console.WriteLine("{0}: Send AppendEnties[{1}-{2}] to {3}", _id, prevIndex, lastIndex, peer.ID);
+
                 peer.RpcDue = model.Tick + Settings.RPC_TIMEOUT;
                 peer.HeartBeartDue = model.Tick + (Settings.ELECTION_TIMEOUT / 2);
+                model.SendRequest(peer, new AppendEntriesRequest()
+                {
+                    From = _id,
+                    Term = _term,
+                    PrevIndex = prevIndex,
+                    PrevTerm = _log.GetTerm(prevIndex),
+                    Entries = entries,
+                    CommitIndex = Math.Min(_commitIndex, lastIndex)
+                });
             }
         }
 
-        protected void advanceCommitIndex(Model model)
+        protected void advanceCommitIndex(IModel model)
         {
-
-            var matchIndexes = new uint[_peers.Count + 1];
+            var matchIndexes = new int[_peers.Count + 1];
             matchIndexes[matchIndexes.Length - 1] = _log.Length;
             for (var i = 0; i < _peers.Count; i++)
                 matchIndexes[i] = _peers[i].MatchIndex;
@@ -140,25 +144,39 @@ namespace Raft
 
             var n = matchIndexes[_peers.Count / 2];
             if (_state == ServerState.Leader && _log.GetTerm(n) == _term)
-                _commitIndex = Math.Max(_commitIndex, n);
+            {
+                var newCommitIndex = Math.Max(_commitIndex, n);
+                if (newCommitIndex != _commitIndex)
+                {
+                    Console.WriteLine("{0}: Advancing commit index from {1} to {2}", _id, _commitIndex, newCommitIndex);
+                    _commitIndex = newCommitIndex;
+                }
+            }
         }
 
-        protected void handleRequestVote(Model model, VoteRequest request)
+        protected void handleRequestVote(IModel model, VoteRequest request)
         {
             if (_term < request.Term)
                 stepDown(model, request.Term);
 
+            var peer = _peers.First(x => x.ID == request.From);
             var ourLastLogTerm = _log.LastLogterm;
             var canVote = _term == request.Term && (_votedFor == null || _votedFor == request.From);
             var logTermFurther = request.LastLogTerm > ourLastLogTerm;
             var logIndexLonger = request.LastLogTerm == ourLastLogTerm && request.LastLogIndex >= _log.Length;
             var granted = canVote && (logTermFurther || logIndexLonger);
 
-            var peer = _peers.First(x => x.ID == request.From);
-            peer.SendReply(new VoteRequestReply() { From = _id, Term = _term, Granted = granted });
+            if (granted)
+            {
+                _votedFor = peer.ID;
+                _electionAlarm = makeElectionAlarm(model);
+            }
+
+            model.SendReply(peer, new VoteRequestReply() { From = _id, Term = _term, Granted = granted });
+            Console.WriteLine("{0}: Replying {1} to {2}'s request vote", _id, granted, peer.ID);
         }
 
-        protected void handleRequestVoteReply(Model model, VoteRequestReply reply)
+        protected void handleRequestVoteReply(IModel model, VoteRequestReply reply)
         {
             if (_term < reply.Term)
                 stepDown(model, reply.Term);
@@ -166,19 +184,21 @@ namespace Raft
             if (_state == ServerState.Candidate && _term == reply.Term)
             {
                 var peer = _peers.First(x => x.ID == reply.From);
-                peer.RpcDue = uint.MaxValue;
+                peer.RpcDue = int.MaxValue;
                 peer.VotedGranted = reply.Granted;
+
+                Console.WriteLine("{0}: Peer {1} voted {2}", _id, peer.ID, peer.VotedGranted);
             }
         }
 
-        protected void handleAppendEntriesRequest(Model model, AppendEntriesRequest request)
+        protected void handleAppendEntriesRequest(IModel model, AppendEntriesRequest request)
         {
             if (_term < request.Term)
                 stepDown(model, request.Term);
 
             var peer = _peers.First(x => x.ID == request.From);
             var success = false;
-            uint matchIndex = 0;
+            var matchIndex = 0;
 
             if (_term == request.Term)
             {
@@ -197,20 +217,32 @@ namespace Raft
                         if (_log.GetTerm(index) != request.Entries[i].Term)
                         {
                             while (_log.Length > index - 1)
+                            {
+                                Console.WriteLine("{0}: Rolling back log {1}", _id, _log.Length - 1);
                                 _log.Pop();
+                            }
 
+                            //this doesn't feel right?
+                            //only add logs if the terms are different?
                             _log.Push(request.Entries[i]);
                         }
                     }
+                    
                     matchIndex = index;
-                    _commitIndex = Math.Max(_commitIndex, request.CommitIndex);
+
+                    var newCommitIndex = Math.Max(_commitIndex, request.CommitIndex);
+                    if(newCommitIndex != _commitIndex)
+                    {
+                        Console.WriteLine("{0}: Advancing commit index from {1} to {2}", _id, _commitIndex, newCommitIndex);
+                        _commitIndex = newCommitIndex;
+                    }
                 }
             }
 
-            peer.SendReply(new AppendEntriesReply() { From = _id, Term = _term, MatchIndex = matchIndex, Success = success });
+            model.SendReply(peer, new AppendEntriesReply() { From = _id, Term = _term, MatchIndex = matchIndex, Success = success });
         }
 
-        protected void handleAppendEntriesReply(Model model, AppendEntriesReply reply)
+        protected void handleAppendEntriesReply(IModel model, AppendEntriesReply reply)
         {
             if (_term < reply.Term)
                 stepDown(model, reply.Term);
@@ -231,7 +263,7 @@ namespace Raft
             }
         }
 
-        protected void handleMessage(Model model, object message)
+        protected void handleMessage(IModel model, object message)
         {
             if (_state == ServerState.Stopped)
                 return;
@@ -248,22 +280,88 @@ namespace Raft
                 throw new Exception("Unhandled message");
         }
 
-        protected void update(Model model)
+        public void Update(IModel model)
         {
-
+            startNewElection(model);
+            becomeLeader(model);
+            advanceCommitIndex(model);
+            foreach (var peer in _peers)
+            {
+                sendRequestVote(model, peer);
+                sendAppendEntries(model, peer);
+            }
         }
 
-        protected bool isElectionTimeout(Model model)
+        protected bool isElectionTimeout(IModel model)
         {
             return _electionAlarm <= model.Tick;
         }
 
-        protected uint makeElectionAlarm(Model model)
+        protected int makeElectionAlarm(IModel model)
         {
-            return model.Tick + (uint)_random.Next(Settings.ELECTION_TIMEOUT, Settings.ELECTION_TIMEOUT * 2);
+            return model.Tick + _random.Next(Settings.ELECTION_TIMEOUT, Settings.ELECTION_TIMEOUT * 2);
         }
     }
 
+
+    public class SimulationServer : Server
+    {
+
+        public int ID { get { return _id; } }
+        public int Term { get { return _term; } set { _term = value; } }
+        public int? VotedFor { get { return _votedFor; } set { _votedFor = value; } }
+        public int ElectionAlarm { get { return _electionAlarm; } set { _electionAlarm = value; } }
+        public ServerState State { get { return _state; } }
+        public List<Peer> Peers { get { return _peers; } }
+
+        public SimulationServer(int id, int[] peers)
+            : base(id)
+        {
+            for (var i = 0; i < peers.Length; i++)
+                _peers.Add(new Peer(peers[i], false));
+        }
+
+        public void BecomeLeader(IModel model)
+        {
+            becomeLeader(model);
+        }
+
+        public void HandleMessage(IModel model, object message)
+        {
+            handleMessage(model, message);
+        }
+
+        public void Stop(IModel model)
+        {
+            _state = ServerState.Stopped;
+            _electionAlarm = 0;
+        }
+
+        public void Resume(IModel model)
+        {
+            _state = ServerState.Follower;
+            _electionAlarm = makeElectionAlarm(model);
+        }
+
+        public void Restart(IModel model)
+        {
+            Stop(model);
+            Resume(model);
+        }
+
+        public void Timeout(IModel model)
+        {
+            _state = ServerState.Follower;
+            _electionAlarm = 0;
+            startNewElection(model);
+        }
+
+        public void ClientRequest(IModel model)
+        {
+            if (_state == ServerState.Leader)
+                _log.Push(new LogEntry() { Term = _term, /*Index = _log.Length,*/ Value = _id });
+        }
+    }
     //public class TestServer : Server
     //{
     //    protected override int makeElectionAlarm(int tick)

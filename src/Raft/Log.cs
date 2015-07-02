@@ -8,31 +8,52 @@ namespace Raft
 {
     public class LogEntry
     {
-        public uint Index;
-        public uint Term;
-
+        //public int Index;
+        public int Term;
+        public int Value;
     }
+
     public class Log
     {
-        private uint _length;
+        private List<LogEntry> _entries = new List<LogEntry>();
 
-        public uint Length { get { return _length; } }
+        public int Length { get { return _entries.Count; } }
+
+        public Log()
+        {
+        }
 
         public void Pop()
         {
-
+            _entries.RemoveAt(_entries.Count - 1);
         }
 
         public void Push(LogEntry entry)
         {
-
+            _entries.Add(entry);
         }
 
-        public uint GetTerm(uint index)
+        public int GetTerm(int index)
         {
-            return 0; //TODO get term for log entry
+            if (index < 1 || index > _entries.Count)
+                return 0;
+
+            return _entries[index - 1].Term;
         }
 
-        public uint LastLogterm { get { return GetTerm(_length); } }
+        public LogEntry[] GetEntries(int start, int end)
+        {
+            if (start < 0 || end < 1 || start == end)
+                return new LogEntry[0];
+            
+
+            var entries = new LogEntry[end - start];
+            for (var i = start; i < end; i++)
+                entries[i - start] = _entries[i];
+
+            return entries;
+        }
+
+        public int LastLogterm { get { return GetTerm(Length); } }
     }
 }
