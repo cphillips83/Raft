@@ -22,6 +22,13 @@ namespace Raft
                     switch (key.KeyChar)
                     {
                         case 'x': running = false; break;
+                        case 'k':
+                            var leader = model.GetLeader();
+                            leader.Stop(model);
+                            break;
+                        case 'u':
+                            model.ResumeAllStopped();
+                            break;
                         case 'r': model.ClientRequest(); break;
                     }
                 }

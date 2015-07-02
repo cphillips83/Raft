@@ -33,6 +33,7 @@ namespace Raft
 
     public class SimulationModel : IModel
     {
+        private const float PACKET_LOSS = 0.0f;
         private int _tick;
         private Random _random = new Random();
         private List<SimulationServer> _servers;
@@ -47,19 +48,27 @@ namespace Raft
 
         public void Advance()
         {
-            _tick++;
+            Advance(1);
+        }
 
-            foreach (var server in _servers)
-                server.Update(this);
-
-            for (var i = 0; i < _messages.Count; i++)
+        public void Advance(int steps)
+        {
+            while (steps-- > 0)
             {
-                if (_messages[i].RecvTick <= _tick)
+                _tick++;
+
+                foreach (var server in _servers)
+                    server.Update(this);
+
+                for (var i = 0; i < _messages.Count; i++)
                 {
-                    var server = _servers.First(x => x.ID == _messages[i].To);
-                    server.HandleMessage(this, _messages[i].Message);
-                    _messages.RemoveAt(i);
-                    i--;
+                    if (_messages[i].RecvTick <= _tick)
+                    {
+                        var server = _servers.First(x => x.ID == _messages[i].To);
+                        server.HandleMessage(this, _messages[i].Message);
+                        _messages.RemoveAt(i);
+                        i--;
+                    }
                 }
             }
         }
@@ -72,6 +81,12 @@ namespace Raft
 
         private void SendMessage(Peer peer, object message)
         {
+            if ((float)_random.NextDouble() < PACKET_LOSS)
+            {
+                //Console.WriteLine("** dropped packet to: {0}, type: {1}", peer.ID, message.GetType().Name);
+                return;
+            }
+
             _messages.Add(new SimulationMessage() { 
                 To = peer.ID,
                 From = 0, 
@@ -111,6 +126,20 @@ namespace Raft
                     break;
                 }
             }
+        }
+        
+        public void ResumeAllStopped()
+        {
+            foreach (var server in _servers)
+                if (server.State == ServerState.Stopped)
+                    server.Resume(this);
+
+        }
+
+        public void ResumeAll()
+        {
+            foreach (var server in _servers)
+                server.Resume(this);
         }
 
         public void SpreadTimers()
@@ -171,6 +200,12 @@ namespace Raft
                 }
             }
         }
+
+        public SimulationServer GetLeader()
+        {
+            return _servers.FirstOrDefault(x => x.State == ServerState.Leader);                
+        }
+
         private static int[] GetPeers(int server, int serverCount)
         {
             var peerIndex = 0;

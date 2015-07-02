@@ -22,7 +22,7 @@ namespace Raft
         public const int MAX_RPC_LATENCY = 15;
         public const int ELECTION_TIMEOUT = 100;
         public const int NUM_SERVERS = 5;
-        public const int BATCH_SIZE = 1;
+        public const int BATCH_SIZE = 2;
     }
 
     public class Server
@@ -46,6 +46,7 @@ namespace Raft
             _peers = new List<Peer>();
             _log = new Log();
             _random = new Random(id ^ (int)DateTime.Now.Ticks);
+            _state = ServerState.Stopped;
         }
 
         protected void stepDown(IModel model, int term)
@@ -90,7 +91,7 @@ namespace Raft
 
         protected void becomeLeader(IModel model)
         {
-            if (_state == ServerState.Candidate && _peers.Count(x => x.VotedGranted) >= Quorum)
+            if (_state == ServerState.Candidate)
             {
                 var voteCount = _peers.Count(x => x.VotedGranted) + 1;
                 if (voteCount >= Quorum)
@@ -222,8 +223,7 @@ namespace Raft
                                 _log.Pop();
                             }
 
-                            //this doesn't feel right?
-                            //only add logs if the terms are different?
+                            Console.WriteLine("{0}: Writing log value {1}", _id, request.Entries[i].Value);
                             _log.Push(request.Entries[i]);
                         }
                     }
@@ -340,6 +340,7 @@ namespace Raft
         public void Resume(IModel model)
         {
             _state = ServerState.Follower;
+            _commitIndex = 0;
             _electionAlarm = makeElectionAlarm(model);
         }
 
