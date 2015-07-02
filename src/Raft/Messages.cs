@@ -32,7 +32,7 @@ namespace Raft
         public int CommitIndex;
         public int PrevIndex;
         public int PrevTerm;
-        public int PrevLogIndex;
+        //public int PrevLogIndex;
         public LogEntry[] Entries;
 
     }

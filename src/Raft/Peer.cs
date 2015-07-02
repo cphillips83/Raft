@@ -25,8 +25,8 @@ namespace Raft
         public bool VotedGranted { get; set; }
         public int MatchIndex { get; set; }
         public int NextIndex { get; set; }
-        public int RpcDue { get; set; }
-        public int HeartBeartDue { get; set; }
+        public long RpcDue { get; set; }
+        public long HeartBeartDue { get; set; }
 
         public void Reset()
         {

@@ -34,7 +34,7 @@ namespace Raft
         protected int? _votedFor;
         protected Log _log;
         protected int _commitIndex;
-        protected int _electionAlarm;
+        protected long _electionAlarm;
 
         protected List<Peer> _peers;
 
@@ -117,7 +117,7 @@ namespace Raft
                     lastIndex = prevIndex;
 
                 var entries = _log.GetEntries(prevIndex, lastIndex);
-                if (entries.Length > 0)
+                if (entries != null && entries.Length > 0)
                     Console.WriteLine("{0}: Send AppendEnties[{1}-{2}] to {3}", _id, prevIndex, lastIndex, peer.ID);
 
                 peer.RpcDue = model.Tick + Settings.RPC_TIMEOUT;
@@ -206,7 +206,7 @@ namespace Raft
                 _state = ServerState.Follower;
                 _electionAlarm = makeElectionAlarm(model);
 
-                if (request.PrevLogIndex == 0 ||
+                if (request.PrevIndex == 0 ||
                     (request.PrevIndex <= _log.Length && _log.GetTerm(request.PrevIndex) == request.PrevTerm))
                 {
                     success = true;
@@ -297,7 +297,7 @@ namespace Raft
             return _electionAlarm <= model.Tick;
         }
 
-        protected int makeElectionAlarm(IModel model)
+        protected long makeElectionAlarm(IModel model)
         {
             return model.Tick + _random.Next(Settings.ELECTION_TIMEOUT, Settings.ELECTION_TIMEOUT * 2);
         }
@@ -310,7 +310,7 @@ namespace Raft
         public int ID { get { return _id; } }
         public int Term { get { return _term; } set { _term = value; } }
         public int? VotedFor { get { return _votedFor; } set { _votedFor = value; } }
-        public int ElectionAlarm { get { return _electionAlarm; } set { _electionAlarm = value; } }
+        public long ElectionAlarm { get { return _electionAlarm; } set { _electionAlarm = value; } }
         public ServerState State { get { return _state; } }
         public List<Peer> Peers { get { return _peers; } }
 

@@ -6,8 +6,6 @@ using System.Threading.Tasks;
 
 namespace Raft
 {
-
-
     class Program
     {
         static void Main(string[] args)
@@ -24,7 +22,8 @@ namespace Raft
                         case 'x': running = false; break;
                         case 'k':
                             var leader = model.GetLeader();
-                            leader.Stop(model);
+                            if (leader != null)
+                                leader.Stop(model);
                             break;
                         case 'u':
                             model.ResumeAllStopped();
@@ -33,7 +32,7 @@ namespace Raft
                     }
                 }
                 model.Advance();
-                System.Threading.Thread.Sleep(10);
+                System.Threading.Thread.Sleep(1);
             }
 
         }

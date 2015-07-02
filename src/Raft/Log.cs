@@ -44,9 +44,8 @@ namespace Raft
         public LogEntry[] GetEntries(int start, int end)
         {
             if (start < 0 || end < 1 || start == end)
-                return new LogEntry[0];
+                return null; 
             
-
             var entries = new LogEntry[end - start];
             for (var i = start; i < end; i++)
                 entries[i - start] = _entries[i];

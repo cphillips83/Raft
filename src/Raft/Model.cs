@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -15,7 +16,7 @@ namespace Raft
     //}
     public interface IModel
     {
-        int Tick { get; }
+        long Tick { get; }
         void SendRequest(Peer peer, VoteRequest request);
         void SendRequest(Peer peer, AppendEntriesRequest request);
         void SendReply(Peer peer, VoteRequestReply reply);
@@ -26,20 +27,24 @@ namespace Raft
     {
         public int To;
         public int From;
-        public int SendTick;
-        public int RecvTick;
+        public long SendTick;
+        public long RecvTick;
         public object Message;
     }
 
     public class SimulationModel : IModel
     {
         private const float PACKET_LOSS = 0.0f;
-        private int _tick;
+        private const float TIME_SCALE = 100f;
+        private Stopwatch _timer = Stopwatch.StartNew();
+        private double _counter = 0.0;
+        private double _lastTime = 0.0;
+        private long _tick;
         private Random _random = new Random();
         private List<SimulationServer> _servers;
         private List<SimulationMessage> _messages = new List<SimulationMessage>();
 
-        public int Tick { get { return _tick; } }
+        public long Tick { get { return _tick; } }
 
         public SimulationModel()
         {
@@ -51,11 +56,25 @@ namespace Raft
             Advance(1);
         }
 
+        private long lastUpdate = 0;
         public void Advance(int steps)
         {
             while (steps-- > 0)
             {
-                _tick++;
+                //time sampling
+                var newTime = _timer.Elapsed.TotalSeconds;
+                var delta = newTime - _lastTime;
+                _lastTime = newTime;
+
+                _counter += delta / TIME_SCALE;
+                _tick = (long)(_counter * 1000);
+                if (lastUpdate != _tick)
+                {
+                    lastUpdate = _tick;
+                    Console.WriteLine(_tick);
+                }
+                //tick sampling
+                //_tick++;
 
                 foreach (var server in _servers)
                     server.Update(this);
@@ -87,13 +106,16 @@ namespace Raft
                 return;
             }
 
-            _messages.Add(new SimulationMessage() { 
+            var sm = new SimulationMessage()
+            {
                 To = peer.ID,
-                From = 0, 
+                From = 0,
                 SendTick = _tick,
                 RecvTick = _tick + _random.Next(Settings.MIN_RPC_LATENCY, Settings.MAX_RPC_LATENCY),
                 Message = message
-            });
+            };
+            _messages.Add(sm);
+            //Console.WriteLine("** MESSAGE:{0}, type: {1}, send: {2}, recv: {3}", peer.ID, message.GetType().Name, sm.SendTick, sm.RecvTick);
         }
 
         public void SendRequest(Peer peer, VoteRequest request)
@@ -127,7 +149,7 @@ namespace Raft
                 }
             }
         }
-        
+
         public void ResumeAllStopped()
         {
             foreach (var server in _servers)
@@ -144,7 +166,7 @@ namespace Raft
 
         public void SpreadTimers()
         {
-            var timers = new List<int>(_servers.Count);
+            var timers = new List<long>(_servers.Count);
             foreach (var server in _servers)
                 if (server.ElectionAlarm > _tick && server.ElectionAlarm < int.MaxValue)
                     timers.Add(server.ElectionAlarm);
@@ -182,7 +204,7 @@ namespace Raft
         {
             SpreadTimers();
 
-            var timers = new List<int>(_servers.Count);
+            var timers = new List<long>(_servers.Count);
             foreach (var server in _servers)
                 if (server.ElectionAlarm > _tick && server.ElectionAlarm < int.MaxValue)
                     timers.Add(server.ElectionAlarm);
@@ -203,7 +225,7 @@ namespace Raft
 
         public SimulationServer GetLeader()
         {
-            return _servers.FirstOrDefault(x => x.State == ServerState.Leader);                
+            return _servers.FirstOrDefault(x => x.State == ServerState.Leader);
         }
 
         private static int[] GetPeers(int server, int serverCount)
