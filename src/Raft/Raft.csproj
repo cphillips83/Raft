@@ -41,7 +41,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Log.cs" />
     <Compile Include="Model.cs" />
     <Compile Include="Peer.cs" />
     <Compile Include="Program.cs" />

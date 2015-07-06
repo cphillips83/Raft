@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -14,6 +15,22 @@ namespace Raft
      *  FileStream will flush on dispose/close, need to wrap it for safety (don't want stale data out)
      *  
      */
+
+    [StructLayout(LayoutKind.Explicit, Size = 16, Pack = 0)]
+    public struct LogIndex
+    {
+        [FieldOffset(0)]
+        public int Term;
+
+        [FieldOffset(4)]
+        public uint Flags;
+
+        [FieldOffset(8)]
+        public uint Offset;
+
+        [FieldOffset(12)]
+        public uint Size;
+    }
 
     public struct LogEntry
     {
