@@ -1,11 +1,27 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Raft
 {
+    [StructLayout(LayoutKind.Explicit, Size = 16, Pack = 0)]
+    public struct LogIndex
+    {
+        [FieldOffset(0)]
+        public int Term;
+
+        [FieldOffset(4)]
+        public uint Flags;
+
+        [FieldOffset(8)]
+        public uint Offset;
+
+        [FieldOffset(12)]
+        public uint Size;
+    }
 
     public struct LogEntry
     {
@@ -15,7 +31,7 @@ namespace Raft
         //public uint Offset;     //20
         //public uint Size;       //24
         //public ulong Padding;   //32
-        public int Value;
+        public int Offset;
     }
 
     public struct LogEntry2

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,8 +26,10 @@ namespace Raft
         public const int BATCH_SIZE = 2;
     }
 
+
     public class Server
     {
+        protected State _persistedState;
         protected Random _random;
         protected int _id;
         protected ServerState _state;
@@ -35,14 +38,17 @@ namespace Raft
         protected Log _log;
         protected int _commitIndex;
         protected long _electionAlarm;
+        protected string _dataDir;
 
         protected List<Peer> _peers;
 
         public int Quorum { get { return ((_peers.Count + 1) / 2) + 1; } }
 
-        public Server(int id)
+        public Server(int id, string dataDir)
         {
             _id = id;
+            _dataDir = dataDir;
+
             _peers = new List<Peer>();
             _log = new Log();
             _random = new Random(id ^ (int)DateTime.Now.Ticks);
@@ -223,15 +229,15 @@ namespace Raft
                                 _log.Pop();
                             }
 
-                            Console.WriteLine("{0}: Writing log value {1}", _id, request.Entries[i].Value);
+                            Console.WriteLine("{0}: Writing log value {1}", _id, request.Entries[i].Offset);
                             _log.Push(request.Entries[i]);
                         }
                     }
-                    
+
                     matchIndex = index;
 
                     var newCommitIndex = Math.Max(_commitIndex, request.CommitIndex);
-                    if(newCommitIndex != _commitIndex)
+                    if (newCommitIndex != _commitIndex)
                     {
                         Console.WriteLine("{0}: Advancing commit index from {1} to {2}", _id, _commitIndex, newCommitIndex);
                         _commitIndex = newCommitIndex;
@@ -282,6 +288,12 @@ namespace Raft
 
         public void Update(IModel model)
         {
+            if(_persistedState == null)
+            {
+                _persistedState = new State(_dataDir);
+                _persistedState.Initialize();
+            }
+
             startNewElection(model);
             becomeLeader(model);
             advanceCommitIndex(model);
@@ -301,12 +313,11 @@ namespace Raft
         {
             return model.Tick + _random.Next(Settings.ELECTION_TIMEOUT, Settings.ELECTION_TIMEOUT * 2);
         }
-    }
 
+    }
 
     public class SimulationServer : Server
     {
-
         public int ID { get { return _id; } }
         public int Term { get { return _term; } set { _term = value; } }
         public int? VotedFor { get { return _votedFor; } set { _votedFor = value; } }
@@ -315,7 +326,7 @@ namespace Raft
         public List<Peer> Peers { get { return _peers; } }
 
         public SimulationServer(int id, int[] peers)
-            : base(id)
+            : base(id, "D:\\server\\" + id)
         {
             for (var i = 0; i < peers.Length; i++)
                 _peers.Add(new Peer(peers[i], false));
@@ -360,7 +371,7 @@ namespace Raft
         public void ClientRequest(IModel model)
         {
             if (_state == ServerState.Leader)
-                _log.Push(new LogEntry() { Term = _term, /*Index = _log.Length,*/ Value = _id });
+                _log.Push(new LogEntry() { Term = _term, /*Index = _log.Length,*/ Offset = _id });
         }
     }
     //public class TestServer : Server
