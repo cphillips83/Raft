@@ -34,17 +34,23 @@ namespace Raft
                     {
                         case 'x': running = false; break;
                         case 'k':
-                            var leader = model.GetLeader();
-                            if (leader != null)
-                                leader.Stop(model);
+                            {
+                                var leader = model.GetLeader();
+                                if (leader != null)
+                                    leader.Stop(model);
+                            }
                             break;
                         case 'u':
                             model.ResumeAllStopped();
                             break;
                         case 'r': model.ClientRequest(); break;
                         case 'a':
-                            //add server to cluster
-                            model.AddServer();
+                            {
+                                //add server to cluster
+                                var leader = model.GetLeader();
+                                if (leader != null)
+                                    model.AddServer(leader);
+                            }
                             break;
                     }
                 }

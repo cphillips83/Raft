@@ -43,6 +43,7 @@
   <ItemGroup>
     <Compile Include="Consensus.cs" />
     <Compile Include="Enums.cs" />
+    <Compile Include="StateMachine.cs" />
     <Compile Include="Peer.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -41,13 +41,14 @@ namespace Raft
     public class State : IDisposable
     {
         //can not change once in production
-        public const int SUPER_BLOCK_SIZE = 8192;
+        public const int SUPER_BLOCK_SIZE = 1024;
         public const int LOG_DEFAULT_ARRAY_SIZE = 65536;
         public const int LOG_RECORD_SIZE = 16;
         //public const int MAX_LOG_DATA_READS = 16;
 
         // current term of the cluster
         private int _currentTerm;
+        private uint _appliedIndex;
 
         // who we last voted for
         private int? _votedFor;
@@ -62,7 +63,10 @@ namespace Raft
 
         private BinaryWriter _logIndexWriter;
         private FileStream _logDataFile;
-        //private Dictionary<string, object> _state = new Dictionary<string, object>();
+        private List<Peer> _peers;
+        //<Key, LogIndex> - Consumer can compare their LogIndex to determine
+        //                  if they need to pull new data
+        //private Dictionary<uint, uint> _state = new Dictionary<uint, uint>();
 
         public int Term
         {
@@ -102,6 +106,7 @@ namespace Raft
 
         public State(string dataDir)
         {
+            _peers = new List<Peer>();
             _dataDir = dataDir;
             _indexFilePath = System.IO.Path.Combine(dataDir, "index");
             _dataFilePath = System.IO.Path.Combine(dataDir, "data");
@@ -115,6 +120,17 @@ namespace Raft
             //read term and last vote
             _currentTerm = br.ReadInt32();
             _votedFor = br.ReadBoolean() ? (int?)br.ReadInt32() : null;
+            _appliedIndex = br.ReadUInt32();
+
+            // peers
+            var peerCount = br.ReadInt32();
+            for (var i = 0; i < peerCount; i++)
+            {
+                var id = br.ReadInt32();
+                var state = (PeerState)br.ReadInt32();
+
+                _peers.Add(new Peer(id, false) { State = state });
+            }
 
             //seek to end of superblock for data
             br.BaseStream.Seek(SUPER_BLOCK_SIZE, SeekOrigin.Begin);
@@ -134,7 +150,6 @@ namespace Raft
 
             //update log index
             _logLength = indices;
-            
         }
 
         private void createSuperBlock()
@@ -165,6 +180,17 @@ namespace Raft
             // who did we vote for
             _logIndexWriter.Write(_votedFor.HasValue ? _votedFor.Value : -1);
 
+            // last applied index
+            _logIndexWriter.Write(_appliedIndex);
+
+            // peers
+            _logIndexWriter.Write(_peers.Count);
+            for (var i = 0; i < _peers.Count; i++)
+            {
+                _logIndexWriter.Write(_peers[i].ID);
+                _logIndexWriter.Write((int)_peers[i].State);
+            }
+
             // ensure its on the HDD
             _logIndexWriter.Flush();
 
@@ -182,8 +208,8 @@ namespace Raft
             if (_logIndices.Length < size)
             {
                 // calculate next size
-                var newSize = Math.Max( _logIndices.Length * 3 / 2, LOG_DEFAULT_ARRAY_SIZE);
-                
+                var newSize = Math.Max(_logIndices.Length * 3 / 2, LOG_DEFAULT_ARRAY_SIZE);
+
                 // are we still too small?
                 while (newSize < size)
                     newSize = newSize * 3 / 2;
@@ -280,7 +306,15 @@ namespace Raft
             _logLength--;
         }
 
-        public bool GetIndex(int key, out LogIndex index)
+        //public bool ApplyIndex(uint index)
+        //{
+        //    if (index == 0 && index < _logLength)
+        //    {
+
+        //    }
+        //}
+
+        public bool GetIndex(uint key, out LogIndex index)
         {
             if (key < 1 || key > _logLength)
             {
@@ -317,7 +351,16 @@ namespace Raft
             return _logLength;
         }
 
-        public LogEntry? Get(uint key)
+        public byte[] GetData(LogIndex index)
+        {
+            var data = new byte[index.Size];
+
+            _logDataFile.Seek(index.Offset, SeekOrigin.Begin);
+            _logDataFile.Read(data, 0, data.Length);
+            return data;
+        }
+
+        public LogEntry? GetEntry(uint key)
         {
             if (key < 1 || key > _logLength)
                 return null;
@@ -331,7 +374,7 @@ namespace Raft
             return new LogEntry() { Index = index, Data = data };
         }
 
-        public LogEntry[] Get(uint start, uint end)
+        public LogEntry[] GetEntries(uint start, uint end)
         {
             if (start < 0 || end < 1 || start == end)
                 return null;
@@ -339,7 +382,7 @@ namespace Raft
             var entries = new LogEntry[end - start];
             for (var i = start; i < end; i++)
             {
-                var entry = Get(i + 1);
+                var entry = GetEntry(i + 1);
                 System.Diagnostics.Debug.Assert(entry.HasValue);
                 entries[i - start] = entry.Value;
             }

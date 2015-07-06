@@ -7,10 +7,12 @@ using System.Threading.Tasks;
 
 namespace Raft
 {
-
-    public class Settings
-    {
-    }
+    /*
+     *  Needs KeyValueStore 
+     *  Server needs to determine what to do with committed log entries
+     *  Need to snapshot the KeyValueStore
+     *  
+     */
 
 
     public class Server
@@ -25,6 +27,7 @@ namespace Raft
         public const int BATCH_SIZE = 4;
         #endregion
 
+        protected StateMachine _stateMachine;
         protected State _persistedState;
         protected Random _random;
         protected int _id;
@@ -57,7 +60,7 @@ namespace Raft
 
         protected void stepDown(IConsensus model, int term)
         {
-            if(_state == ServerState.Leader || _state == ServerState.Candidate)
+            if (_state == ServerState.Leader || _state == ServerState.Candidate)
                 _state = ServerState.Follower;
 
             _persistedState.UpdateState(term, null);
@@ -75,7 +78,7 @@ namespace Raft
                 _state = ServerState.Candidate;
 
                 //only request from peers that are allowed to vote
-                foreach (var peer in _peers.Where(x=>x.State == PeerState.Follower))
+                foreach (var peer in _peers.Where(x => x.State == PeerState.Follower))
                     peer.Reset();
 
                 Console.WriteLine("{0}: Starting new election for term {1}", _id, _persistedState.Term);
@@ -152,7 +155,7 @@ namespace Raft
                 if (peer.MatchIndex + 1 < peer.NextIndex)
                     lastIndex = prevIndex;
 
-                var entries = _persistedState.Get(prevIndex, lastIndex);
+                var entries = _persistedState.GetEntries(prevIndex, lastIndex);
                 if (entries != null && entries.Length > 0)
                     Console.WriteLine("{0}: Send AppendEnties[{1}-{2}] to {3}", _id, prevIndex, lastIndex, peer.ID);
 
@@ -181,14 +184,40 @@ namespace Raft
 
             var n = matchIndexes[_peers.Count / 2];
             if (_state == ServerState.Leader && _persistedState.GetTerm(n) == _persistedState.Term)
+                commitIndex(Math.Max(_commitIndex, n));
+        }
+
+        protected bool commitIndex(uint newCommitIndex)
+        {
+            if (newCommitIndex != _commitIndex)
             {
-                var newCommitIndex = Math.Max(_commitIndex, n);
-                if (newCommitIndex != _commitIndex)
-                {
-                    Console.WriteLine("{0}: Advancing commit index from {1} to {2}", _id, _commitIndex, newCommitIndex);
-                    _commitIndex = newCommitIndex;
-                }
+                Console.WriteLine("{0}: Advancing commit index from {1} to {2}", _id, _commitIndex, newCommitIndex);
+                _commitIndex = newCommitIndex;
+                //for (var i = _commitIndex; i < newCommitIndex; i++)
+                //{
+                //    if (i == _stateMachine.LastCommitApplied)
+                //    {
+                //        LogIndex index;
+                //        if (!_persistedState.GetIndex(i + 1, out index))
+                //            return false;
+
+                //        if (index.Type == LogIndexType.StateMachine)
+                //        {
+                //            using (var br = new BinaryReader(new MemoryStream(_persistedState.GetData(index))))
+                //            {
+                //                var name = br.ReadString();
+                //                _stateMachine.Apply(name, i + 1);
+                //            }
+                //        }
+                //        _commitIndex++;
+                //    }
+                //    // make commit index 
+                //    _commitIndex++;
+                //}
+                return true;
             }
+
+            return false;
         }
 
         //protected void handleRequestStatus(IModel model, StatusRequest request)
@@ -314,13 +343,7 @@ namespace Raft
                     }
 
                     matchIndex = index;
-
-                    var newCommitIndex = Math.Max(_commitIndex, request.CommitIndex);
-                    if (newCommitIndex != _commitIndex)
-                    {
-                        Console.WriteLine("{0}: Advancing commit index from {1} to {2}", _id, _commitIndex, newCommitIndex);
-                        _commitIndex = newCommitIndex;
-                    }
+                    commitIndex(Math.Max(_commitIndex, request.CommitIndex));
                 }
             }
 
@@ -375,6 +398,12 @@ namespace Raft
             {
                 _persistedState = new State(_dataDir);
                 _persistedState.Initialize();
+            }
+
+            if (_stateMachine == null)
+            {
+                _stateMachine = new StateMachine(_dataDir);
+                _stateMachine.Initialize();
             }
 
             startNewElection(model);

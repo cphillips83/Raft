@@ -25,7 +25,7 @@ namespace Raft
 
     public enum LogIndexType : uint
     {
-        Data = 0,
-        ClusterState = 1,
+        RawData = 0,
+        StateMachine = 1,
     }
 }

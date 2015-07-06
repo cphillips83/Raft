@@ -225,10 +225,10 @@ namespace Raft
         }
 
         private int _newServer = 100;
-        public void AddServer()
+        public void AddServer(SimulationServer master)
         {
             var id = _newServer++;
-            var server = new SimulationServer(id, GetPeers(id, NUM_SERVERS));
+            var server = new SimulationServer(id, new int[] { master.ID });
             _servers.Add(server);
 
             server.Add(this);
@@ -251,11 +251,16 @@ namespace Raft
             var peers = new int[NUM_SERVERS];
 
             model._servers = new List<SimulationServer>(NUM_SERVERS);
-            for (var i = 0; i < NUM_SERVERS; i++)
-                model._servers.Add(new SimulationServer(i + 1, GetPeers(i + 1, NUM_SERVERS)));
+            var master = new SimulationServer(1, null);
+            model._servers.Add(master);
+            master.Restart(model);
 
-            for (var i = 0; i < NUM_SERVERS; i++)
-                model._servers[i].Restart(model);
+            model.AddServer(master);
+            //for (var i = 0; i < NUM_SERVERS; i++)
+            //    model._servers.Add(new SimulationServer(i + 1, GetPeers(i + 1, NUM_SERVERS)));
+
+            //for (var i = 0; i < NUM_SERVERS; i++)
+            //    model._servers[i].Restart(model);
 
             return model;
         }
@@ -309,8 +314,9 @@ namespace Raft
         public SimulationServer(int id, int[] peers)
             : base(id, "D:\\server\\" + id)
         {
-            for (var i = 0; i < peers.Length; i++)
-                _peers.Add(new Peer(peers[i], false));
+            if (peers != null)
+                for (var i = 0; i < peers.Length; i++)
+                    _peers.Add(new Peer(peers[i], false));
         }
 
         public void BecomeLeader(IConsensus model)
