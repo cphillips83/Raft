@@ -22,4 +22,10 @@ namespace Raft
         Adding,
         Removing
     }
+
+    public enum LogIndexType : uint
+    {
+        Data = 0,
+        ClusterState = 1,
+    }
 }

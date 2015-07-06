@@ -23,7 +23,7 @@ namespace Raft
         public int Term;
 
         [FieldOffset(4)]
-        public uint Flags;
+        public LogIndexType Type;
 
         [FieldOffset(8)]
         public uint Offset;
@@ -36,7 +36,6 @@ namespace Raft
     {
         public LogIndex Index;
         public byte[] Data;
-
     }
 
     public class State : IDisposable
@@ -63,6 +62,7 @@ namespace Raft
 
         private BinaryWriter _logIndexWriter;
         private FileStream _logDataFile;
+        //private Dictionary<string, object> _state = new Dictionary<string, object>();
 
         public int Term
         {
@@ -127,7 +127,7 @@ namespace Raft
             for (var i = 0; i < indices; i++)
             {
                 _logIndices[i].Term = br.ReadInt32();
-                _logIndices[i].Flags = br.ReadUInt32();
+                _logIndices[i].Type = (LogIndexType)br.ReadUInt32();
                 _logIndices[i].Offset = br.ReadUInt32();
                 _logIndices[i].Size = br.ReadUInt32();
             }
@@ -228,7 +228,7 @@ namespace Raft
                     Term = _currentTerm,
                     Offset = DataPosition,
                     Size = (uint)data.Length,
-                    Flags = 0
+                    Type = 0
                 },
                 Data = data
             };
@@ -266,7 +266,7 @@ namespace Raft
 
             //write data
             _logIndexWriter.Write(data.Index.Term);
-            _logIndexWriter.Write(data.Index.Flags);
+            _logIndexWriter.Write((uint)data.Index.Type);
             _logIndexWriter.Write(data.Index.Offset);
             _logIndexWriter.Write(data.Index.Size);
 
@@ -284,7 +284,7 @@ namespace Raft
         {
             if (key < 1 || key > _logLength)
             {
-                index = new LogIndex() { Flags = 0, Offset = 0, Size = 0, Term = 0 };
+                index = new LogIndex() { Type = 0, Offset = 0, Size = 0, Term = 0 };
                 return false;
             }
 
@@ -309,7 +309,7 @@ namespace Raft
         {
             if (_logLength == 0)
             {
-                index = new LogIndex() { Flags = 0, Offset = 0, Size = 0, Term = 0 };
+                index = new LogIndex() { Type = 0, Offset = 0, Size = 0, Term = 0 };
                 return 0;
             }
 
