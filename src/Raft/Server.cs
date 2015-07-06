@@ -81,20 +81,40 @@ namespace Raft
             if (_state == ServerState.Candidate && peer.CheckRpcTimeout(model))
             {
                 //Console.WriteLine("{0}: Requesting vote from {1}", _id, peer.ID);
-                
+
                 LogIndex lastIndex;
                 var lastLogIndex = _persistedState.GetLastIndex(out lastIndex);
-                
+
                 peer.RpcDue = model.Tick + Settings.RPC_TIMEOUT;
                 model.SendRequest(peer, new VoteRequest()
                 {
                     From = _id,
                     Term = _persistedState.Term,
-                    LastTerm =  lastIndex.Term,
+                    LastTerm = lastIndex.Term,
                     LogLength = lastLogIndex
                 });
             }
         }
+
+        //protected void sendStatusRequest(IModel model, Peer peer)
+        //{
+        //    // since we are designed around not knowning what the data is
+        //    // it could be large, we don't want to slowly send index after 
+        //    // index to a node thats been down for a long time
+
+        //    System.Diagnostics.Debug.Assert(peer.RpcDue == int.MaxValue);
+
+        //    if (_state == ServerState.Leader)
+        //    {
+        //        peer.RpcDue = model.Tick + Settings.RPC_TIMEOUT;
+        //        peer.HeartBeartDue = model.Tick + (Settings.ELECTION_TIMEOUT / 2);
+        //        model.SendRequest(peer, new StatusRequest()
+        //        {
+        //            From = _id,
+        //            Term = _persistedState.Term
+        //        });
+        //    }
+        //}
 
         protected void becomeLeader(IModel model)
         {
@@ -107,7 +127,10 @@ namespace Raft
                     _state = ServerState.Leader;
                     _electionAlarm = int.MaxValue;
                     foreach (var peer in _peers)
+                    {
                         peer.LeadershipChanged(_persistedState.Length + 1);
+                        //sendStatusRequest(model, peer);
+                    }
                 }
             }
         }
@@ -161,6 +184,41 @@ namespace Raft
                 }
             }
         }
+
+        //protected void handleRequestStatus(IModel model, StatusRequest request)
+        //{
+        //    if (_persistedState.Term < request.Term)
+        //        stepDown(model, request.Term);
+
+        //    if (_state == ServerState.Follower && _persistedState.Term == request.Term)
+        //    {
+        //        var peer = _peers.First(x => x.ID == request.From);
+        //        _electionAlarm = makeElectionAlarm(model);
+        //        model.SendReply(peer, new StatusReply()
+        //        {
+        //            From = _id, 
+        //            CommitIndex = _commitIndex,
+        //            Term = _persistedState.Term
+        //        });
+
+        //        Console.WriteLine("{0}: Sent status {1} to {2}", _id, _commitIndex, peer.ID);
+        //    }
+        //}
+
+        //protected void handleStatusReply(IModel model, StatusReply reply)
+        //{
+        //    if (_persistedState.Term < reply.Term)
+        //        stepDown(model, reply.Term);
+
+        //    if (_state == ServerState.Leader && _persistedState.Term == reply.Term)
+        //    {
+        //        var peer = _peers.First(x => x.ID == reply.From);
+        //        peer.RpcDue = int.MaxValue;
+        //        peer.MatchIndex = reply.CommitIndex;
+
+        //        //Console.WriteLine("{0}: Peer {1} voted {2}", _id, peer.ID, peer.VotedGranted);
+        //    }
+        //}
 
         protected void handleRequestVote(IModel model, VoteRequest request)
         {
@@ -294,6 +352,10 @@ namespace Raft
                 handleAppendEntriesRequest(model, (AppendEntriesRequest)message);
             else if (message is AppendEntriesReply)
                 handleAppendEntriesReply(model, (AppendEntriesReply)message);
+            //else if (message is StatusRequest)
+            //    handleRequestStatus(model, (StatusRequest)message);
+            //else if (message is StatusReply)
+            //    handleStatusReply(model, (StatusReply)message);
             else
                 throw new Exception("Unhandled message");
         }
@@ -384,7 +446,7 @@ namespace Raft
         {
             if (_state == ServerState.Leader)
                 _persistedState.Create(new byte[] { (byte)_id });
-        }   
+        }
     }
     //public class TestServer : Server
     //{

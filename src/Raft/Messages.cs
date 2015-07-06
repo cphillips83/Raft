@@ -6,10 +6,6 @@ using System.Threading.Tasks;
 
 namespace Raft
 {
-    public interface IMessage{
-
-    }
-
     public struct VoteRequest
     {
         public int From;
@@ -25,17 +21,29 @@ namespace Raft
         public bool Granted;
     }
 
+    //public struct StatusRequest
+    //{
+    //    public int From;
+    //    public int Term;
+    //}
+
+    //public struct StatusReply
+    //{
+    //    public int From;
+    //    public int Term;
+    //    public uint CommitIndex;
+    //}
+
     public struct AppendEntriesRequest
     {
         public int From;
         public int Term;
-        public uint CommitIndex;
-        public uint PrevIndex;
         public int PrevTerm;
-        //public int PrevLogIndex;
+        public uint PrevIndex;
+        public uint CommitIndex;
         public LogEntry[] Entries;
-
     }
+
 
     public struct AppendEntriesReply
     {

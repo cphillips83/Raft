@@ -19,6 +19,9 @@ namespace Raft
         long Tick { get; }
         void SendRequest(Peer peer, VoteRequest request);
         void SendRequest(Peer peer, AppendEntriesRequest request);
+        //void SendRequest(Peer peer, StatusRequest request);
+
+        //void SendReply(Peer peer, StatusReply reply);
         void SendReply(Peer peer, VoteRequestReply reply);
         void SendReply(Peer peer, AppendEntriesReply reply);
     }
@@ -128,6 +131,11 @@ namespace Raft
             SendMessage(peer, request);
         }
 
+        //public void SendRequest(Peer peer, StatusRequest request)
+        //{
+        //    SendMessage(peer, request);
+        //}
+
         public void SendReply(Peer peer, VoteRequestReply reply)
         {
             SendMessage(peer, reply);
@@ -137,6 +145,11 @@ namespace Raft
         {
             SendMessage(peer, reply);
         }
+
+        //public void SendReply(Peer peer, StatusReply reply)
+        //{
+        //    SendMessage(peer, reply);
+        //}
 
         public void DropMessage(int server)
         {
