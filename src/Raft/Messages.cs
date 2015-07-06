@@ -14,8 +14,8 @@ namespace Raft
     {
         public int From;
         public int Term;
-        public int LastLogTerm;
-        public int LastLogIndex;
+        public int LastTerm;
+        public uint LogLength;
     }
 
     public struct VoteRequestReply
@@ -29,8 +29,8 @@ namespace Raft
     {
         public int From;
         public int Term;
-        public int CommitIndex;
-        public int PrevIndex;
+        public uint CommitIndex;
+        public uint PrevIndex;
         public int PrevTerm;
         //public int PrevLogIndex;
         public LogEntry[] Entries;
@@ -41,7 +41,7 @@ namespace Raft
     {
         public int From;
         public int Term;
-        public int MatchIndex;
+        public uint MatchIndex;
         public bool Success;
     }
 }

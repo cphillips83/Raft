@@ -33,10 +33,8 @@ namespace Raft
         protected Random _random;
         protected int _id;
         protected ServerState _state;
-        //protected int _persistedState.Term;
-        //protected int? _votedFor;
-        protected Log _log;
-        protected int _commitIndex;
+        //protected Log _log;
+        protected uint _commitIndex;
         protected long _electionAlarm;
         protected string _dataDir;
 
@@ -50,7 +48,7 @@ namespace Raft
             _dataDir = dataDir;
 
             _peers = new List<Peer>();
-            _log = new Log();
+            //_log = new Log();
             _random = new Random(id ^ (int)DateTime.Now.Ticks);
             _state = ServerState.Stopped;
         }
@@ -83,13 +81,17 @@ namespace Raft
             if (_state == ServerState.Candidate && peer.CheckRpcTimeout(model))
             {
                 //Console.WriteLine("{0}: Requesting vote from {1}", _id, peer.ID);
+                
+                LogIndex lastIndex;
+                var lastLogIndex = _persistedState.GetLastIndex(out lastIndex);
+                
                 peer.RpcDue = model.Tick + Settings.RPC_TIMEOUT;
                 model.SendRequest(peer, new VoteRequest()
                 {
                     From = _id,
                     Term = _persistedState.Term,
-                    LastLogTerm = _log.LastLogterm,
-                    LastLogIndex = _log.Length
+                    LastTerm =  lastIndex.Term,
+                    LogLength = lastLogIndex
                 });
             }
         }
@@ -105,7 +107,7 @@ namespace Raft
                     _state = ServerState.Leader;
                     _electionAlarm = int.MaxValue;
                     foreach (var peer in _peers)
-                        peer.LeadershipChanged(_log.Length + 1);
+                        peer.LeadershipChanged(_persistedState.Length + 1);
                 }
             }
         }
@@ -114,14 +116,14 @@ namespace Raft
         {
             if (_state == ServerState.Leader &&
                 (peer.HeartBeartDue <= model.Tick ||
-                 (peer.NextIndex <= _log.Length && peer.RpcDue <= model.Tick)))
+                 (peer.NextIndex <= _persistedState.Length && peer.RpcDue <= model.Tick)))
             {
                 var prevIndex = peer.NextIndex - 1;
-                var lastIndex = Math.Min(prevIndex + Settings.BATCH_SIZE, _log.Length);
+                var lastIndex = Math.Min(prevIndex + Settings.BATCH_SIZE, _persistedState.Length);
                 if (peer.MatchIndex + 1 < peer.NextIndex)
                     lastIndex = prevIndex;
 
-                var entries = _log.GetEntries(prevIndex, lastIndex);
+                var entries = _persistedState.Get(prevIndex, lastIndex);
                 if (entries != null && entries.Length > 0)
                     Console.WriteLine("{0}: Send AppendEnties[{1}-{2}] to {3}", _id, prevIndex, lastIndex, peer.ID);
 
@@ -132,7 +134,7 @@ namespace Raft
                     From = _id,
                     Term = _persistedState.Term,
                     PrevIndex = prevIndex,
-                    PrevTerm = _log.GetTerm(prevIndex),
+                    PrevTerm = _persistedState.GetTerm(prevIndex),
                     Entries = entries,
                     CommitIndex = Math.Min(_commitIndex, lastIndex)
                 });
@@ -141,15 +143,15 @@ namespace Raft
 
         protected void advanceCommitIndex(IModel model)
         {
-            var matchIndexes = new int[_peers.Count + 1];
-            matchIndexes[matchIndexes.Length - 1] = _log.Length;
+            var matchIndexes = new uint[_peers.Count + 1];
+            matchIndexes[matchIndexes.Length - 1] = _persistedState.Length;
             for (var i = 0; i < _peers.Count; i++)
                 matchIndexes[i] = _peers[i].MatchIndex;
 
             Array.Sort(matchIndexes);
 
             var n = matchIndexes[_peers.Count / 2];
-            if (_state == ServerState.Leader && _log.GetTerm(n) == _persistedState.Term)
+            if (_state == ServerState.Leader && _persistedState.GetTerm(n) == _persistedState.Term)
             {
                 var newCommitIndex = Math.Max(_commitIndex, n);
                 if (newCommitIndex != _commitIndex)
@@ -166,11 +168,11 @@ namespace Raft
                 stepDown(model, request.Term);
 
             var peer = _peers.First(x => x.ID == request.From);
-            var ourLastLogTerm = _log.LastLogterm;
+            var ourLastLogTerm = _persistedState.GetLastTerm();
             var termCheck = _persistedState.Term == request.Term;
             var canVote = _persistedState.VotedFor == null || _persistedState.VotedFor == request.From;
-            var logTermFurther = request.LastLogTerm > ourLastLogTerm;
-            var logIndexLonger = request.LastLogTerm == ourLastLogTerm && request.LastLogIndex >= _log.Length;
+            var logTermFurther = request.LastTerm > ourLastLogTerm;
+            var logIndexLonger = request.LastTerm == ourLastLogTerm && request.LogLength >= _persistedState.Length;
             var granted = termCheck && canVote && (logTermFurther || logIndexLonger);
 
             if (!termCheck)
@@ -215,7 +217,7 @@ namespace Raft
 
             var peer = _peers.First(x => x.ID == request.From);
             var success = false;
-            var matchIndex = 0;
+            var matchIndex = 0u;
 
             if (_persistedState.Term == request.Term)
             {
@@ -223,7 +225,7 @@ namespace Raft
                 _electionAlarm = makeElectionAlarm(model);
 
                 if (request.PrevIndex == 0 ||
-                    (request.PrevIndex <= _log.Length && _log.GetTerm(request.PrevIndex) == request.PrevTerm))
+                    (request.PrevIndex <= _persistedState.Length && _persistedState.GetTerm(request.PrevIndex) == request.PrevTerm))
                 {
                     success = true;
 
@@ -231,16 +233,16 @@ namespace Raft
                     for (var i = 0; request.Entries != null && i < request.Entries.Length; i++)
                     {
                         index++;
-                        if (_log.GetTerm(index) != request.Entries[i].Term)
+                        if (_persistedState.GetTerm(index) != request.Entries[i].Index.Term)
                         {
-                            while (_log.Length > index - 1)
+                            while (_persistedState.Length > index - 1)
                             {
-                                Console.WriteLine("{0}: Rolling back log {1}", _id, _log.Length - 1);
-                                _log.Pop();
+                                Console.WriteLine("{0}: Rolling back log {1}", _id, _persistedState.Length - 1);
+                                _persistedState.Pop();
                             }
 
-                            Console.WriteLine("{0}: Writing log value {1}", _id, request.Entries[i].Offset);
-                            _log.Push(request.Entries[i]);
+                            //Console.WriteLine("{0}: Writing log value {1}", _id, request.Entries[i].Offset);
+                            _persistedState.Push(request.Entries[i]);
                         }
                     }
 
@@ -381,8 +383,8 @@ namespace Raft
         public void ClientRequest(IModel model)
         {
             if (_state == ServerState.Leader)
-                _log.Push(new LogEntry() { Term = _persistedState.Term, /*Index = _log.Length,*/ Offset = _id });
-        }
+                _persistedState.Create(new byte[] { (byte)_id });
+        }   
     }
     //public class TestServer : Server
     //{

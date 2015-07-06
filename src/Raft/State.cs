@@ -15,6 +15,13 @@ namespace Raft
      *  
      */
 
+    public struct LogEntry
+    {
+        public LogIndex Index;
+        public byte[] Data;
+
+    }
+
     public class State : IDisposable
     {
         //can not change once in production
@@ -36,7 +43,6 @@ namespace Raft
         // log index
         private LogIndex[] _logIndices;
         private uint _logLength;
-        private uint _logDataPosition;
 
         private BinaryWriter _logIndexWriter;
         private FileStream _logDataFile;
@@ -64,6 +70,18 @@ namespace Raft
         public string DataDirectory { get { return _dataDir; } }
         public string IndexFile { get { return _indexFilePath; } }
         public string DataFile { get { return _dataFilePath; } }
+        public uint Length { get { return _logLength; } }
+        public uint DataPosition
+        {
+            get
+            {
+                if (_logLength == 0)
+                    return 0;
+
+                var index = _logIndices[_logLength - 1];
+                return index.Offset + index.Size;
+            }
+        }
 
         public State(string dataDir)
         {
@@ -99,6 +117,7 @@ namespace Raft
 
             //update log index
             _logLength = indices;
+            
         }
 
         private void createSuperBlock()
@@ -113,8 +132,6 @@ namespace Raft
             //init default log entry size
             _logIndices = new LogIndex[LOG_DEFAULT_ARRAY_SIZE];
 
-            // set log position
-            _logDataPosition = 0;
         }
 
         private bool saveSuperBlock()
@@ -148,8 +165,8 @@ namespace Raft
             if (_logIndices.Length < size)
             {
                 // calculate next size
-                var newSize = _logIndices.Length * 3 / 2;
-
+                var newSize = Math.Max( _logIndices.Length * 3 / 2, LOG_DEFAULT_ARRAY_SIZE);
+                
                 // are we still too small?
                 while (newSize < size)
                     newSize = newSize * 3 / 2;
@@ -185,53 +202,56 @@ namespace Raft
             saveSuperBlock();
         }
 
-        //array of byte arrays, for batching purposes (limiting the writer lock transitions)
-        public void Push(byte[][] data)
+        public LogEntry Create(byte[] data)
+        {
+            var entry = new LogEntry()
+            {
+                Index = new LogIndex()
+                {
+                    Term = _currentTerm,
+                    Offset = DataPosition,
+                    Size = (uint)data.Length,
+                    Flags = 0
+                },
+                Data = data
+            };
+
+            Push(entry);
+            return entry;
+        }
+
+        public void Push(LogEntry data)
         {
             // we must first write the data to the dat file
             // in case of crash in between log data and log entry
             // this will orphan the data and on startup will reclaim the space
 
+            // stream length is in UNSIGN but seek is SIGN?
+            // seek before we commit the data so we are at the right position
+            _logIndexWriter.Seek((int)(SUPER_BLOCK_SIZE + _logLength * LOG_RECORD_SIZE), SeekOrigin.Begin);
 
             // make sure we have enough capacity
-            ensureLogIndices(_logLength + (uint)data.Length);
-            var newLogIndices = new LogIndex[data.Length];
+            ensureLogIndices(_logLength + 1);
 
-            for (var i = 0; i < data.Length; i++)
-            {
-                newLogIndices[i] = new LogIndex()
-                {
-                    Term = _currentTerm,
-                    Flags = 0,
-                    Offset = _logDataPosition,
-                    Size = (uint)data.Length
-                };
+            //write to log data file
+            _logDataFile.Seek(DataPosition, SeekOrigin.Begin);
+            _logDataFile.Write(data.Data, 0, data.Data.Length);
 
-                //write to log data file
-                _logDataFile.Write(data[i], 0, data[i].Length);
+            //update log entries
+            _logIndices[_logLength] = data.Index;
 
-                //update log entries
-                _logIndices[_logLength] = newLogIndices[i];
-
-                //inc log index
-                _logLength++;
-                _logDataPosition += newLogIndices[i].Size;
-            }
+            //inc log index
+            _logLength++;
+            //_logDataPosition += data.Index.Size;
 
             //flush data
             _logDataFile.Flush();
 
-            //stream length is in UNSIGN but seek is SIGN?
-            _logIndexWriter.Seek((int)(SUPER_BLOCK_SIZE + _logLength * LOG_RECORD_SIZE), SeekOrigin.Begin);
-
-            for (var i = 0; i < data.Length; i++)
-            {
-                //write data
-                _logIndexWriter.Write(newLogIndices[i].Term);
-                _logIndexWriter.Write(newLogIndices[i].Flags);
-                _logIndexWriter.Write(newLogIndices[i].Offset);
-                _logIndexWriter.Write(newLogIndices[i].Size);
-            }
+            //write data
+            _logIndexWriter.Write(data.Index.Term);
+            _logIndexWriter.Write(data.Index.Flags);
+            _logIndexWriter.Write(data.Index.Offset);
+            _logIndexWriter.Write(data.Index.Size);
 
             _logIndexWriter.Flush();
         }
@@ -241,11 +261,6 @@ namespace Raft
             System.Diagnostics.Debug.Assert(_logLength > 0);
 
             _logLength--;
-
-            if (_logLength > 0)
-                _logDataPosition = _logIndices[_logLength].Offset;
-            else
-                _logDataPosition = 0;
         }
 
         public bool GetIndex(int key, out LogIndex index)
@@ -260,19 +275,32 @@ namespace Raft
             return true;
         }
 
-        public bool GetLastIndex(out LogIndex index)
+        public int GetTerm(uint key)
+        {
+            if (key < 1 || key > _logLength)
+                return 0;
+
+            return _logIndices[key - 1].Term;
+        }
+
+        public int GetLastTerm()
+        {
+            return GetTerm(_logLength);
+        }
+
+        public uint GetLastIndex(out LogIndex index)
         {
             if (_logLength == 0)
             {
                 index = new LogIndex() { Flags = 0, Offset = 0, Size = 0, Term = 0 };
-                return false;
+                return 0;
             }
 
             index = _logIndices[_logLength - 1];
-            return true;
+            return _logLength;
         }
 
-        public byte[] GetData(int key)
+        public LogEntry? Get(uint key)
         {
             if (key < 1 || key > _logLength)
                 return null;
@@ -283,7 +311,23 @@ namespace Raft
             _logDataFile.Seek(index.Offset, SeekOrigin.Begin);
             _logDataFile.Read(data, 0, data.Length);
 
-            return data;
+            return new LogEntry() { Index = index, Data = data };
+        }
+
+        public LogEntry[] Get(uint start, uint end)
+        {
+            if (start < 0 || end < 1 || start == end)
+                return null;
+
+            var entries = new LogEntry[end - start];
+            for (var i = start; i < end; i++)
+            {
+                var entry = Get(i + 1);
+                System.Diagnostics.Debug.Assert(entry.HasValue);
+                entries[i - start] = entry.Value;
+            }
+
+            return entries;
         }
 
         public void Dispose()

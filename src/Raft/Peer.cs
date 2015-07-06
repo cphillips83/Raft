@@ -23,8 +23,8 @@ namespace Raft
 
         public int ID { get; set; }
         public bool VotedGranted { get; set; }
-        public int MatchIndex { get; set; }
-        public int NextIndex { get; set; }
+        public uint MatchIndex { get; set; }
+        public uint NextIndex { get; set; }
         public long RpcDue { get; set; }
         public long HeartBeartDue { get; set; }
 
@@ -42,7 +42,7 @@ namespace Raft
             return RpcDue < model.Tick;
         }
 
-        public void LeadershipChanged(int logLength)
+        public void LeadershipChanged(uint logLength)
         {
             NextIndex = logLength;
             RpcDue = int.MaxValue;

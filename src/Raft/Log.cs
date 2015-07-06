@@ -23,7 +23,7 @@ namespace Raft
         public uint Size;
     }
 
-    public struct LogEntry
+    public struct LogEntryOld
     {
         public int Term;        //4
         //public ulong Key;       //12
@@ -55,7 +55,7 @@ namespace Raft
 
     public class Log
     {
-        private List<LogEntry> _entries = new List<LogEntry>();
+        private List<LogEntryOld> _entries = new List<LogEntryOld>();
 
         public int Length { get { return _entries.Count; } }
 
@@ -68,7 +68,7 @@ namespace Raft
             _entries.RemoveAt(_entries.Count - 1);
         }
 
-        public void Push(LogEntry entry)
+        public void Push(LogEntryOld entry)
         {
             _entries.Add(entry);
         }
@@ -81,12 +81,12 @@ namespace Raft
             return _entries[index - 1].Term;
         }
 
-        public LogEntry[] GetEntries(int start, int end)
+        public LogEntryOld[] GetEntries(int start, int end)
         {
             if (start < 0 || end < 1 || start == end)
                 return null; 
             
-            var entries = new LogEntry[end - start];
+            var entries = new LogEntryOld[end - start];
             for (var i = start; i < end; i++)
                 entries[i - start] = _entries[i];
 
