@@ -282,4 +282,62 @@ namespace Raft
         }
     }
 
+    public class SimulationServer : Server
+    {
+        public int ID { get { return _id; } }
+        public int Term { get { return _persistedState.Term; } set { _persistedState.Term = value; } }
+        public int? VotedFor { get { return _persistedState.VotedFor; } set { _persistedState.VotedFor = value; } }
+        public long ElectionAlarm { get { return _electionAlarm; } set { _electionAlarm = value; } }
+        public ServerState State { get { return _state; } }
+        public List<Peer> Peers { get { return _peers; } }
+
+        public SimulationServer(int id, int[] peers)
+            : base(id, "D:\\server\\" + id)
+        {
+            for (var i = 0; i < peers.Length; i++)
+                _peers.Add(new Peer(peers[i], false));
+        }
+
+        public void BecomeLeader(IConsensus model)
+        {
+            becomeLeader(model);
+        }
+
+        public void HandleMessage(IConsensus model, object message)
+        {
+            handleMessage(model, message);
+        }
+
+        public void Stop(IConsensus model)
+        {
+            _state = ServerState.Stopped;
+            _electionAlarm = 0;
+        }
+
+        public void Resume(IConsensus model)
+        {
+            _state = ServerState.Follower;
+            _commitIndex = 0;
+            _electionAlarm = makeElectionAlarm(model);
+        }
+
+        public void Restart(IConsensus model)
+        {
+            Stop(model);
+            Resume(model);
+        }
+
+        public void Timeout(IConsensus model)
+        {
+            _state = ServerState.Follower;
+            _electionAlarm = 0;
+            startNewElection(model);
+        }
+
+        public void ClientRequest(IConsensus model)
+        {
+            if (_state == ServerState.Leader)
+                _persistedState.Create(new byte[] { (byte)_id });
+        }
+    }
 }
