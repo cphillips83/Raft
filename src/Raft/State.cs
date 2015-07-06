@@ -139,6 +139,11 @@ namespace Raft
 
         private void ensureLogIndices(uint size)
         {
+            // we don't want to increase the size yet
+            // of a system is readonly it would create wasted memory
+            if (_logIndices == null)
+                _logIndices = new LogIndex[size];
+
             // do we need to increase?
             if (_logIndices.Length < size)
             {
