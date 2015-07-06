@@ -33,8 +33,8 @@ namespace Raft
         protected Random _random;
         protected int _id;
         protected ServerState _state;
-        protected int _term;
-        protected int? _votedFor;
+        //protected int _persistedState.Term;
+        //protected int? _votedFor;
         protected Log _log;
         protected int _commitIndex;
         protected long _electionAlarm;
@@ -57,9 +57,8 @@ namespace Raft
 
         protected void stepDown(IModel model, int term)
         {
-            _term = term;
             _state = ServerState.Follower;
-            _votedFor = null;
+            _persistedState.UpdateState(term, null);
             if (isElectionTimeout(model))
                 _electionAlarm = makeElectionAlarm(model);
         }
@@ -69,13 +68,13 @@ namespace Raft
             if ((_state == ServerState.Follower || _state == ServerState.Candidate) &&
                 isElectionTimeout(model))
             {
-                Console.WriteLine("{0}: Starting new election", _id);
                 _electionAlarm = makeElectionAlarm(model);
-                _term++;
-                _votedFor = _id;
+                _persistedState.UpdateState(_persistedState.Term + 1, _id);
                 _state = ServerState.Candidate;
                 foreach (var peer in _peers)
                     peer.Reset();
+
+                Console.WriteLine("{0}: Starting new election for term {1}", _id, _persistedState.Term);
             }
         }
 
@@ -83,12 +82,12 @@ namespace Raft
         {
             if (_state == ServerState.Candidate && peer.CheckRpcTimeout(model))
             {
-                Console.WriteLine("{0}: Requesting vote from {1}", _id, peer.ID);
+                //Console.WriteLine("{0}: Requesting vote from {1}", _id, peer.ID);
                 peer.RpcDue = model.Tick + Settings.RPC_TIMEOUT;
                 model.SendRequest(peer, new VoteRequest()
                 {
                     From = _id,
-                    Term = _term,
+                    Term = _persistedState.Term,
                     LastLogTerm = _log.LastLogterm,
                     LastLogIndex = _log.Length
                 });
@@ -102,7 +101,7 @@ namespace Raft
                 var voteCount = _peers.Count(x => x.VotedGranted) + 1;
                 if (voteCount >= Quorum)
                 {
-                    Console.WriteLine("{0}: I am now leader with {1} votes", _id, voteCount);
+                    Console.WriteLine("{0}: I am now leader of term {2} with {1} votes", _id, voteCount, _persistedState.Term);
                     _state = ServerState.Leader;
                     _electionAlarm = int.MaxValue;
                     foreach (var peer in _peers)
@@ -131,7 +130,7 @@ namespace Raft
                 model.SendRequest(peer, new AppendEntriesRequest()
                 {
                     From = _id,
-                    Term = _term,
+                    Term = _persistedState.Term,
                     PrevIndex = prevIndex,
                     PrevTerm = _log.GetTerm(prevIndex),
                     Entries = entries,
@@ -150,7 +149,7 @@ namespace Raft
             Array.Sort(matchIndexes);
 
             var n = matchIndexes[_peers.Count / 2];
-            if (_state == ServerState.Leader && _log.GetTerm(n) == _term)
+            if (_state == ServerState.Leader && _log.GetTerm(n) == _persistedState.Term)
             {
                 var newCommitIndex = Math.Max(_commitIndex, n);
                 if (newCommitIndex != _commitIndex)
@@ -163,51 +162,62 @@ namespace Raft
 
         protected void handleRequestVote(IModel model, VoteRequest request)
         {
-            if (_term < request.Term)
+            if (_persistedState.Term < request.Term)
                 stepDown(model, request.Term);
 
             var peer = _peers.First(x => x.ID == request.From);
             var ourLastLogTerm = _log.LastLogterm;
-            var canVote = _term == request.Term && (_votedFor == null || _votedFor == request.From);
+            var termCheck = _persistedState.Term == request.Term;
+            var canVote = _persistedState.VotedFor == null || _persistedState.VotedFor == request.From;
             var logTermFurther = request.LastLogTerm > ourLastLogTerm;
             var logIndexLonger = request.LastLogTerm == ourLastLogTerm && request.LastLogIndex >= _log.Length;
-            var granted = canVote && (logTermFurther || logIndexLonger);
+            var granted = termCheck && canVote && (logTermFurther || logIndexLonger);
+
+            if (!termCheck)
+                Console.WriteLine("{0}: Can not vote for {1} because term {2}, expected {3}", _id, peer.ID, request.Term, _persistedState.Term);
+
+            if (!canVote)
+                Console.WriteLine("{0}: Can not vote for {1} because I already voted for {2}", _id, peer.ID, _persistedState.VotedFor);
+
+            if (!(logTermFurther || logIndexLonger))
+                Console.WriteLine("{0}: Can not vote for {1} because my log is more update to date", _id, peer.ID);
 
             if (granted)
             {
-                _votedFor = peer.ID;
+                Console.WriteLine("{0}: Voted for {1}", _id, peer.ID);
+                _persistedState.VotedFor = peer.ID;
                 _electionAlarm = makeElectionAlarm(model);
             }
 
-            model.SendReply(peer, new VoteRequestReply() { From = _id, Term = _term, Granted = granted });
-            Console.WriteLine("{0}: Replying {1} to {2}'s request vote", _id, granted, peer.ID);
+            model.SendReply(peer, new VoteRequestReply() { From = _id, Term = _persistedState.Term, Granted = granted });
+
         }
 
         protected void handleRequestVoteReply(IModel model, VoteRequestReply reply)
         {
-            if (_term < reply.Term)
+            if (_persistedState.Term < reply.Term)
                 stepDown(model, reply.Term);
 
-            if (_state == ServerState.Candidate && _term == reply.Term)
+            if (_state == ServerState.Candidate && _persistedState.Term == reply.Term)
             {
                 var peer = _peers.First(x => x.ID == reply.From);
                 peer.RpcDue = int.MaxValue;
                 peer.VotedGranted = reply.Granted;
 
-                Console.WriteLine("{0}: Peer {1} voted {2}", _id, peer.ID, peer.VotedGranted);
+                //Console.WriteLine("{0}: Peer {1} voted {2}", _id, peer.ID, peer.VotedGranted);
             }
         }
 
         protected void handleAppendEntriesRequest(IModel model, AppendEntriesRequest request)
         {
-            if (_term < request.Term)
+            if (_persistedState.Term < request.Term)
                 stepDown(model, request.Term);
 
             var peer = _peers.First(x => x.ID == request.From);
             var success = false;
             var matchIndex = 0;
 
-            if (_term == request.Term)
+            if (_persistedState.Term == request.Term)
             {
                 _state = ServerState.Follower;
                 _electionAlarm = makeElectionAlarm(model);
@@ -245,15 +255,15 @@ namespace Raft
                 }
             }
 
-            model.SendReply(peer, new AppendEntriesReply() { From = _id, Term = _term, MatchIndex = matchIndex, Success = success });
+            model.SendReply(peer, new AppendEntriesReply() { From = _id, Term = _persistedState.Term, MatchIndex = matchIndex, Success = success });
         }
 
         protected void handleAppendEntriesReply(IModel model, AppendEntriesReply reply)
         {
-            if (_term < reply.Term)
+            if (_persistedState.Term < reply.Term)
                 stepDown(model, reply.Term);
 
-            if (_state == ServerState.Leader && _term == reply.Term)
+            if (_state == ServerState.Leader && _persistedState.Term == reply.Term)
             {
                 var peer = _peers.First(x => x.ID == reply.From);
                 if (reply.Success)
@@ -288,7 +298,7 @@ namespace Raft
 
         public void Update(IModel model)
         {
-            if(_persistedState == null)
+            if (_persistedState == null)
             {
                 _persistedState = new State(_dataDir);
                 _persistedState.Initialize();
@@ -319,8 +329,8 @@ namespace Raft
     public class SimulationServer : Server
     {
         public int ID { get { return _id; } }
-        public int Term { get { return _term; } set { _term = value; } }
-        public int? VotedFor { get { return _votedFor; } set { _votedFor = value; } }
+        public int Term { get { return _persistedState.Term; } set { _persistedState.Term = value; } }
+        public int? VotedFor { get { return _persistedState.VotedFor; } set { _persistedState.VotedFor = value; } }
         public long ElectionAlarm { get { return _electionAlarm; } set { _electionAlarm = value; } }
         public ServerState State { get { return _state; } }
         public List<Peer> Peers { get { return _peers; } }
@@ -371,7 +381,7 @@ namespace Raft
         public void ClientRequest(IModel model)
         {
             if (_state == ServerState.Leader)
-                _log.Push(new LogEntry() { Term = _term, /*Index = _log.Length,*/ Offset = _id });
+                _log.Push(new LogEntry() { Term = _persistedState.Term, /*Index = _log.Length,*/ Offset = _id });
         }
     }
     //public class TestServer : Server

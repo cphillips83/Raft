@@ -178,6 +178,13 @@ namespace Raft
             _logDataFile = File.Open(_dataFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
         }
 
+        public void UpdateState(int term, int? votedFor)
+        {
+            _currentTerm = term;
+            _votedFor = votedFor;
+            saveSuperBlock();
+        }
+
         //array of byte arrays, for batching purposes (limiting the writer lock transitions)
         public void Push(byte[][] data)
         {
