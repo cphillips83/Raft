@@ -6,6 +6,19 @@ using System.Threading.Tasks;
 
 namespace Raft
 {
+    //Haystack tech talk http://www.downvids.net/haystack-tech-talk-4-28-2009--375887.html
+
+    /* Design Ideas
+     *  Modeling after haystack
+     *  
+     * Data Store
+     *  Each store will have several physical volumes
+     *  Each physical volume can be in multiple logical volumes
+     *  Logical volumes can span across data centers
+     *  
+     * 
+     */
+
     class Program
     {
         static void Main(string[] args)

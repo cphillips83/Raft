@@ -35,7 +35,7 @@ namespace Raft
     public class SimulationModel : IModel
     {
         private const float PACKET_LOSS = 0.0f;
-        private const float TIME_SCALE = 100f;
+        private const float TIME_SCALE = 10f;
         private Stopwatch _timer = Stopwatch.StartNew();
         private double _counter = 0.0;
         private double _lastTime = 0.0;
@@ -71,7 +71,7 @@ namespace Raft
                 if (lastUpdate != _tick)
                 {
                     lastUpdate = _tick;
-                    Console.WriteLine(_tick);
+                    //Console.WriteLine(_tick);
                 }
                 //tick sampling
                 //_tick++;

@@ -6,11 +6,35 @@ using System.Threading.Tasks;
 
 namespace Raft
 {
-    public class LogEntry
+
+    public struct LogEntry
     {
-        //public int Index;
-        public int Term;
+        public int Term;        //4
+        //public ulong Key;       //12
+        //public uint Flags;      //16
+        //public uint Offset;     //20
+        //public uint Size;       //24
+        //public ulong Padding;   //32
         public int Value;
+    }
+
+    public struct LogEntry2
+    {
+        public uint Header;         //8
+        //public int Index;
+        public int Term;            //4
+        public ulong ID;            //8
+        public uint Cookie;         //16
+        public uint AlternateKey;   //20
+        public uint Flags;          //24
+        public uint Offset;         //28
+        public uint Size;           //32
+        public byte[] Data;
+        public int DataCheckSum;        //36
+
+        public uint Footer;         //40
+
+        //public ulong ID;
     }
 
     public class Log
