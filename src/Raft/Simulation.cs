@@ -7,25 +7,6 @@ using System.Threading.Tasks;
 
 namespace Raft
 {
-    //public class IModel
-    //{
-    //    void Start();
-    //    void Stop();
-    //    void Restart();
-    //    void Pause();
-    //}
-    public interface IModel
-    {
-        long Tick { get; }
-        void SendRequest(Peer peer, VoteRequest request);
-        void SendRequest(Peer peer, AppendEntriesRequest request);
-        //void SendRequest(Peer peer, StatusRequest request);
-
-        //void SendReply(Peer peer, StatusReply reply);
-        void SendReply(Peer peer, VoteRequestReply reply);
-        void SendReply(Peer peer, AppendEntriesReply reply);
-    }
-
     public struct SimulationMessage
     {
         public int To;
@@ -35,7 +16,7 @@ namespace Raft
         public object Message;
     }
 
-    public class SimulationModel : IModel
+    public class SimulationModel : IConsensus
     {
         private const float PACKET_LOSS = 0.0f;
         private const float TIME_SCALE = 10f;
@@ -300,4 +281,5 @@ namespace Raft
             return model;
         }
     }
+
 }

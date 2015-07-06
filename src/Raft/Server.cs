@@ -53,7 +53,7 @@ namespace Raft
             _state = ServerState.Stopped;
         }
 
-        protected void stepDown(IModel model, int term)
+        protected void stepDown(IConsensus model, int term)
         {
             _state = ServerState.Follower;
             _persistedState.UpdateState(term, null);
@@ -61,7 +61,7 @@ namespace Raft
                 _electionAlarm = makeElectionAlarm(model);
         }
 
-        protected void startNewElection(IModel model)
+        protected void startNewElection(IConsensus model)
         {
             if ((_state == ServerState.Follower || _state == ServerState.Candidate) &&
                 isElectionTimeout(model))
@@ -76,7 +76,7 @@ namespace Raft
             }
         }
 
-        protected void sendRequestVote(IModel model, Peer peer)
+        protected void sendRequestVote(IConsensus model, Peer peer)
         {
             if (_state == ServerState.Candidate && peer.CheckRpcTimeout(model))
             {
@@ -116,7 +116,7 @@ namespace Raft
         //    }
         //}
 
-        protected void becomeLeader(IModel model)
+        protected void becomeLeader(IConsensus model)
         {
             if (_state == ServerState.Candidate)
             {
@@ -135,7 +135,7 @@ namespace Raft
             }
         }
 
-        protected void sendAppendEntries(IModel model, Peer peer)
+        protected void sendAppendEntries(IConsensus model, Peer peer)
         {
             if (_state == ServerState.Leader &&
                 (peer.HeartBeartDue <= model.Tick ||
@@ -164,7 +164,7 @@ namespace Raft
             }
         }
 
-        protected void advanceCommitIndex(IModel model)
+        protected void advanceCommitIndex(IConsensus model)
         {
             var matchIndexes = new uint[_peers.Count + 1];
             matchIndexes[matchIndexes.Length - 1] = _persistedState.Length;
@@ -220,7 +220,7 @@ namespace Raft
         //    }
         //}
 
-        protected void handleRequestVote(IModel model, VoteRequest request)
+        protected void handleRequestVote(IConsensus model, VoteRequest request)
         {
             if (_persistedState.Term < request.Term)
                 stepDown(model, request.Term);
@@ -253,7 +253,7 @@ namespace Raft
 
         }
 
-        protected void handleRequestVoteReply(IModel model, VoteRequestReply reply)
+        protected void handleRequestVoteReply(IConsensus model, VoteRequestReply reply)
         {
             if (_persistedState.Term < reply.Term)
                 stepDown(model, reply.Term);
@@ -268,7 +268,7 @@ namespace Raft
             }
         }
 
-        protected void handleAppendEntriesRequest(IModel model, AppendEntriesRequest request)
+        protected void handleAppendEntriesRequest(IConsensus model, AppendEntriesRequest request)
         {
             if (_persistedState.Term < request.Term)
                 stepDown(model, request.Term);
@@ -318,7 +318,7 @@ namespace Raft
             model.SendReply(peer, new AppendEntriesReply() { From = _id, Term = _persistedState.Term, MatchIndex = matchIndex, Success = success });
         }
 
-        protected void handleAppendEntriesReply(IModel model, AppendEntriesReply reply)
+        protected void handleAppendEntriesReply(IConsensus model, AppendEntriesReply reply)
         {
             if (_persistedState.Term < reply.Term)
                 stepDown(model, reply.Term);
@@ -339,7 +339,7 @@ namespace Raft
             }
         }
 
-        protected void handleMessage(IModel model, object message)
+        protected void handleMessage(IConsensus model, object message)
         {
             if (_state == ServerState.Stopped)
                 return;
@@ -360,7 +360,7 @@ namespace Raft
                 throw new Exception("Unhandled message");
         }
 
-        public void Update(IModel model)
+        public void Update(IConsensus model)
         {
             if (_persistedState == null)
             {
@@ -378,12 +378,12 @@ namespace Raft
             }
         }
 
-        protected bool isElectionTimeout(IModel model)
+        protected bool isElectionTimeout(IConsensus model)
         {
             return _electionAlarm <= model.Tick;
         }
 
-        protected long makeElectionAlarm(IModel model)
+        protected long makeElectionAlarm(IConsensus model)
         {
             return model.Tick + _random.Next(Settings.ELECTION_TIMEOUT, Settings.ELECTION_TIMEOUT * 2);
         }
@@ -406,43 +406,43 @@ namespace Raft
                 _peers.Add(new Peer(peers[i], false));
         }
 
-        public void BecomeLeader(IModel model)
+        public void BecomeLeader(IConsensus model)
         {
             becomeLeader(model);
         }
 
-        public void HandleMessage(IModel model, object message)
+        public void HandleMessage(IConsensus model, object message)
         {
             handleMessage(model, message);
         }
 
-        public void Stop(IModel model)
+        public void Stop(IConsensus model)
         {
             _state = ServerState.Stopped;
             _electionAlarm = 0;
         }
 
-        public void Resume(IModel model)
+        public void Resume(IConsensus model)
         {
             _state = ServerState.Follower;
             _commitIndex = 0;
             _electionAlarm = makeElectionAlarm(model);
         }
 
-        public void Restart(IModel model)
+        public void Restart(IConsensus model)
         {
             Stop(model);
             Resume(model);
         }
 
-        public void Timeout(IModel model)
+        public void Timeout(IConsensus model)
         {
             _state = ServerState.Follower;
             _electionAlarm = 0;
             startNewElection(model);
         }
 
-        public void ClientRequest(IModel model)
+        public void ClientRequest(IConsensus model)
         {
             if (_state == ServerState.Leader)
                 _persistedState.Create(new byte[] { (byte)_id });

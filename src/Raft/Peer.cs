@@ -8,11 +8,11 @@ namespace Raft
 {
     public class Peer
     {
-        //protected bool _voteGranted = false;
-        //protected int _matchIndex = 0;
-        //protected int _nextIndex = 1;
-        //protected int _rpdDue = 0;
-        //protected int _heartBeatDue = 0;
+        public Peer(int id)
+            : this(id, false)
+        {
+
+        }
 
         public Peer(int id, bool votedGranted)
         {
@@ -37,7 +37,7 @@ namespace Raft
             HeartBeartDue = 0;
         }
 
-        public bool CheckRpcTimeout(IModel model)
+        public bool CheckRpcTimeout(IConsensus model)
         {
             return RpcDue < model.Tick;
         }
@@ -48,6 +48,5 @@ namespace Raft
             RpcDue = int.MaxValue;
             HeartBeartDue = 0;
         }
-
     }
 }
