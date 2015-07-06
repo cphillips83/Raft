@@ -7,28 +7,24 @@ using System.Threading.Tasks;
 
 namespace Raft
 {
-    public enum ServerState
-    {
-        Follower,
-        Candidate,
-        Leader,
-        Stopped
-
-    }
 
     public class Settings
     {
-        public const int RPC_TIMEOUT = 50;
-        public const int MIN_RPC_LATENCY = 10;
-        public const int MAX_RPC_LATENCY = 15;
-        public const int ELECTION_TIMEOUT = 100;
-        public const int NUM_SERVERS = 5;
-        public const int BATCH_SIZE = 2;
     }
 
 
     public class Server
     {
+        #region Constants
+        // values are in ms
+        public const int RPC_TIMEOUT = 50;
+        public const int MIN_RPC_LATENCY = 10;
+        public const int MAX_RPC_LATENCY = 15;
+        public const int ELECTION_TIMEOUT = 100;
+
+        public const int BATCH_SIZE = 4;
+        #endregion
+
         protected State _persistedState;
         protected Random _random;
         protected int _id;
@@ -58,7 +54,7 @@ namespace Raft
             _state = ServerState.Follower;
             _persistedState.UpdateState(term, null);
             if (isElectionTimeout(model))
-                _electionAlarm = makeElectionAlarm(model);
+                updateElectionAlarm(model);
         }
 
         protected void startNewElection(IConsensus model)
@@ -66,7 +62,7 @@ namespace Raft
             if ((_state == ServerState.Follower || _state == ServerState.Candidate) &&
                 isElectionTimeout(model))
             {
-                _electionAlarm = makeElectionAlarm(model);
+                updateElectionAlarm(model);
                 _persistedState.UpdateState(_persistedState.Term + 1, _id);
                 _state = ServerState.Candidate;
                 foreach (var peer in _peers)
@@ -85,7 +81,7 @@ namespace Raft
                 LogIndex lastIndex;
                 var lastLogIndex = _persistedState.GetLastIndex(out lastIndex);
 
-                peer.RpcDue = model.Tick + Settings.RPC_TIMEOUT;
+                peer.RpcDue = model.Tick + RPC_TIMEOUT;
                 model.SendRequest(peer, new VoteRequest()
                 {
                     From = _id,
@@ -142,7 +138,7 @@ namespace Raft
                  (peer.NextIndex <= _persistedState.Length && peer.RpcDue <= model.Tick)))
             {
                 var prevIndex = peer.NextIndex - 1;
-                var lastIndex = Math.Min(prevIndex + Settings.BATCH_SIZE, _persistedState.Length);
+                var lastIndex = Math.Min(prevIndex + BATCH_SIZE, _persistedState.Length);
                 if (peer.MatchIndex + 1 < peer.NextIndex)
                     lastIndex = prevIndex;
 
@@ -150,8 +146,8 @@ namespace Raft
                 if (entries != null && entries.Length > 0)
                     Console.WriteLine("{0}: Send AppendEnties[{1}-{2}] to {3}", _id, prevIndex, lastIndex, peer.ID);
 
-                peer.RpcDue = model.Tick + Settings.RPC_TIMEOUT;
-                peer.HeartBeartDue = model.Tick + (Settings.ELECTION_TIMEOUT / 2);
+                peer.RpcDue = model.Tick + RPC_TIMEOUT;
+                peer.HeartBeartDue = model.Tick + (ELECTION_TIMEOUT / 2);
                 model.SendRequest(peer, new AppendEntriesRequest()
                 {
                     From = _id,
@@ -246,7 +242,7 @@ namespace Raft
             {
                 Console.WriteLine("{0}: Voted for {1}", _id, peer.ID);
                 _persistedState.VotedFor = peer.ID;
-                _electionAlarm = makeElectionAlarm(model);
+                updateElectionAlarm(model);
             }
 
             model.SendReply(peer, new VoteRequestReply() { From = _id, Term = _persistedState.Term, Granted = granted });
@@ -280,7 +276,7 @@ namespace Raft
             if (_persistedState.Term == request.Term)
             {
                 _state = ServerState.Follower;
-                _electionAlarm = makeElectionAlarm(model);
+                updateElectionAlarm(model);
 
                 if (request.PrevIndex == 0 ||
                     (request.PrevIndex <= _persistedState.Length && _persistedState.GetTerm(request.PrevIndex) == request.PrevTerm))
@@ -383,9 +379,9 @@ namespace Raft
             return _electionAlarm <= model.Tick;
         }
 
-        protected long makeElectionAlarm(IConsensus model)
+        protected void updateElectionAlarm(IConsensus model)
         {
-            return model.Tick + _random.Next(Settings.ELECTION_TIMEOUT, Settings.ELECTION_TIMEOUT * 2);
+            _electionAlarm = model.Tick + _random.Next(ELECTION_TIMEOUT, ELECTION_TIMEOUT * 2);
         }
 
     }

@@ -18,8 +18,10 @@ namespace Raft
 
     public class SimulationModel : IConsensus
     {
+        private const int NUM_SERVERS = 5;
         private const float PACKET_LOSS = 0.0f;
         private const float TIME_SCALE = 10f;
+
         private Stopwatch _timer = Stopwatch.StartNew();
         private double _counter = 0.0;
         private double _lastTime = 0.0;
@@ -95,7 +97,7 @@ namespace Raft
                 To = peer.ID,
                 From = 0,
                 SendTick = _tick,
-                RecvTick = _tick + _random.Next(Settings.MIN_RPC_LATENCY, Settings.MAX_RPC_LATENCY),
+                RecvTick = _tick + _random.Next(Server.MIN_RPC_LATENCY, Server.MAX_RPC_LATENCY),
                 Message = message
             };
             _messages.Add(sm);
@@ -166,15 +168,15 @@ namespace Raft
                     timers.Add(server.ElectionAlarm);
 
             timers.Sort();
-            if (timers.Count > 1 && timers[1] - timers[0] < Settings.MAX_RPC_LATENCY)
+            if (timers.Count > 1 && timers[1] - timers[0] < Server.MAX_RPC_LATENCY)
             {
-                if (timers[0] > _tick + Settings.MAX_RPC_LATENCY)
+                if (timers[0] > _tick + Server.MAX_RPC_LATENCY)
                 {
                     foreach (var server in _servers)
                     {
                         if (server.ElectionAlarm == timers[0])
                         {
-                            server.ElectionAlarm -= Settings.MAX_RPC_LATENCY;
+                            server.ElectionAlarm -= Server.MAX_RPC_LATENCY;
                             Console.WriteLine("Adjusted S{0} timeout forward", server.ID);
                         }
                     }
@@ -184,9 +186,9 @@ namespace Raft
                     foreach (var server in _servers)
                     {
                         if (server.ElectionAlarm > timers[0] &&
-                            server.ElectionAlarm < timers[0] + Settings.MAX_RPC_LATENCY)
+                            server.ElectionAlarm < timers[0] + Server.MAX_RPC_LATENCY)
                         {
-                            server.ElectionAlarm += Settings.MAX_RPC_LATENCY;
+                            server.ElectionAlarm += Server.MAX_RPC_LATENCY;
                             Console.WriteLine("Adjusted S{0} timeout backward", server.ID);
                         }
                     }
@@ -236,13 +238,13 @@ namespace Raft
         public static SimulationModel SetupFreshScenario()
         {
             var model = new SimulationModel();
-            var peers = new int[Settings.NUM_SERVERS];
+            var peers = new int[NUM_SERVERS];
 
-            model._servers = new List<SimulationServer>(Settings.NUM_SERVERS);
-            for (var i = 0; i < Settings.NUM_SERVERS; i++)
-                model._servers.Add(new SimulationServer(i + 1, GetPeers(i + 1, Settings.NUM_SERVERS)));
+            model._servers = new List<SimulationServer>(NUM_SERVERS);
+            for (var i = 0; i < NUM_SERVERS; i++)
+                model._servers.Add(new SimulationServer(i + 1, GetPeers(i + 1, NUM_SERVERS)));
 
-            for (var i = 0; i < Settings.NUM_SERVERS; i++)
+            for (var i = 0; i < NUM_SERVERS; i++)
                 model._servers[i].Restart(model);
 
             return model;
@@ -252,25 +254,25 @@ namespace Raft
         {
             var model = new SimulationModel();
 
-            model._servers = new List<SimulationServer>(Settings.NUM_SERVERS);
-            for (var i = 0; i < Settings.NUM_SERVERS; i++)
-                model._servers.Add(new SimulationServer(i + 1, GetPeers(i + 1, Settings.NUM_SERVERS)));
+            model._servers = new List<SimulationServer>(NUM_SERVERS);
+            for (var i = 0; i < NUM_SERVERS; i++)
+                model._servers.Add(new SimulationServer(i + 1, GetPeers(i + 1, NUM_SERVERS)));
 
-            for (var i = 1; i < Settings.NUM_SERVERS; i++)
+            for (var i = 1; i < NUM_SERVERS; i++)
                 model._servers[i].Restart(model);
 
             model._servers[0].Timeout(model);
 
-            for (var i = 1; i < Settings.NUM_SERVERS; i++)
+            for (var i = 1; i < NUM_SERVERS; i++)
                 model._servers[i].Term = 2;
 
-            for (var i = 1; i < Settings.NUM_SERVERS; i++)
+            for (var i = 1; i < NUM_SERVERS; i++)
                 model._servers[i].VotedFor = 1;
 
-            for (var i = 0; i < Settings.NUM_SERVERS; i++)
+            for (var i = 0; i < NUM_SERVERS; i++)
                 model._servers[0].Peers[i].VotedGranted = true;
 
-            for (var i = 2; i < Settings.NUM_SERVERS; i++)
+            for (var i = 2; i < NUM_SERVERS; i++)
                 model._servers[i].Stop(model);
 
             model._servers[0].BecomeLeader(model);
@@ -284,6 +286,7 @@ namespace Raft
 
     public class SimulationServer : Server
     {
+
         public int ID { get { return _id; } }
         public int Term { get { return _persistedState.Term; } set { _persistedState.Term = value; } }
         public int? VotedFor { get { return _persistedState.VotedFor; } set { _persistedState.VotedFor = value; } }
@@ -318,7 +321,7 @@ namespace Raft
         {
             _state = ServerState.Follower;
             _commitIndex = 0;
-            _electionAlarm = makeElectionAlarm(model);
+            updateElectionAlarm(model);
         }
 
         public void Restart(IConsensus model)
