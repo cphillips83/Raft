@@ -21,19 +21,6 @@ namespace Raft
         public bool Granted;
     }
 
-    //public struct StatusRequest
-    //{
-    //    public int From;
-    //    public int Term;
-    //}
-
-    //public struct StatusReply
-    //{
-    //    public int From;
-    //    public int Term;
-    //    public uint CommitIndex;
-    //}
-
     public struct AppendEntriesRequest
     {
         public int From;

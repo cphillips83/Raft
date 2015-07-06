@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 
 namespace Raft
 {
-
     public interface IConsensus
     {
         long Tick { get; }
@@ -16,9 +15,4 @@ namespace Raft
         void SendReply(Peer peer, VoteRequestReply reply);
         void SendReply(Peer peer, AppendEntriesReply reply);
     }
-
-    //public class Consensus : IConsensus
-    //{
-
-    //}
 }
