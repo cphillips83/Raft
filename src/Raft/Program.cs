@@ -42,6 +42,10 @@ namespace Raft
                             model.ResumeAllStopped();
                             break;
                         case 'r': model.ClientRequest(); break;
+                        case 'a':
+                            //add server to cluster
+                            model.AddServer();
+                            break;
                     }
                 }
                 model.Advance();

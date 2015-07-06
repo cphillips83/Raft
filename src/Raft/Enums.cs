@@ -11,6 +11,15 @@ namespace Raft
         Follower,
         Candidate,
         Leader,
-        Stopped
+        Stopped,
+        Adding,
+        Removing
+    }
+
+    public enum PeerState
+    {
+        Follower,
+        Adding,
+        Removing
     }
 }

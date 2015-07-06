@@ -36,7 +36,14 @@ namespace Raft
 
         protected List<Peer> _peers;
 
-        public int Quorum { get { return ((_peers.Count + 1) / 2) + 1; } }
+        public int Quorum
+        {
+            get
+            {
+                var peersThatCanVote = _peers.Count(x => x.State == PeerState.Follower);
+                return ((peersThatCanVote + 1) / 2) + 1;
+            }
+        }
 
         public Server(int id, string dataDir)
         {
@@ -44,14 +51,15 @@ namespace Raft
             _dataDir = dataDir;
 
             _peers = new List<Peer>();
-            //_log = new Log();
             _random = new Random(id ^ (int)DateTime.Now.Ticks);
             _state = ServerState.Stopped;
         }
 
         protected void stepDown(IConsensus model, int term)
         {
-            _state = ServerState.Follower;
+            if(_state == ServerState.Leader || _state == ServerState.Candidate)
+                _state = ServerState.Follower;
+
             _persistedState.UpdateState(term, null);
             if (isElectionTimeout(model))
                 updateElectionAlarm(model);
@@ -65,7 +73,9 @@ namespace Raft
                 updateElectionAlarm(model);
                 _persistedState.UpdateState(_persistedState.Term + 1, _id);
                 _state = ServerState.Candidate;
-                foreach (var peer in _peers)
+
+                //only request from peers that are allowed to vote
+                foreach (var peer in _peers.Where(x=>x.State == PeerState.Follower))
                     peer.Reset();
 
                 Console.WriteLine("{0}: Starting new election for term {1}", _id, _persistedState.Term);
@@ -116,7 +126,7 @@ namespace Raft
         {
             if (_state == ServerState.Candidate)
             {
-                var voteCount = _peers.Count(x => x.VotedGranted) + 1;
+                var voteCount = _peers.Count(x => x.VoteGranted) + 1;
                 if (voteCount >= Quorum)
                 {
                     Console.WriteLine("{0}: I am now leader of term {2} with {1} votes", _id, voteCount, _persistedState.Term);
@@ -221,6 +231,9 @@ namespace Raft
             if (_persistedState.Term < request.Term)
                 stepDown(model, request.Term);
 
+            //a leader would never request a peer vote
+            System.Diagnostics.Debug.Assert(_state != ServerState.Adding && _state != ServerState.Removing);
+
             var peer = _peers.First(x => x.ID == request.From);
             var ourLastLogTerm = _persistedState.GetLastTerm();
             var termCheck = _persistedState.Term == request.Term;
@@ -258,7 +271,7 @@ namespace Raft
             {
                 var peer = _peers.First(x => x.ID == reply.From);
                 peer.RpcDue = int.MaxValue;
-                peer.VotedGranted = reply.Granted;
+                peer.VoteGranted = reply.Granted;
 
                 //Console.WriteLine("{0}: Peer {1} voted {2}", _id, peer.ID, peer.VotedGranted);
             }
@@ -386,5 +399,5 @@ namespace Raft
 
     }
 
-   
+
 }

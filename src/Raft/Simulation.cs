@@ -224,6 +224,16 @@ namespace Raft
             return _servers.FirstOrDefault(x => x.State == ServerState.Leader);
         }
 
+        private int _newServer = 100;
+        public void AddServer()
+        {
+            var id = _newServer++;
+            var server = new SimulationServer(id, GetPeers(id, NUM_SERVERS));
+            _servers.Add(server);
+
+            server.Add(this);
+        }
+
         private static int[] GetPeers(int server, int serverCount)
         {
             var peerIndex = 0;
@@ -270,7 +280,7 @@ namespace Raft
                 model._servers[i].VotedFor = 1;
 
             for (var i = 0; i < NUM_SERVERS; i++)
-                model._servers[0].Peers[i].VotedGranted = true;
+                model._servers[0].Peers[i].VoteGranted = true;
 
             for (var i = 2; i < NUM_SERVERS; i++)
                 model._servers[i].Stop(model);
@@ -282,6 +292,8 @@ namespace Raft
 
             return model;
         }
+
+
     }
 
     public class SimulationServer : Server
@@ -324,6 +336,13 @@ namespace Raft
             updateElectionAlarm(model);
         }
 
+        public void Add(IConsensus model)
+        {
+            _state = ServerState.Adding;
+            _commitIndex = 0;
+            _electionAlarm = uint.MaxValue;
+        }
+
         public void Restart(IConsensus model)
         {
             Stop(model);
@@ -342,5 +361,7 @@ namespace Raft
             if (_state == ServerState.Leader)
                 _persistedState.Create(new byte[] { (byte)_id });
         }
+
+
     }
 }

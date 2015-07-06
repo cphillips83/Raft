@@ -16,21 +16,24 @@ namespace Raft
 
         public Peer(int id, bool votedGranted)
         {
+            State = PeerState.Follower;
             Reset();
             ID = id;
-            VotedGranted = votedGranted;
+            VoteGranted = votedGranted;
         }
 
         public int ID { get; set; }
-        public bool VotedGranted { get; set; }
+        public bool VoteGranted { get; set; }
         public uint MatchIndex { get; set; }
         public uint NextIndex { get; set; }
         public long RpcDue { get; set; }
         public long HeartBeartDue { get; set; }
 
+        public PeerState State { get; set; }
+
         public void Reset()
         {
-            VotedGranted = false;
+            VoteGranted = false;
             MatchIndex = 0;
             NextIndex = 1;
             RpcDue = 0;
