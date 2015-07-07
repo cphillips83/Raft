@@ -2,12 +2,37 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using Raft.Messages;
 
 namespace Raft
 {
+    public class ClusterEndPoint
+    {
+        public IPAddress IPAddress;
+        public int Port;
+    }
+
+
+
+    //public abstract class Cluster
+    //{
+    //    public abstract void SendMessage(int serverID, object message);
+       
+
+    //    //public void SendMessage(ClusterEndPoint endPoint, object message)
+    //    //{
+
+    //    //}
+    //}
+
+    //public class RPCCluster : Cluster
+    //{
+
+    //}
+
     public struct SimulationMessage
     {
         public int To;
