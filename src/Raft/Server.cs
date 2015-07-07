@@ -16,7 +16,7 @@ namespace Raft
      */
 
 
-    public class Server : IDisposable
+    public class ServerOld : IDisposable
     {
         #region Constants
         // values are in ms
@@ -49,7 +49,7 @@ namespace Raft
             }
         }
 
-        public Server(int id, string dataDir)
+        public ServerOld(int id, string dataDir)
         {
             _id = id;
             _dataDir = dataDir;

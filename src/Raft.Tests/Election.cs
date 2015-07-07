@@ -21,7 +21,7 @@ namespace Raft.Tests
                 model.AddServer(s1);
 
                 s1.Restart(model);
-                model.Advance(Server.ELECTION_TIMEOUT * 10);
+                model.Advance(ServerOld.ELECTION_TIMEOUT * 10);
 
                 Assert.AreEqual(ServerState.Leader, s1.State, "Server failed to become leader");
             }
@@ -40,7 +40,7 @@ namespace Raft.Tests
                 model.AddServer(s1);
 
                 s1.Restart(model);
-                model.Advance(Server.ELECTION_TIMEOUT * 10);
+                model.Advance(ServerOld.ELECTION_TIMEOUT * 10);
 
                 Assert.AreEqual(ServerState.Leader, s1.State, "Server failed to become leader");
             }
@@ -55,7 +55,7 @@ namespace Raft.Tests
                 model.AddServer(s1);
 
                 s1.Restart(model);
-                model.Advance(Server.ELECTION_TIMEOUT * 10);
+                model.Advance(ServerOld.ELECTION_TIMEOUT * 10);
 
                 Assert.AreEqual(ServerState.Leader, s1.State, "Server failed to become leader");
             }

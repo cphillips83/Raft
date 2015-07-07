@@ -45,6 +45,7 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.ServiceModel" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -53,6 +54,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AsyncResult.cs" />
+    <Compile Include="CompletedAsyncResult.cs" />
     <Compile Include="Consensus.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="Messages\AppendEntriesReply.cs" />

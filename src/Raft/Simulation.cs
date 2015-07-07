@@ -124,7 +124,7 @@ namespace Raft
                 To = peer.ID,
                 From = 0,
                 SendTick = _tick,
-                RecvTick = _tick + _random.Next(Server.MIN_RPC_LATENCY, Server.MAX_RPC_LATENCY),
+                RecvTick = _tick + _random.Next(ServerOld.MIN_RPC_LATENCY, ServerOld.MAX_RPC_LATENCY),
                 Message = message
             };
             _messages.Add(sm);
@@ -195,15 +195,15 @@ namespace Raft
                     timers.Add(server.ElectionAlarm);
 
             timers.Sort();
-            if (timers.Count > 1 && timers[1] - timers[0] < Server.MAX_RPC_LATENCY)
+            if (timers.Count > 1 && timers[1] - timers[0] < ServerOld.MAX_RPC_LATENCY)
             {
-                if (timers[0] > _tick + Server.MAX_RPC_LATENCY)
+                if (timers[0] > _tick + ServerOld.MAX_RPC_LATENCY)
                 {
                     foreach (var server in _servers)
                     {
                         if (server.ElectionAlarm == timers[0])
                         {
-                            server.ElectionAlarm -= Server.MAX_RPC_LATENCY;
+                            server.ElectionAlarm -= ServerOld.MAX_RPC_LATENCY;
                             Console.WriteLine("Adjusted S{0} timeout forward", server.ID);
                         }
                     }
@@ -213,9 +213,9 @@ namespace Raft
                     foreach (var server in _servers)
                     {
                         if (server.ElectionAlarm > timers[0] &&
-                            server.ElectionAlarm < timers[0] + Server.MAX_RPC_LATENCY)
+                            server.ElectionAlarm < timers[0] + ServerOld.MAX_RPC_LATENCY)
                         {
-                            server.ElectionAlarm += Server.MAX_RPC_LATENCY;
+                            server.ElectionAlarm += ServerOld.MAX_RPC_LATENCY;
                             Console.WriteLine("Adjusted S{0} timeout backward", server.ID);
                         }
                     }
@@ -340,7 +340,7 @@ namespace Raft
         }
     }
 
-    public class SimulationServer : Server
+    public class SimulationServer : ServerOld
     {
 
         public int ID { get { return _id; } }

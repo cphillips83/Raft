@@ -5,7 +5,9 @@ using System.Reflection;
 using System.ServiceModel;
 using System.ServiceModel.Description;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using Raft.Messages;
 
 namespace Raft
 {
@@ -21,33 +23,126 @@ namespace Raft
      *  
      * 
      */
+
+    ////An AsyncResult that completes as soon as it is instantiated.
+    //internal class CompletedAsyncResult : AsyncResult
+    //{
+    //    public CompletedAsyncResult(AsyncCallback callback, object state)
+    //        : base(callback, state)
+    //    {
+    //        Complete(true);
+    //    }
+
+    //    public static void End(IAsyncResult result)
+    //    {
+    //        AsyncResult.End<CompletedAsyncResult>(result);
+    //    }
+    //}
+
+    //internal class CompletedAsyncResult<T> : AsyncResult
+    //{
+    //    private T _data;
+
+    //    public CompletedAsyncResult(T data, AsyncCallback callback, object state)
+    //        : base(callback, state)
+    //    {
+    //        _data = data;
+    //        Complete(true);
+    //    }
+
+    //    public static T End(IAsyncResult result)
+    //    {
+    //        CompletedAsyncResult<T> completedResult = AsyncResult.End<CompletedAsyncResult<T>>(result);
+    //        return completedResult._data;
+    //    }
+    //}
+
+    //internal class CompletedAsyncResult<TResult, TParameter> : AsyncResult
+    //{
+    //    private TResult _resultData;
+    //    private TParameter _parameter;
+
+    //    public CompletedAsyncResult(TResult resultData, TParameter parameter, AsyncCallback callback, object state)
+    //        : base(callback, state)
+    //    {
+    //        _resultData = resultData;
+    //        _parameter = parameter;
+    //        Complete(true);
+    //    }
+
+    //    public static TResult End(IAsyncResult result, out TParameter parameter)
+    //    {
+    //        CompletedAsyncResult<TResult, TParameter> completedResult = AsyncResult.End<CompletedAsyncResult<TResult, TParameter>>(result);
+    //        parameter = completedResult._parameter;
+    //        return completedResult._resultData;
+    //    }
+    //}
     [ServiceContract()]
-    public interface IMyService
+    public interface INodeService
     {
-        [OperationContract()]
-        void DoSomething();
+        [OperationContract(AsyncPattern = true)]
+        IAsyncResult DoSomething(AsyncCallback callback, object state);
+
+        string EndDoSomething(IAsyncResult result);
+
+        //[OperationContract(AsyncPattern=true)]
+        //IAsyncResult BeginRequestVote(VoteRequest request);
+
+        //VoteReply EndRequestVote(IAsyncResult result);
+
+        //[OperationContract(AsyncPattern = true)]
+        //IAsyncResult BeginAppendEntries(AppendEntriesRequest request);
+
+        //AppendEntriesReply EndAppendEntries(IAsyncResult result);
     }
 
-    public class MyService : IMyService
+    public class Node
     {
 
-        public void DoSomething()
+    }
+
+    public class Client
+    {
+        
+    }
+
+    public class Server
+    {
+
+    }
+
+    public class Cluster
+    {
+
+    }
+
+    public class MyService : INodeService
+    {
+        public IAsyncResult BeginDoSomething(AsyncCallback callback, object state)
         {
-            Console.WriteLine("something!");
+            Console.WriteLine("server something!");
             // do something
+            return new CompletedAsyncResult<string>("returned something!");
+        }
+
+        public string EndDoSomething(IAsyncResult result)
+        {
+
         }
     }
+
+
 
     //Factory class for client proxy
     public abstract class ClientFactory
     {
-        public static IMyService CreateClient(Type targetType)
+        public static INodeService CreateClient(Type targetType)
         {
             BasicHttpBinding binding = new BasicHttpBinding();
             //Get the address of the service from configuration or some other mechanism - Not shown here
             EndpointAddress address = new EndpointAddress("http://localhost:7741/CategoryServiceHost.svc");
 
-            var factory3 = new ChannelFactory<IMyService>(binding, address);
+            var factory3 = new ChannelFactory<INodeService>(binding, address);
             return factory3.CreateChannel();
         }
     }
@@ -56,12 +151,13 @@ namespace Raft
     {
         static void Main(string[] args)
         {
+            //new TypedServiceReference
             var endpoint = new Uri("http://localhost:7741/CategoryServiceHost.svc");
             var host = new ServiceHost(typeof(MyService), endpoint);
 
             var binding = new BasicHttpBinding();
 
-            host.AddServiceEndpoint(typeof(IMyService), binding, endpoint);
+            host.AddServiceEndpoint(typeof(INodeService), binding, endpoint);
 
             host.Description.Behaviors.Add(new ServiceMetadataBehavior()
             {
@@ -81,8 +177,9 @@ namespace Raft
         {
             
             //create client proxy from factory
-            var pClient = ClientFactory.CreateClient(typeof(IMyService));
-            pClient.DoSomething();
+            var pClient = ClientFactory.CreateClient(typeof(INodeService));
+            
+            Console.WriteLine(pClient.DoSomething());
             //((IClientChannel)pClient).RemoteAddress
         }
 
