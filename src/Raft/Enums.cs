@@ -18,9 +18,10 @@ namespace Raft
 
     public enum PeerState
     {
-        Follower,
+        Operational,
         Adding,
-        Removing
+        Removing,
+        //Failing
     }
 
     public enum LogIndexType : uint

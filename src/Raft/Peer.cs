@@ -12,7 +12,7 @@ namespace Raft
         //persistent
         private IPAddress _ipaddress;
         private int _port;
-        private PeerState _state;
+        //private PeerState _state;
 
         //votaile + copy from cluster changes
         public bool VoteGranted { get; set; }
@@ -21,11 +21,11 @@ namespace Raft
         public long RpcDue { get; set; }
         public long HeartBeartDue { get; set; }
 
-        public Peer(IPAddress ipaddress, int port, PeerState state)
+        public Peer(IPAddress ipaddress, int port/*, PeerState state*/)
         {
             _ipaddress = ipaddress;
             _port = port;
-            _state = state;
+            //_state = state;
         }
 
         public Peer(int id)
@@ -36,14 +36,14 @@ namespace Raft
 
         public Peer(int id, bool voteGranted)
         {
-            State = PeerState.Follower;
+            //State = PeerState.Operational;
             Reset();
             ID = id;
             VoteGranted = voteGranted;
         }
 
         public int ID { get; set; }
-        public PeerState State { get { return _state; } set { _state = value; } }
+        //public PeerState State { get { return _state; } set { _state = value; } }
 
         public void Reset()
         {

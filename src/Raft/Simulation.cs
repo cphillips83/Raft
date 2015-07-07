@@ -225,7 +225,13 @@ namespace Raft
         }
 
         private int _newServer = 100;
-        public void AddServer(SimulationServer master)
+
+        public void AddServer(SimulationServer server)
+        {
+            _servers.Add(server);
+        }
+
+        public void JoinServer(SimulationServer master)
         {
             var id = _newServer++;
             var server = new SimulationServer(id, new int[] { master.ID });
@@ -255,7 +261,7 @@ namespace Raft
             model._servers.Add(master);
             master.Restart(model);
 
-            model.AddServer(master);
+            model.JoinServer(master);
             //for (var i = 0; i < NUM_SERVERS; i++)
             //    model._servers.Add(new SimulationServer(i + 1, GetPeers(i + 1, NUM_SERVERS)));
 

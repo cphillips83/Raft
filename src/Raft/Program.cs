@@ -23,6 +23,14 @@ namespace Raft
     {
         static void Main(string[] args)
         {
+
+            //TestConsole();
+        }
+
+
+        
+        static void TestConsole()
+        {
             var running = true;
             var model = SimulationModel.SetupFreshScenario();
             while (running)
@@ -49,7 +57,7 @@ namespace Raft
                                 //add server to cluster
                                 var leader = model.GetLeader();
                                 if (leader != null)
-                                    model.AddServer(leader);
+                                    model.JoinServer(leader);
                             }
                             break;
                     }
@@ -57,7 +65,8 @@ namespace Raft
                 model.Advance();
                 System.Threading.Thread.Sleep(1);
             }
-
         }
+
     }
+
 }

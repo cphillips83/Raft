@@ -43,7 +43,7 @@ namespace Raft
         {
             get
             {
-                var peersThatCanVote = _peers.Count(x => x.State == PeerState.Follower);
+                var peersThatCanVote = _peers.Count;
                 return ((peersThatCanVote + 1) / 2) + 1;
             }
         }
@@ -78,7 +78,7 @@ namespace Raft
                 _state = ServerState.Candidate;
 
                 //only request from peers that are allowed to vote
-                foreach (var peer in _peers.Where(x => x.State == PeerState.Follower))
+                foreach (var peer in _peers)
                     peer.Reset();
 
                 Console.WriteLine("{0}: Starting new election for term {1}", _id, _persistedState.Term);
@@ -102,6 +102,14 @@ namespace Raft
                     LastTerm = lastIndex.Term,
                     LogLength = lastLogIndex
                 });
+            }
+        }
+
+        protected void sendAddServer(IConsensus model, Peer peer)
+        {
+            if (_state == ServerState.Adding)
+            {
+                
             }
         }
 

@@ -127,9 +127,9 @@ namespace Raft
             for (var i = 0; i < peerCount; i++)
             {
                 var id = br.ReadInt32();
-                var state = (PeerState)br.ReadInt32();
+                //var state = (PeerState)br.ReadInt32();
 
-                _peers.Add(new Peer(id, false) { State = state });
+                _peers.Add(new Peer(id, false));
             }
 
             //seek to end of superblock for data
@@ -188,7 +188,7 @@ namespace Raft
             for (var i = 0; i < _peers.Count; i++)
             {
                 _logIndexWriter.Write(_peers[i].ID);
-                _logIndexWriter.Write((int)_peers[i].State);
+                //_logIndexWriter.Write((int)_peers[i].State);
             }
 
             // ensure its on the HDD
