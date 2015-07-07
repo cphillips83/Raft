@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime;
 using System.ServiceModel;
 using System.ServiceModel.Description;
 using System.Text;
@@ -80,10 +81,20 @@ namespace Raft
     [ServiceContract()]
     public interface INodeService
     {
-        [OperationContract(AsyncPattern = true)]
-        IAsyncResult DoSomething(AsyncCallback callback, object state);
+        [OperationContractAttribute(Action = "SampleMethod", ReplyAction = "ReplySampleMethod")]
+        string SampleMethod(string msg);
 
-        string EndDoSomething(IAsyncResult result);
+        //[OperationContractAttribute(AsyncPattern = true)]
+        //IAsyncResult BeginSampleMethod(string msg, AsyncCallback callback, object asyncState);
+
+        ////Note: There is no OperationContractAttribute for the end method.
+        //string EndSampleMethod(IAsyncResult result);
+
+        //[OperationContractAttribute(AsyncPattern = true, Action="ServiceAsync")]
+        //IAsyncResult BeginServiceAsyncMethod(string msg, AsyncCallback callback, object asyncState);
+
+        //// Note: There is no OperationContractAttribute for the end method.
+        //string EndServiceAsyncMethod(IAsyncResult result);
 
         //[OperationContract(AsyncPattern=true)]
         //IAsyncResult BeginRequestVote(VoteRequest request);
@@ -94,6 +105,16 @@ namespace Raft
         //IAsyncResult BeginAppendEntries(AppendEntriesRequest request);
 
         //AppendEntriesReply EndAppendEntries(IAsyncResult result);
+    }
+
+    [ServiceContract()]
+    public interface INodeServiceAsync : INodeService
+    {
+        [OperationContractAttribute(AsyncPattern = true, Action = "SampleMethod", ReplyAction="ReplySampleMethod")]
+        IAsyncResult BeginSampleMethod(string msg, AsyncCallback callback, object asyncState);
+
+        //Note: There is no OperationContractAttribute for the end method.
+        string EndSampleMethod(IAsyncResult result);
     }
 
     public class Node
@@ -116,18 +137,14 @@ namespace Raft
 
     }
 
+
+
     public class MyService : INodeService
     {
-        public IAsyncResult BeginDoSomething(AsyncCallback callback, object state)
+        public string SampleMethod(string msg)
         {
-            Console.WriteLine("server something!");
-            // do something
-            return new CompletedAsyncResult<string>("returned something!");
-        }
-
-        public string EndDoSomething(IAsyncResult result)
-        {
-
+            Console.WriteLine("Called synchronous sample method with \"{0}\"", msg);
+            return "The sychronous service greets you: " + msg;
         }
     }
 
@@ -136,13 +153,13 @@ namespace Raft
     //Factory class for client proxy
     public abstract class ClientFactory
     {
-        public static INodeService CreateClient(Type targetType)
+        public static INodeServiceAsync CreateClient(Type targetType)
         {
             BasicHttpBinding binding = new BasicHttpBinding();
             //Get the address of the service from configuration or some other mechanism - Not shown here
             EndpointAddress address = new EndpointAddress("http://localhost:7741/CategoryServiceHost.svc");
 
-            var factory3 = new ChannelFactory<INodeService>(binding, address);
+            var factory3 = new ChannelFactory<INodeServiceAsync>(binding, address);
             return factory3.CreateChannel();
         }
     }
@@ -175,11 +192,28 @@ namespace Raft
         }
         public static void Test2()
         {
-            
+
             //create client proxy from factory
             var pClient = ClientFactory.CreateClient(typeof(INodeService));
-            
-            Console.WriteLine(pClient.DoSomething());
+            {
+                Console.WriteLine(pClient.SampleMethod("simple"));
+            }
+            {
+                var r = pClient.BeginSampleMethod("sample", null, null);
+                while (!r.IsCompleted)
+                {
+                    Console.WriteLine(r.IsCompleted);
+                    System.Threading.Thread.Sleep(0);
+                }
+                Console.WriteLine(pClient.EndSampleMethod(r));
+                Console.WriteLine(r.IsCompleted);
+            }
+            //{
+            //    var r = pClient.BeginServiceAsyncMethod("test", null, null);
+            //    Console.WriteLine(pClient.EndServiceAsyncMethod(r));
+            //}
+            Console.Read();
+            //Console.WriteLine(pClient.DoSomething());
             //((IClientChannel)pClient).RemoteAddress
         }
 
