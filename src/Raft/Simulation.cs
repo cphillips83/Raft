@@ -16,7 +16,7 @@ namespace Raft
         public object Message;
     }
 
-    public class SimulationModel : IConsensus
+    public class SimulationModel : IConsensus, IDisposable
     {
         private const int NUM_SERVERS = 5;
         private const float PACKET_LOSS = 0.0f;
@@ -35,6 +35,7 @@ namespace Raft
         public SimulationModel()
         {
             _tick = 0;
+            _servers = new List<SimulationServer>();
         }
 
         public void Advance()
@@ -48,19 +49,19 @@ namespace Raft
             while (steps-- > 0)
             {
                 //time sampling
-                var newTime = _timer.Elapsed.TotalSeconds;
-                var delta = newTime - _lastTime;
-                _lastTime = newTime;
+                //var newTime = _timer.Elapsed.TotalSeconds;
+                //var delta = newTime - _lastTime;
+                //_lastTime = newTime;
 
-                _counter += delta / TIME_SCALE;
-                _tick = (long)(_counter * 1000);
-                if (lastUpdate != _tick)
-                {
-                    lastUpdate = _tick;
-                    //Console.WriteLine(_tick);
-                }
+                //_counter += delta / TIME_SCALE;
+                //_tick = (long)(_counter * 1000);
+                //if (lastUpdate != _tick)
+                //{
+                //    lastUpdate = _tick;
+                //    //Console.WriteLine(_tick);
+                //}
                 //tick sampling
-                //_tick++;
+                _tick++;
 
                 foreach (var server in _servers)
                     server.Update(this);
@@ -234,7 +235,7 @@ namespace Raft
         public void JoinServer(SimulationServer master)
         {
             var id = _newServer++;
-            var server = new SimulationServer(id, new int[] { master.ID });
+            var server = new SimulationServer(id);
             _servers.Add(server);
 
             server.Add(this);
@@ -277,7 +278,7 @@ namespace Raft
 
             model._servers = new List<SimulationServer>(NUM_SERVERS);
             for (var i = 0; i < NUM_SERVERS; i++)
-                model._servers.Add(new SimulationServer(i + 1, GetPeers(i + 1, NUM_SERVERS)));
+                model._servers.Add(new SimulationServer(i + 1));
 
             for (var i = 1; i < NUM_SERVERS; i++)
                 model._servers[i].Restart(model);
@@ -305,6 +306,12 @@ namespace Raft
         }
 
 
+
+        public void Dispose()
+        {
+            foreach (var server in _servers)
+                server.Dispose();
+        }
     }
 
     public class SimulationServer : Server
@@ -317,12 +324,17 @@ namespace Raft
         public ServerState State { get { return _state; } }
         public List<Peer> Peers { get { return _peers; } }
 
-        public SimulationServer(int id, int[] peers)
-            : base(id, "D:\\server\\" + id)
+        public SimulationServer(int id, bool deleteData = false)
+            : this(id, System.IO.Path.Combine(System.Environment.CurrentDirectory, "tmp\\" + id), deleteData)
         {
-            if (peers != null)
-                for (var i = 0; i < peers.Length; i++)
-                    _peers.Add(new Peer(peers[i], false));
+
+        }
+
+        public SimulationServer(int id, string dataDir, bool deleteData = false)
+            : base(id, dataDir)
+        {
+            if (deleteData && System.IO.Directory.Exists(dataDir))
+                System.IO.Directory.Delete(dataDir, true);
         }
 
         public void BecomeLeader(IConsensus model)

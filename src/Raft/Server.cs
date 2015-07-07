@@ -15,7 +15,7 @@ namespace Raft
      */
 
 
-    public class Server
+    public class Server : IDisposable
     {
         #region Constants
         // values are in ms
@@ -434,6 +434,11 @@ namespace Raft
             _electionAlarm = model.Tick + _random.Next(ELECTION_TIMEOUT, ELECTION_TIMEOUT * 2);
         }
 
+
+        public void Dispose()
+        {
+            _persistedState.Dispose();
+        }
     }
 
 

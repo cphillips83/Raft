@@ -401,7 +401,10 @@ namespace Raft
             // GC finalizer shouldn't call dipose(true)/close of these, so stale data
             // shouldn't be copied which is what we really want
             // then again since we write log data first and index data second it might not matter
+            _logDataFile.Dispose();
             _logDataFile = null;
+
+            _logIndexWriter.Dispose();
             _logIndexWriter = null;
         }
     }
