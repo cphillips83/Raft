@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Raft.Messages;
 
 namespace Raft
 {
@@ -120,7 +121,7 @@ namespace Raft
         //    SendMessage(peer, request);
         //}
 
-        public void SendReply(Peer peer, VoteRequestReply reply)
+        public void SendReply(Peer peer, VoteReply reply)
         {
             SendMessage(peer, reply);
         }

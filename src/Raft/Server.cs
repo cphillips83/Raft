@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Raft.Messages;
 
 namespace Raft
 {
@@ -295,11 +296,11 @@ namespace Raft
                 updateElectionAlarm(model);
             }
 
-            model.SendReply(peer, new VoteRequestReply() { From = _id, Term = _persistedState.Term, Granted = granted });
+            model.SendReply(peer, new VoteReply() { From = _id, Term = _persistedState.Term, Granted = granted });
 
         }
 
-        protected void handleRequestVoteReply(IConsensus model, VoteRequestReply reply)
+        protected void handleRequestVoteReply(IConsensus model, VoteReply reply)
         {
             if (_persistedState.Term < reply.Term)
                 stepDown(model, reply.Term);
@@ -386,8 +387,8 @@ namespace Raft
 
             if (message is VoteRequest)
                 handleRequestVote(model, (VoteRequest)message);
-            else if (message is VoteRequestReply)
-                handleRequestVoteReply(model, (VoteRequestReply)message);
+            else if (message is VoteReply)
+                handleRequestVoteReply(model, (VoteReply)message);
             else if (message is AppendEntriesRequest)
                 handleAppendEntriesRequest(model, (AppendEntriesRequest)message);
             else if (message is AppendEntriesReply)
