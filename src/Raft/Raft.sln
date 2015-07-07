@@ -12,6 +12,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{D99DA3
 		.nuget\NuGet.targets = .nuget\NuGet.targets
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Raft.Tests", "..\Raft.Tests\Raft.Tests.csproj", "{1C41FF4F-EB55-4875-A5B1-79EFF0EDFD8D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -22,6 +24,10 @@ Global
 		{BBD02A32-C2F7-4439-99B9-B3A920ADFE79}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BBD02A32-C2F7-4439-99B9-B3A920ADFE79}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BBD02A32-C2F7-4439-99B9-B3A920ADFE79}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1C41FF4F-EB55-4875-A5B1-79EFF0EDFD8D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1C41FF4F-EB55-4875-A5B1-79EFF0EDFD8D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1C41FF4F-EB55-4875-A5B1-79EFF0EDFD8D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1C41FF4F-EB55-4875-A5B1-79EFF0EDFD8D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
