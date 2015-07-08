@@ -82,57 +82,41 @@ namespace Raft
     [ServiceContract()]
     public interface INodeProxy
     {
-        //[OperationContractAttribute(Action = "SampleMethod", ReplyAction = "ReplySampleMethod")]
-        //string SampleMethod(string msg);
+        [OperationContractAttribute(IsOneWay= true, AsyncPattern = true, Action = "VoteRequest", ReplyAction = "ReplyVoteRequest")]
+        void VoteRequest(VoteRequest request);
 
-        [OperationContractAttribute(AsyncPattern = true, Action = "VoteRequest", ReplyAction = "ReplyVoteRequest")]
-        VoteReply VoteRequest(VoteRequest request);
+        [OperationContractAttribute(IsOneWay = true, AsyncPattern = true, Action = "VoteReply", ReplyAction = "ReplyVoteReply")]
+        void VoteReply(VoteReply reply);
 
-        [OperationContractAttribute(AsyncPattern = true, Action = "AppendEntries", ReplyAction = "ReplyAppendEntries")]
-        AppendEntriesReply AppendEntries(AppendEntriesRequest request);
+        [OperationContractAttribute(IsOneWay = true, AsyncPattern = true, Action = "AppendEntriesRequest", ReplyAction = "ReplyAppendEntriesRequest")]
+        void AppendEntriesRequest(AppendEntriesRequest request);
 
-        //[OperationContractAttribute(AsyncPattern = true)]
-        //IAsyncResult BeginSampleMethod(string msg, AsyncCallback callback, object asyncState);
-
-        ////Note: There is no OperationContractAttribute for the end method.
-        //string EndSampleMethod(IAsyncResult result);
-
-        //[OperationContractAttribute(AsyncPattern = true, Action="ServiceAsync")]
-        //IAsyncResult BeginServiceAsyncMethod(string msg, AsyncCallback callback, object asyncState);
-
-        //// Note: There is no OperationContractAttribute for the end method.
-        //string EndServiceAsyncMethod(IAsyncResult result);
-
-        //[OperationContract(AsyncPattern=true)]
-        //IAsyncResult BeginRequestVote(VoteRequest request);
-
-        //VoteReply EndRequestVote(IAsyncResult result);
-
-        //[OperationContract(AsyncPattern = true)]
-        //IAsyncResult BeginAppendEntries(AppendEntriesRequest request);
-
-        //AppendEntriesReply EndAppendEntries(IAsyncResult result);
+        [OperationContractAttribute(IsOneWay = true, AsyncPattern = true, Action = "AppendEntriesReply", ReplyAction = "ReplyAppendEntriesReply")]
+        void AppendEntriesReply(AppendEntriesReply reply);
     }
 
     [ServiceContract()]
     public interface INodeProxyAsync : INodeProxy
     {
-        //[OperationContractAttribute(AsyncPattern = true, Action = "SampleMethod", ReplyAction = "ReplySampleMethod")]
-        //IAsyncResult BeginSampleMethod(string msg, AsyncCallback callback, object asyncState);
-
-        ////Note: There is no OperationContractAttribute for the end method.
-        //string EndSampleMethod(IAsyncResult result);
-
-        [OperationContractAttribute(AsyncPattern = true, Action = "VoteRequest", ReplyAction = "ReplyVoteRequest")]
+        [OperationContractAttribute(IsOneWay = true, AsyncPattern = true, Action = "VoteRequest", ReplyAction = "ReplyVoteRequest")]
         IAsyncResult BeginVoteRequest(VoteRequest request, AsyncCallback callback, object asyncState);
 
-        VoteReply EndVoteRequest(IAsyncResult r);
+        void EndVoteRequest(IAsyncResult r);
 
-        [OperationContractAttribute(AsyncPattern = true, Action = "AppendEntries", ReplyAction = "ReplyAppendEntries")]
-        IAsyncResult BeginAppendEntries(AppendEntriesRequest request, AsyncCallback callback, object asyncState);
+        [OperationContractAttribute(IsOneWay = true, AsyncPattern = true, Action = "VoteReply", ReplyAction = "ReplyVoteReply")]
+        IAsyncResult BeginVoteReply(VoteReply reply, AsyncCallback callback, object asyncState);
 
-        AppendEntriesReply EndAppendEntries(IAsyncResult r);
+        void EndVoteReply(IAsyncResult r);
 
+        [OperationContractAttribute(IsOneWay = true, AsyncPattern = true, Action = "AppendEntriesRequest", ReplyAction = "ReplyAppendEntriesRequest")]
+        IAsyncResult BeginAppendEntriesRequest(AppendEntriesRequest request, AsyncCallback callback, object asyncState);
+
+        void EndAppendEntries(IAsyncResult r);
+
+        [OperationContractAttribute(IsOneWay = true, AsyncPattern = true, Action = "AppendEntriesReply", ReplyAction = "ReplyAppendEntriesReply")]
+        IAsyncResult BeginAppendEntriesReply(AppendEntriesRequest request, AsyncCallback callback, object asyncState);
+
+        void EndAppendEntriesReply(IAsyncResult r);
     }
 
     public class Client : IDisposable
@@ -152,21 +136,24 @@ namespace Raft
         private Server _server;
         private INodeProxyAsync _nodeProxy;
         private EndpointAddress _endPoint;
-        private IAsyncResult _currentRPC;
+        //private IAsyncResult _currentRPC;
         private long _nextHeartBeat;
         private bool _voteGranted;
         private uint _matchIndex;
         private uint _nextIndex;
-        private Queue<object> _outgoingMessages = new Queue<object>();
-        private Queue<object> _incomingMessages = new Queue<object>();
-        private Stack<IAsyncResult> _discardRPC = new Stack<IAsyncResult>();
+        private long _rpcDue;
+        private Queue<IAsyncResult> _outgoingMessages = new Queue<IAsyncResult>();
+        //private Queue<object> _incomingMessages = new Queue<object>();
+        //private Stack<IAsyncResult> _discardRPC = new Stack<IAsyncResult>();
 
         public int ID { get { return _id; } }
         public long NextHeartBeat { get { return _nextHeartBeat; } set { _nextHeartBeat = value; } }
-        public bool WaitingForResponse { get { return _currentRPC != null; } }
+        //public bool WaitingForResponse { get { return _currentRPC != null; } }
         public uint MatchIndex { get { return _matchIndex; } }
         public uint NextIndex { get { return _nextIndex; } set { _nextIndex = value; } }
         public bool VoteGranted { get { return _voteGranted; } }
+        public long RpcDue { get { return _rpcDue; } set { _rpcDue = long.MaxValue; } }
+        public bool ReadyToSend { get { return _rpcDue <= _server.TimeInMS; } }
 
         protected Client(Server server, int id, EndpointAddress endPoint)
         {
@@ -179,60 +166,58 @@ namespace Raft
             channel.OperationTimeout = TimeSpan.FromMilliseconds(RPC_TIMEOUT);
         }
 
-        public void SendRequestVote()
+        public void SendVoteRequest()
         {
             LogIndex lastIndex;
             var lastLogIndex = _server.PersistedStore.GetLastIndex(out lastIndex);
 
-            _outgoingMessages.Enqueue(new VoteRequest()
+            var message = new VoteRequest()
             {
                 From = _server.ID,
                 Term = _server.PersistedStore.Term,
                 LastTerm = lastIndex.Term,
                 LogLength = lastLogIndex
-            });
+            };
+
+            var ar = _nodeProxy.BeginVoteRequest(message, null, message);
+            _outgoingMessages.Enqueue(ar);
+            _rpcDue = _server.TimeInMS + RPC_TIMEOUT;
+        }
+
+        public void SendVoteReply(bool granted)
+        {
+            var message = new VoteReply()
+            {
+                From = _server.ID,
+                Term = _server.PersistedStore.Term,
+                Granted = granted
+            };
+
+            var ar = _nodeProxy.BeginVoteReply(message, null, message);
+            _outgoingMessages.Enqueue(ar);
+            _rpcDue = _server.TimeInMS + RPC_TIMEOUT;
         }
 
         public void Update()
         {
-            if (_currentRPC != null && _currentRPC.IsCompleted)
+            while (_outgoingMessages.Count > 0)
             {
-                var message = ReceiveMessage(_currentRPC);
+                var ar = _outgoingMessages.Peek();
+                if (!ar.IsCompleted)
+                    break;
 
-                //if null, mark client failure
-                if (message != null)
-                    _incomingMessages.Enqueue(message);
-            }
-
-            if (_currentRPC == null && _outgoingMessages.Count > 0)
-            {
-                var message = _outgoingMessages.Dequeue();
-                SendMessage(message);
-            }
-
-            while (_discardRPC.Count > 0)
-            {
-                if (_discardRPC.Peek().IsCompleted)
-                    ReceiveMessage(_discardRPC.Pop());
-            }
-
-            while (_incomingMessages.Count > 0)
-            {
-                var message = _incomingMessages.Dequeue();
-                _server.ProcessMessage(message);
+                SendComplete(ar);
+                _outgoingMessages.Dequeue();
             }
         }
 
         public void Reset()
         {
-            if (_currentRPC != null)
-                _discardRPC.Push(_currentRPC);
-
-            _currentRPC = null;
             _voteGranted = false;
             _matchIndex = 0;
             _nextIndex = 0;
             _nextHeartBeat = 0;
+            _rpcDue = 0;
         }
 
         public void Dispose()
@@ -247,26 +232,24 @@ namespace Raft
             _nodeProxy = null;
         }
 
-        private object ReceiveMessage(IAsyncResult ar)
+        private void SendComplete(IAsyncResult ar)
         {
             try
             {
-                var message = _currentRPC.AsyncState;
+                var message = ar.AsyncState;
                 if (message is VoteRequest)
-                    return _nodeProxy.EndVoteRequest(_currentRPC);
+                    _nodeProxy.EndVoteRequest(ar);
+                else if (message is VoteReply)
+                    _nodeProxy.EndVoteReply(ar);
+
+                //throw unhandled message?
             }
             catch
             {
                 //TODO: Track client unavailable 
             }
-            return null;
         }
-
-        private void SendMessage(object message)
-        {
-            if (message is VoteRequest)
-                _currentRPC = _nodeProxy.BeginVoteRequest((VoteRequest)message, null, message);
-        }
+       
     }
 
     public abstract class State
@@ -280,9 +263,9 @@ namespace Raft
         public virtual void Enter() { }
         public virtual void Update() { }
         public virtual void Exit() { }
-        public virtual bool VoteRequest(VoteRequest request) { return false; }
-        public virtual bool AppendEntries(AppendEntriesRequest request) { }
-        public virtual void VoteReply(VoteReply reply) { }
+        public virtual bool VoteRequest(VoteRequest request) { return true; }
+        //public virtual bool AppendEntries(AppendEntriesRequest request) { }
+        public virtual bool VoteReply(VoteReply reply) { return true; }
     }
 
     public class StoppedState : State
@@ -340,7 +323,6 @@ namespace Raft
 
         public override void Enter()
         {
-
             var timeout = _server.PersistedStore.ELECTION_TIMEOUT;
             var randomTimeout = _server.Random.Next(timeout, timeout + timeout) / 2;
             _electionTimeout = _server.TimeInMS + randomTimeout;
@@ -354,8 +336,8 @@ namespace Raft
                 client.Reset();
 
             foreach (var client in _server.Voters)
-                if (!client.WaitingForResponse)
-                    client.SendRequestVote();
+                if (client.ReadyToSend)
+                    client.SendVoteRequest();
         }
 
         public override void Update()
@@ -393,7 +375,7 @@ namespace Raft
             foreach (var client in _server.Clients)
             {
                 if(client.NextHeartBeat <= _server.TimeInMS ||
-                    (client.NextIndex <= _server.PersistedStore.Length && !client.WaitingForResponse))
+                    (client.NextIndex <= _server.PersistedStore.Length && client.ReadyToSend))
                 {
                     //Console.WriteLine("Send heart beat")
                 //var prevIndex = peer.NextIndex - 1;
@@ -500,57 +482,39 @@ namespace Raft
 
         public void Update()
         {
-            lock (_syncLock)
-            {
                 _tick = (long)_timer.ElapsedMilliseconds;
 
                 _currentState.Update();
 
                 foreach (var client in Clients)
                     client.Update();
-            }
-        }
-
-        public bool VoteRequest(VoteRequest request, out VoteReply reply)
-        {
-            lock (_syncLock)
-            {
-                var granted = _currentState.VoteRequest(request);
-                return new VoteReply() { From = _id, Term = _persistedStore.Term, Granted = granted };
-            }
-        }
-
-        public AppendEntriesReply AppendEntries(AppendEntriesRequest request)
-        {
-            lock (_syncLock)
-            {
-                //var granted = _currentState.VoteRequest(request);
-                //return new VoteReply() { From = _id, Term = _persistedStore.Term, Granted = granted };
-            }
         }
 
         public void Dispose()
         {
 
         }
-    }
 
-    public class MyService : INodeProxy
-    {
-        private Random rand = new Random();
-        public string SampleMethod(string msg)
+        public void VoteRequest(VoteRequest request)
         {
-            Console.WriteLine("Called synchronous sample method with \"{0}\"", msg);
-            //System.Threading.Thread.Sleep(rand.Next(0, 1000));
-            return "The sychronous service greets you: " + msg;
+            throw new NotImplementedException();
         }
 
-        public VoteReply VoteRequest(VoteRequest request)
+        public void VoteReply(VoteReply reply)
         {
-            return new VoteReply() { From = 1, Granted = false, Term = 0 };
+            throw new NotImplementedException();
+        }
+
+        public void AppendEntriesRequest(AppendEntriesRequest request)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void AppendEntriesReply(AppendEntriesReply reply)
+        {
+            throw new NotImplementedException();
         }
     }
-
 
 
     //Factory class for client proxy
@@ -584,19 +548,19 @@ namespace Raft
             server.Update();
 
             Console.Read();
-            //new TypedServiceReference
-            var endpoint = new Uri("http://localhost:7741/CategoryServiceHost.svc");
-            var host = new ServiceHost(typeof(MyService), endpoint);
+            ////new TypedServiceReference
+            //var endpoint = new Uri("http://localhost:7741/CategoryServiceHost.svc");
+            //var host = new ServiceHost(typeof(MyService), endpoint);
 
-            var binding = new BasicHttpBinding();
+            //var binding = new BasicHttpBinding();
 
-            host.AddServiceEndpoint(typeof(INodeProxy), binding, endpoint);
+            //host.AddServiceEndpoint(typeof(INodeProxy), binding, endpoint);
 
-            host.Description.Behaviors.Add(new ServiceMetadataBehavior()
-            {
-                HttpGetEnabled = true,
-                MetadataExporter = { PolicyVersion = PolicyVersion.Policy15 },
-            });
+            //host.Description.Behaviors.Add(new ServiceMetadataBehavior()
+            //{
+            //    HttpGetEnabled = true,
+            //    MetadataExporter = { PolicyVersion = PolicyVersion.Policy15 },
+            //});
 
             //host.Open();
             //while (true)
@@ -609,50 +573,50 @@ namespace Raft
         public static void Test2()
         {
 
-            //create client proxy from factory
-            var pClient = ClientFactory.CreateClient(typeof(INodeProxy));
-            var channel = (IClientChannel)pClient;
-            channel.OperationTimeout = TimeSpan.FromMilliseconds(500);
-            {
-                //Console.WriteLine(pClient.SampleMethod("simple"));
-            }
-            {
-                for (var i = 0; i < 10; i++)
-                {
-                    try
-                    {
-                        var r = pClient.BeginSampleMethod("sample", null, null);
-                        while (!r.IsCompleted)
-                        {
-                            //Console.WriteLine(r.IsCompleted);
-                            System.Threading.Thread.Sleep(10);
-                        }
-                        Console.WriteLine(pClient.EndSampleMethod(r));
-                        Console.WriteLine(r.IsCompleted);
-                    }
-                    catch
-                    {
-                        Console.WriteLine("Failed");
-                    }
-                }
-            }
-            {
-                var r = pClient.BeginVoteRequest(new VoteRequest() { From = 2, LastTerm = 1, Term = 1, LogLength = 1 }, null, 1);
-                while (!r.IsCompleted)
-                {
-                    Console.WriteLine(r.IsCompleted);
-                    System.Threading.Thread.Sleep(0);
-                }
-                Console.WriteLine(pClient.EndVoteRequest(r));
-                Console.WriteLine(r.AsyncState);
-            }
+            ////create client proxy from factory
+            //var pClient = ClientFactory.CreateClient(typeof(INodeProxy));
+            //var channel = (IClientChannel)pClient;
+            //channel.OperationTimeout = TimeSpan.FromMilliseconds(500);
             //{
-            //    var r = pClient.BeginServiceAsyncMethod("test", null, null);
-            //    Console.WriteLine(pClient.EndServiceAsyncMethod(r));
+            //    //Console.WriteLine(pClient.SampleMethod("simple"));
             //}
-            Console.Read();
-            //Console.WriteLine(pClient.DoSomething());
-            //((IClientChannel)pClient).RemoteAddress
+            //{
+            //    for (var i = 0; i < 10; i++)
+            //    {
+            //        try
+            //        {
+            //            var r = pClient.BeginSampleMethod("sample", null, null);
+            //            while (!r.IsCompleted)
+            //            {
+            //                //Console.WriteLine(r.IsCompleted);
+            //                System.Threading.Thread.Sleep(10);
+            //            }
+            //            Console.WriteLine(pClient.EndSampleMethod(r));
+            //            Console.WriteLine(r.IsCompleted);
+            //        }
+            //        catch
+            //        {
+            //            Console.WriteLine("Failed");
+            //        }
+            //    }
+            //}
+            //{
+            //    var r = pClient.BeginVoteRequest(new VoteRequest() { From = 2, LastTerm = 1, Term = 1, LogLength = 1 }, null, 1);
+            //    while (!r.IsCompleted)
+            //    {
+            //        Console.WriteLine(r.IsCompleted);
+            //        System.Threading.Thread.Sleep(0);
+            //    }
+            //    Console.WriteLine(pClient.EndVoteRequest(r));
+            //    Console.WriteLine(r.AsyncState);
+            //}
+            ////{
+            ////    var r = pClient.BeginServiceAsyncMethod("test", null, null);
+            ////    Console.WriteLine(pClient.EndServiceAsyncMethod(r));
+            ////}
+            //Console.Read();
+            ////Console.WriteLine(pClient.DoSomething());
+            ////((IClientChannel)pClient).RemoteAddress
         }
 
 
