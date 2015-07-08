@@ -35,6 +35,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Lidgren.Network, Version=2011.3.12.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\deps\Lidgren.Network.dll</HintPath>
+    </Reference>
     <Reference Include="log4net">
       <HintPath>packages\log4net.2.0.3\lib\net40-full\log4net.dll</HintPath>
     </Reference>
@@ -59,6 +63,7 @@
     <Compile Include="Enums.cs" />
     <Compile Include="Messages\AppendEntriesReply.cs" />
     <Compile Include="Messages\AppendEntriesRequest.cs" />
+    <Compile Include="Messages\MessageTypes.cs" />
     <Compile Include="Messages\VoteReply.cs" />
     <Compile Include="Messages\VoteRequest.cs" />
     <Compile Include="StateMachine.cs" />
