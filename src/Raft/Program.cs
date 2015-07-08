@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime;
 using System.ServiceModel;
+using System.ServiceModel.Channels;
 using System.ServiceModel.Description;
 using System.Text;
 using System.Threading;
@@ -79,42 +80,42 @@ namespace Raft
     //        return completedResult._resultData;
     //    }
     //}
-    [ServiceContract()]
+    [ServiceContract(SessionMode = SessionMode.NotAllowed)]
     public interface INodeProxy
     {
-        [OperationContractAttribute(IsOneWay= true, AsyncPattern = true, Action = "VoteRequest", ReplyAction = "ReplyVoteRequest")]
+        [OperationContractAttribute(IsOneWay = true, Action = "VoteRequest")]
         void VoteRequest(VoteRequest request);
 
-        [OperationContractAttribute(IsOneWay = true, AsyncPattern = true, Action = "VoteReply", ReplyAction = "ReplyVoteReply")]
+        [OperationContractAttribute(IsOneWay = true, Action = "VoteReply")]
         void VoteReply(VoteReply reply);
 
-        [OperationContractAttribute(IsOneWay = true, AsyncPattern = true, Action = "AppendEntriesRequest", ReplyAction = "ReplyAppendEntriesRequest")]
+        [OperationContractAttribute(IsOneWay = true, Action = "AppendEntriesRequest")]
         void AppendEntriesRequest(AppendEntriesRequest request);
 
-        [OperationContractAttribute(IsOneWay = true, AsyncPattern = true, Action = "AppendEntriesReply", ReplyAction = "ReplyAppendEntriesReply")]
+        [OperationContractAttribute(IsOneWay = true, Action = "AppendEntriesReply")]
         void AppendEntriesReply(AppendEntriesReply reply);
     }
 
-    [ServiceContract()]
+    [ServiceContract(SessionMode = SessionMode.NotAllowed)]
     public interface INodeProxyAsync : INodeProxy
     {
-        [OperationContractAttribute(IsOneWay = true, AsyncPattern = true, Action = "VoteRequest", ReplyAction = "ReplyVoteRequest")]
+        [OperationContractAttribute(IsOneWay = true, AsyncPattern = true, Action = "VoteRequest")]
         IAsyncResult BeginVoteRequest(VoteRequest request, AsyncCallback callback, object asyncState);
 
         void EndVoteRequest(IAsyncResult r);
 
-        [OperationContractAttribute(IsOneWay = true, AsyncPattern = true, Action = "VoteReply", ReplyAction = "ReplyVoteReply")]
+        [OperationContractAttribute(IsOneWay = true, AsyncPattern = true, Action = "VoteReply")]
         IAsyncResult BeginVoteReply(VoteReply reply, AsyncCallback callback, object asyncState);
 
         void EndVoteReply(IAsyncResult r);
 
-        [OperationContractAttribute(IsOneWay = true, AsyncPattern = true, Action = "AppendEntriesRequest", ReplyAction = "ReplyAppendEntriesRequest")]
+        [OperationContractAttribute(IsOneWay = true, AsyncPattern = true, Action = "AppendEntriesRequest")]
         IAsyncResult BeginAppendEntriesRequest(AppendEntriesRequest request, AsyncCallback callback, object asyncState);
 
-        void EndAppendEntries(IAsyncResult r);
+        void EndAppendEntriesRequest(IAsyncResult r);
 
-        [OperationContractAttribute(IsOneWay = true, AsyncPattern = true, Action = "AppendEntriesReply", ReplyAction = "ReplyAppendEntriesReply")]
-        IAsyncResult BeginAppendEntriesReply(AppendEntriesRequest request, AsyncCallback callback, object asyncState);
+        [OperationContractAttribute(IsOneWay = true, AsyncPattern = true, Action = "AppendEntriesReply")]
+        IAsyncResult BeginAppendEntriesReply(AppendEntriesReply request, AsyncCallback callback, object asyncState);
 
         void EndAppendEntriesReply(IAsyncResult r);
     }
@@ -129,7 +130,13 @@ namespace Raft
         static Client()
         {
             g_httpBinding = new BasicHttpBinding();
-            g_channelFactory = new ChannelFactory<INodeProxyAsync>(g_httpBinding);
+            g_httpBinding.AllowCookies = false;
+            //g_httpBinding.SendTimeout = TimeSpan.FromMilliseconds(RPC_TIMEOUT);
+
+            var custom = new CustomBinding(g_httpBinding);
+            custom.Elements.Find<HttpTransportBindingElement>().KeepAliveEnabled = false;
+
+            g_channelFactory = new ChannelFactory<INodeProxyAsync>(custom);
         }
 
         private int _id;
@@ -142,7 +149,8 @@ namespace Raft
         private uint _matchIndex;
         private uint _nextIndex;
         private long _rpcDue;
-        private Queue<IAsyncResult> _outgoingMessages = new Queue<IAsyncResult>();
+        private MSG _currentmsg;
+        //private Queue<IAsyncResult> _outgoingMessages = new Queue<IAsyncResult>();
         //private Queue<object> _incomingMessages = new Queue<object>();
         //private Stack<IAsyncResult> _discardRPC = new Stack<IAsyncResult>();
 
@@ -151,21 +159,37 @@ namespace Raft
         //public bool WaitingForResponse { get { return _currentRPC != null; } }
         public uint MatchIndex { get { return _matchIndex; } }
         public uint NextIndex { get { return _nextIndex; } set { _nextIndex = value; } }
-        public bool VoteGranted { get { return _voteGranted; } }
+        public bool VoteGranted { get { return _voteGranted; } set { _voteGranted = value; } }
         public long RpcDue { get { return _rpcDue; } set { _rpcDue = long.MaxValue; } }
         public bool ReadyToSend { get { return _rpcDue <= _server.TimeInMS; } }
 
-        protected Client(Server server, int id, EndpointAddress endPoint)
+        public Client(Server server, int id, EndpointAddress endPoint)
         {
             _id = id;
             _server = server;
             _endPoint = endPoint;
-            _nodeProxy = g_channelFactory.CreateChannel(endPoint);
-
-            var channel = (IClientChannel)_nodeProxy;
-            channel.OperationTimeout = TimeSpan.FromMilliseconds(RPC_TIMEOUT);
         }
 
+        public void Initialize()
+        {
+            _nodeProxy = g_channelFactory.CreateChannel(_endPoint);
+
+            var channel = (IClientChannel)_nodeProxy;
+            channel.AllowOutputBatching = false;
+            channel.OperationTimeout = TimeSpan.FromMilliseconds(RPC_TIMEOUT);
+            channel.Open();
+        }
+
+        private struct MSG
+        {
+            public long start, end, finished, id;
+            public override string ToString()
+            {
+                return string.Format("{{ id: {0}, start: {1}, end: {2}, finished: {3} }}", id, start, end, finished);
+            }
+        }
+
+        private long messageId = 0;
         public void SendVoteRequest()
         {
             LogIndex lastIndex;
@@ -179,8 +203,57 @@ namespace Raft
                 LogLength = lastLogIndex
             };
 
-            var ar = _nodeProxy.BeginVoteRequest(message, null, message);
-            _outgoingMessages.Enqueue(ar);
+            var m = new MSG() { start = _server.RawTimeInMS, end = 0, finished = 0, id = messageId++ };
+            _currentmsg = m;
+            //    _nodeProxy.VoteRequest(message);
+            try
+            {
+                _nodeProxy.BeginVoteRequest(message, new AsyncCallback(ar =>
+                       {
+                           _rpcDue = 0;
+                           m.end = _server.RawTimeInMS;
+                           try
+                           {
+
+                               //Console.WriteLine("success");
+                               _nodeProxy.EndVoteRequest(ar);
+                               m.finished = _server.RawTimeInMS;
+                               //Console.WriteLine(m);
+                               Console.WriteLine("{0}: SUCCESS - {1}", _server.ID, m);
+                               //Console.WriteLine("{0}: completed in {1}", _server.ID, (long)ar.AsyncState);
+                           }
+                           catch (Exception ex)
+                           {
+                               m.finished = _server.RawTimeInMS;
+                               //wcf acts very odd with one way sending and timeouts
+                               //sometimes the exception is thrown here and other times its 
+                               //thrown at Begin
+                               Console.WriteLine("{0}: END - {1}", _server.ID, m);
+                           }
+                       }
+                   )
+               , null);
+            }
+            catch (Exception ex)
+            {
+                m.finished = _server.RawTimeInMS;
+                Console.WriteLine("{0}: BEGIN - {1}", _server.ID, m);
+                //Console.WriteLine("{0}: failed in {1} : {2}", _server.ID, mid, ex.Message);
+
+            }
+            //Console.WriteLine("{0}: sent end: {1}", _server.ID, _server.RawTimeInMS);
+            //}
+            //catch (Exception ex)
+            //{
+            //    //wcf acts very odd with one way sending and timeouts
+            //    //sometimes the exception is thrown here and other times its 
+            //    //thrown at End
+            //    Console.WriteLine("failed begin ex: {0}", ex.Message);
+
+            //}
+            // ar = _nodeProxy.BeginVoteReply(message, null, message);
+            //Console.WriteLine(_outgoingMessages.Count);
+            //_outgoingMessages.Enqueue(ar);
             _rpcDue = _server.TimeInMS + RPC_TIMEOUT;
         }
 
@@ -193,22 +266,40 @@ namespace Raft
                 Granted = granted
             };
 
-            var ar = _nodeProxy.BeginVoteReply(message, null, message);
-            _outgoingMessages.Enqueue(ar);
+            _nodeProxy.BeginVoteReply(message, new AsyncCallback(ar =>
+                    {
+                        try
+                        {
+                            _nodeProxy.EndVoteReply(ar);
+                        }
+                        catch
+                        {
+                            Console.WriteLine("failed");
+                        }
+                    }
+                )
+            , null);
+            // ar = _nodeProxy.BeginVoteReply(message, null, message);
+            //_outgoingMessages.Enqueue(ar);
             _rpcDue = _server.TimeInMS + RPC_TIMEOUT;
         }
 
         public void Update()
         {
-            while (_outgoingMessages.Count > 0)
+            if (_rpcDue > 0 && _rpcDue <= _server.TimeInMS)
             {
-                var ar = _outgoingMessages.Peek();
-                if (!ar.IsCompleted)
-                    break;
-
-                SendComplete(ar);
-                _outgoingMessages.Dequeue();
+                Console.WriteLine("{0}: dropped at {1} - {2}", _server.ID, _server.RawTimeInMS, _currentmsg);
+                _rpcDue = 0;
             }
+            //while (_outgoingMessages.Count > 0)
+            //{
+            //    var ar = _outgoingMessages.Peek();
+            //    if (!ar.IsCompleted)
+            //        break;
+
+            //    SendComplete(ar);
+            //    _outgoingMessages.Dequeue();
+            //}
         }
 
         public void Reset()
@@ -225,7 +316,7 @@ namespace Raft
             if (_nodeProxy != null)
             {
                 var channel = (IClientChannel)_nodeProxy;
-                channel.OperationTimeout = TimeSpan.FromMilliseconds(15);
+                //channel.OperationTimeout = TimeSpan.FromMilliseconds(15);
                 channel.Close();
             }
 
@@ -249,7 +340,7 @@ namespace Raft
                 //TODO: Track client unavailable 
             }
         }
-       
+
     }
 
     public abstract class State
@@ -260,34 +351,39 @@ namespace Raft
             _server = server;
         }
 
+        public virtual bool StepDown(int term)
+        {
+            if (_server.PersistedStore.Term < term)
+            {
+                _server.PersistedStore.UpdateState(term, null);
+                _server.ChangeState(new FollowerState(_server));
+                return true;
+            }
+
+            return false;
+        }
+
         public virtual void Enter() { }
         public virtual void Update() { }
         public virtual void Exit() { }
-        public virtual bool VoteRequest(VoteRequest request) { return true; }
-        //public virtual bool AppendEntries(AppendEntriesRequest request) { }
-        public virtual bool VoteReply(VoteReply reply) { return true; }
+
+        public abstract bool VoteRequest(Client client, VoteRequest request);
+        public abstract bool VoteReply(Client client, VoteReply reply);
     }
 
     public class StoppedState : State
     {
         public StoppedState(Server _server) : base(_server) { }
+        public override bool VoteReply(Client client, VoteReply reply)
+        {
+            return true;
+        }
+
+        public override bool VoteRequest(Client client, VoteRequest request)
+        {
+            return true;
+        }
     }
-
-    //public class InitializeState : State
-    //{
-    //    public InitializeState(Server server) : base(server) { }
-
-    //    public override void Enter()
-    //    {
-    //        //load persisted state
-    //    }
-
-    //    public override void Update()
-    //    {
-    //        _server.InitializePersistedStore();
-    //        _server.ChangeState(new FollowerState(_server));
-    //    }
-    //}
 
     public class FollowerState : State
     {
@@ -304,7 +400,6 @@ namespace Raft
         {
             if (_server.TimeInMS > _heatbeatTimeout)
                 _server.ChangeState(new CandidateState(_server));
-
         }
 
         private void resetHeartbeat()
@@ -312,6 +407,49 @@ namespace Raft
             var timeout = _server.PersistedStore.ELECTION_TIMEOUT;
             var randomTimeout = _server.Random.Next(timeout, timeout + timeout) / 2;
             _heatbeatTimeout = _server.TimeInMS + randomTimeout;
+        }
+
+        public override bool VoteRequest(Client client, VoteRequest request)
+        {
+            var _persistedState = _server.PersistedStore;
+            if (_persistedState.Term < request.Term)
+            {
+                _persistedState.Term = request.Term;
+                if (_heatbeatTimeout <= _server.TimeInMS)
+                    resetHeartbeat();
+            }
+
+            var ourLastLogTerm = _persistedState.GetLastTerm();
+            var termCheck = _persistedState.Term == request.Term;
+            var canVote = _persistedState.VotedFor == null || _persistedState.VotedFor == request.From;
+            var logTermFurther = request.LastTerm > ourLastLogTerm;
+            var logIndexLonger = request.LastTerm == ourLastLogTerm && request.LogLength >= _persistedState.Length;
+            var granted = termCheck && canVote && (logTermFurther || logIndexLonger);
+
+            if (!termCheck)
+                Console.WriteLine("{0}: Can not vote for {1} because term {2}, expected {3}", _server.ID, client.ID, request.Term, _persistedState.Term);
+
+            if (!canVote)
+                Console.WriteLine("{0}: Can not vote for {1} because I already voted for {2}", _server.ID, client.ID, _persistedState.VotedFor);
+
+            if (!(logTermFurther || logIndexLonger))
+                Console.WriteLine("{0}: Can not vote for {1} because my log is more update to date", _server.ID, client.ID);
+
+            if (granted)
+            {
+                Console.WriteLine("{0}: Voted for {1}", _server.ID, client.ID);
+                _persistedState.VotedFor = client.ID;
+                resetHeartbeat();
+            }
+
+            client.SendVoteReply(granted);
+            return true;
+        }
+
+        public override bool VoteReply(Client client, VoteReply reply)
+        {
+            //we aren't looking for votes, ignore
+            return true;
         }
     }
 
@@ -329,7 +467,7 @@ namespace Raft
 
             _server.PersistedStore.UpdateState(_server.PersistedStore.Term + 1, _server.ID);
 
-            Console.WriteLine("{0}: Starting new election for term {1}", _server.ID, _server.PersistedStore.Term);
+            //Console.WriteLine("{0}: Starting new election for term {1}", _server.ID, _server.PersistedStore.Term);
 
             //only request from peers that are allowed to vote
             foreach (var client in _server.Voters)
@@ -342,7 +480,7 @@ namespace Raft
 
         public override void Update()
         {
-            if (_electionTimeout > _server.TimeInMS)
+            if (_electionTimeout <= _server.TimeInMS)
                 _server.ChangeState(new CandidateState(_server));
             else
             {
@@ -353,6 +491,25 @@ namespace Raft
             }
         }
 
+        public override bool VoteRequest(Client client, VoteRequest request)
+        {
+            if (StepDown(request.Term))
+                return false;
+
+            client.SendVoteReply(false);
+            return true;
+        }
+
+        public override bool VoteReply(Client client, VoteReply reply)
+        {
+            if (StepDown(reply.Term))
+                return true;
+
+            client.RpcDue = long.MaxValue;
+            client.VoteGranted = reply.Granted;
+            //Console.WriteLine("{0}: Peer {1} voted {2}", _id, peer.ID, peer.VotedGranted);
+            return true;
+        }
     }
 
     public class LeaderState : State
@@ -374,35 +531,51 @@ namespace Raft
         {
             foreach (var client in _server.Clients)
             {
-                if(client.NextHeartBeat <= _server.TimeInMS ||
+                if (client.NextHeartBeat <= _server.TimeInMS ||
                     (client.NextIndex <= _server.PersistedStore.Length && client.ReadyToSend))
                 {
                     //Console.WriteLine("Send heart beat")
-                //var prevIndex = peer.NextIndex - 1;
-                //var lastIndex = Math.Min(prevIndex + BATCH_SIZE, _persistedState.Length);
-                //if (peer.MatchIndex + 1 < peer.NextIndex)
-                //    lastIndex = prevIndex;
+                    //var prevIndex = peer.NextIndex - 1;
+                    //var lastIndex = Math.Min(prevIndex + BATCH_SIZE, _persistedState.Length);
+                    //if (peer.MatchIndex + 1 < peer.NextIndex)
+                    //    lastIndex = prevIndex;
 
-                //var entries = _persistedState.GetEntries(prevIndex, lastIndex);
-                //if (entries != null && entries.Length > 0)
-                //    Console.WriteLine("{0}: Send AppendEnties[{1}-{2}] to {3}", _id, prevIndex, lastIndex, peer.ID);
+                    //var entries = _persistedState.GetEntries(prevIndex, lastIndex);
+                    //if (entries != null && entries.Length > 0)
+                    //    Console.WriteLine("{0}: Send AppendEnties[{1}-{2}] to {3}", _id, prevIndex, lastIndex, peer.ID);
 
-                //peer.RpcDue = model.Tick + RPC_TIMEOUT;
-                //peer.HeartBeartDue = model.Tick + (ELECTION_TIMEOUT / 2);
-                //model.SendRequest(peer, new AppendEntriesRequest()
-                //{
-                //    From = _id,
-                //    Term = _persistedState.Term,
-                //    PrevIndex = prevIndex,
-                //    PrevTerm = _persistedState.GetTerm(prevIndex),
-                //    Entries = entries,
-                //    CommitIndex = Math.Min(_commitIndex, lastIndex)
-                //});
+                    //peer.RpcDue = model.Tick + RPC_TIMEOUT;
+                    //peer.HeartBeartDue = model.Tick + (ELECTION_TIMEOUT / 2);
+                    //model.SendRequest(peer, new AppendEntriesRequest()
+                    //{
+                    //    From = _id,
+                    //    Term = _persistedState.Term,
+                    //    PrevIndex = prevIndex,
+                    //    PrevTerm = _persistedState.GetTerm(prevIndex),
+                    //    Entries = entries,
+                    //    CommitIndex = Math.Min(_commitIndex, lastIndex)
+                    //});
                 }
             }
         }
+
+        public override bool VoteReply(Client client, VoteReply reply)
+        {
+            StepDown(reply.Term);
+            return true;
+        }
+
+        public override bool VoteRequest(Client client, VoteRequest request)
+        {
+            if (StepDown(request.Term))
+                return false;
+
+            client.SendVoteReply(false);
+            return true;
+        }
     }
 
+    [ServiceBehavior(InstanceContextMode = InstanceContextMode.Single)]
     public class Server : INodeProxy, IDisposable
     {
         private static object _syncLock = new object();
@@ -412,13 +585,14 @@ namespace Raft
         private Stopwatch _timer;
         private string _dataDir;
         private PersistedStore _persistedStore;
-        private List<Client> _clients = new List<Client>();
+        public List<Client> _clients = new List<Client>();
         private State _currentState;
         private long _tick = 0;
 
         public int ID { get { return _id; } }
 
         public long TimeInMS { get { return _tick; } }
+        public long RawTimeInMS { get { return _timer.ElapsedMilliseconds; } }
 
         public PersistedStore PersistedStore { get { return _persistedStore; } }
 
@@ -452,7 +626,7 @@ namespace Raft
             _currentState = new StoppedState(this);
         }
 
-        public void Initialize()
+        public void Initialize(Uri endpoint)
         {
             if (_persistedStore == null)
             {
@@ -462,7 +636,25 @@ namespace Raft
                 _timer = Stopwatch.StartNew();
 
                 ChangeState(new FollowerState(this));
+
+                var binding = new BasicHttpBinding();
+                var custom = new CustomBinding(binding);
+                custom.Elements.Find<HttpTransportBindingElement>().KeepAliveEnabled = false;
+
+                var host = new ServiceHost(this, endpoint);
+
+                host.AddServiceEndpoint(typeof(INodeProxy), custom, endpoint);
+
+                host.Description.Behaviors.Add(new ServiceMetadataBehavior()
+                {
+                    HttpGetEnabled = true,
+                    MetadataExporter = { PolicyVersion = PolicyVersion.Policy15 },
+                });
+
+                host.Open();
+
             }
+
         }
 
         public void ChangeState(State newState)
@@ -474,20 +666,22 @@ namespace Raft
             _currentState.Enter();
         }
 
-        public void ProcessMessage(object message)
-        {
-            if (message is VoteReply)
-                _currentState.VoteReply((VoteReply)message);
-        }
+        //public void ProcessMessage(object message)
+        //{
+        //    if (message is VoteReply)
+        //        _currentState.VoteReply((VoteReply)message);
+        //}
 
         public void Update()
         {
-                _tick = (long)_timer.ElapsedMilliseconds;
+            _tick = (long)_timer.ElapsedMilliseconds;
 
-                _currentState.Update();
+            foreach (var client in Clients)
+                client.Update();
 
-                foreach (var client in Clients)
-                    client.Update();
+            _currentState.Update();
+
+
         }
 
         public void Dispose()
@@ -497,22 +691,23 @@ namespace Raft
 
         public void VoteRequest(VoteRequest request)
         {
-            throw new NotImplementedException();
+            //System.Threading.Thread.Sleep(1000);
+            //throw new NotImplementedException();
         }
 
         public void VoteReply(VoteReply reply)
         {
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
         }
 
         public void AppendEntriesRequest(AppendEntriesRequest request)
         {
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
         }
 
         public void AppendEntriesReply(AppendEntriesReply reply)
         {
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
         }
     }
 
@@ -535,17 +730,32 @@ namespace Raft
     {
         static void Main(string[] args)
         {
-            var dataDir = System.IO.Path.Combine(System.Environment.CurrentDirectory, "server\\1");
+            var dataDir = System.IO.Path.Combine(System.Environment.CurrentDirectory, "server");
             if (System.IO.Directory.Exists(dataDir))
                 System.IO.Directory.Delete(dataDir, true);
 
-            var server = new Server(1, dataDir);
-            server.Initialize();
+            var s1 = new Server(1, dataDir + "\\1");
+            var s2 = new Server(2, dataDir + "\\2");
 
-            System.Threading.Thread.Sleep(200);
-            server.Update();
-            System.Threading.Thread.Sleep(200);
-            server.Update();
+            var c1 = new Client(s2, 1, new EndpointAddress(new Uri("http://localhost:7741/CategoryServiceHost.svc")));
+            var c2 = new Client(s1, 2, new EndpointAddress(new Uri("http://localhost:7742/CategoryServiceHost.svc")));
+
+            s1._clients.Add(c2);
+            s2._clients.Add(c1);
+
+            c1.Initialize();
+            c2.Initialize();
+
+            s1.Initialize(new Uri("http://localhost:7741/CategoryServiceHost.svc"));
+            s2.Initialize(new Uri("http://localhost:7742/CategoryServiceHost.svc"));
+
+            while (true)
+            {
+                s1.Update();
+                s2.Update();
+                System.Threading.Thread.Sleep(0);
+            }
+
 
             Console.Read();
             ////new TypedServiceReference
