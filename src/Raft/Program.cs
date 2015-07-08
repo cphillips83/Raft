@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Runtime;
@@ -154,10 +155,18 @@ namespace Raft
         private INodeProxyAsync _nodeProxy;
         private EndpointAddress _endPoint;
         private IAsyncResult _currentRPC;
+        private long _nextHeartBeat;
+        private bool _voteGranted;
+        private uint _matchIndex;
+        private uint _nextIndex;
         private Queue<object> _outgoingMessages = new Queue<object>();
         private Queue<object> _incomingMessages = new Queue<object>();
 
+        public long NextHeartBeat { get { return _nextHeartBeat; } }
         public bool WaitingForResponse { get { return _currentRPC != null; } }
+        public uint MatchIndex { get { return _matchIndex; } }
+        public uint NextIndex { get { return _nextIndex; } }
+        public bool VoteGranted { get { return _voteGranted; } }
 
         protected Client(Server server, int id, EndpointAddress endPoint)
             : base(id)
@@ -221,10 +230,10 @@ namespace Raft
         }
     }
 
-    public abstract class State1
+    public abstract class State
     {
         protected Server _server;
-        protected State1(Server server)
+        protected State(Server server)
         {
             _server = server;
         }
@@ -236,12 +245,12 @@ namespace Raft
         public virtual bool VoteReply(VoteReply reply) { return true; }
     }
 
-    public class Follower : State1
+    public class Follower : State
     {
 
     }
 
-    public class InitializeState : State1
+    public class InitializeState : State
     {
         public override void Enter()
         {
@@ -250,22 +259,95 @@ namespace Raft
 
         public override void Update()
         {
-            //check if log is loaded
+            _server.InitializePersistedStore();
             _server.ChangeState(new Follower());
         }
     }
 
-    public class FollowerState : State1
+    public class FollowerState : State
+    {
+        private long _heatbeatTimeout = long.MaxValue;
+
+        public override void Enter()
+        {
+            resetHeartbeat();
+        }
+
+        public override void Update()
+        {
+            if (_heatbeatTimeout > _server.TimeInMS)
+                _server.ChangeState(new CandidateState());
+            else
+            {
+                resetHeartbeat();
+                _server.PersistedStore.UpdateState(_server.PersistedStore.Term + 1, _server.ID);
+
+                //only request from peers that are allowed to vote
+                foreach (var client in _server.Voters)
+                    client.Reset();
+
+                Console.WriteLine("{0}: Starting new election for term {1}", _server.ID, _server.PersistedStore.Term);
+            }
+        }
+
+        private void resetHeartbeat()
+        {
+            var timeout = _server.PersistedStore.ELECTION_TIMEOUT;
+            var randomTimeout = _server.Random.Next(timeout, timeout + timeout) / 2;
+            _heatbeatTimeout = _server.TimeInMS + randomTimeout;
+        }
+    }
+
+    public class CandidateState : State
     {
 
     }
 
-    public class Server
+    public class LeaderState : State
     {
-        private List<Client> _clients = new List<Client>();
-        private State1 _currentState = new InitializeState();
 
-        public void ChangeState(State1 newState)
+    }
+
+    public class Server : Node
+    {
+        private Random _random;
+        private Stopwatch _timer;
+        private string _dataDir;
+        private PersistedStore _persistedStore;
+        private List<Client> _clients = new List<Client>();
+        private State _currentState;
+
+        public long TimeInMS { get { return (long)_timer.ElapsedMilliseconds; } }
+
+        public PersistedStore PersistedStore { get { return _persistedStore; } }
+
+        public Random Random { get { return _random; } }
+
+        public IEnumerable<Client> Voters
+        {
+            get
+            {
+                foreach (var client in _clients)
+                    yield return client;
+            }
+        }
+
+        public Server(int id, string dataDir)
+            : base(id)
+        {
+            _random = new Random((int)DateTime.UtcNow.Ticks ^ id);
+            _dataDir = dataDir;
+            _timer = Stopwatch.StartNew();
+        }
+
+        public void InitializePersistedStore()
+        {
+            if (_persistedStore == null)
+                _persistedStore = new PersistedStore(_dataDir);
+
+        }
+
+        public void ChangeState(State newState)
         {
             if (_currentState != null)
                 _currentState.Exit();

@@ -38,8 +38,11 @@ namespace Raft
         public byte[] Data;
     }
 
-    public class State : IDisposable
+    public class PersistedStore : IDisposable
     {
+        public  int RPC_TIMEOUT = 50;
+        public  int ELECTION_TIMEOUT = 100;
+        
         //can not change once in production
         public const int SUPER_BLOCK_SIZE = 1024;
         public const int LOG_DEFAULT_ARRAY_SIZE = 65536;
@@ -104,7 +107,7 @@ namespace Raft
             }
         }
 
-        public State(string dataDir)
+        public PersistedStore(string dataDir)
         {
             _peers = new List<Peer>();
             _dataDir = dataDir;
