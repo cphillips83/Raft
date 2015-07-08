@@ -82,11 +82,14 @@ namespace Raft
     [ServiceContract()]
     public interface INodeProxy
     {
-        [OperationContractAttribute(Action = "SampleMethod", ReplyAction = "ReplySampleMethod")]
-        string SampleMethod(string msg);
+        //[OperationContractAttribute(Action = "SampleMethod", ReplyAction = "ReplySampleMethod")]
+        //string SampleMethod(string msg);
 
-        [OperationContractAttribute(Action = "VoteRequest", ReplyAction = "ReplyVoteRequest")]
+        [OperationContractAttribute(AsyncPattern = true, Action = "VoteRequest", ReplyAction = "ReplyVoteRequest")]
         VoteReply VoteRequest(VoteRequest request);
+
+        [OperationContractAttribute(AsyncPattern = true, Action = "AppendEntries", ReplyAction = "ReplyAppendEntries")]
+        AppendEntriesReply AppendEntries(AppendEntriesRequest request);
 
         //[OperationContractAttribute(AsyncPattern = true)]
         //IAsyncResult BeginSampleMethod(string msg, AsyncCallback callback, object asyncState);
@@ -114,31 +117,25 @@ namespace Raft
     [ServiceContract()]
     public interface INodeProxyAsync : INodeProxy
     {
-        [OperationContractAttribute(AsyncPattern = true, Action = "SampleMethod", ReplyAction = "ReplySampleMethod")]
-        IAsyncResult BeginSampleMethod(string msg, AsyncCallback callback, object asyncState);
+        //[OperationContractAttribute(AsyncPattern = true, Action = "SampleMethod", ReplyAction = "ReplySampleMethod")]
+        //IAsyncResult BeginSampleMethod(string msg, AsyncCallback callback, object asyncState);
 
-        //Note: There is no OperationContractAttribute for the end method.
-        string EndSampleMethod(IAsyncResult result);
+        ////Note: There is no OperationContractAttribute for the end method.
+        //string EndSampleMethod(IAsyncResult result);
 
         [OperationContractAttribute(AsyncPattern = true, Action = "VoteRequest", ReplyAction = "ReplyVoteRequest")]
         IAsyncResult BeginVoteRequest(VoteRequest request, AsyncCallback callback, object asyncState);
 
         VoteReply EndVoteRequest(IAsyncResult r);
+
+        [OperationContractAttribute(AsyncPattern = true, Action = "AppendEntries", ReplyAction = "ReplyAppendEntries")]
+        IAsyncResult BeginAppendEntries(AppendEntriesRequest request, AsyncCallback callback, object asyncState);
+
+        AppendEntriesReply EndAppendEntries(IAsyncResult r);
+
     }
 
-    public class Node
-    {
-        private int _id;
-
-        protected Node(int id)
-        {
-            _id = id;
-        }
-
-        public int ID { get { return _id; } }
-    }
-
-    public class Client : Node, IDisposable
+    public class Client : IDisposable
     {
         public const int RPC_TIMEOUT = 50;
 
@@ -151,6 +148,7 @@ namespace Raft
             g_channelFactory = new ChannelFactory<INodeProxyAsync>(g_httpBinding);
         }
 
+        private int _id;
         private Server _server;
         private INodeProxyAsync _nodeProxy;
         private EndpointAddress _endPoint;
@@ -163,15 +161,16 @@ namespace Raft
         private Queue<object> _incomingMessages = new Queue<object>();
         private Stack<IAsyncResult> _discardRPC = new Stack<IAsyncResult>();
 
-        public long NextHeartBeat { get { return _nextHeartBeat; } }
+        public int ID { get { return _id; } }
+        public long NextHeartBeat { get { return _nextHeartBeat; } set { _nextHeartBeat = value; } }
         public bool WaitingForResponse { get { return _currentRPC != null; } }
         public uint MatchIndex { get { return _matchIndex; } }
-        public uint NextIndex { get { return _nextIndex; } }
+        public uint NextIndex { get { return _nextIndex; } set { _nextIndex = value; } }
         public bool VoteGranted { get { return _voteGranted; } }
 
         protected Client(Server server, int id, EndpointAddress endPoint)
-            : base(id)
         {
+            _id = id;
             _server = server;
             _endPoint = endPoint;
             _nodeProxy = g_channelFactory.CreateChannel(endPoint);
@@ -182,7 +181,16 @@ namespace Raft
 
         public void SendRequestVote()
         {
-            _outgoingMessages.Enqueue(new VoteRequest() { From = 0, LastTerm = 0, LogLength = 0, Term = 0 });
+            LogIndex lastIndex;
+            var lastLogIndex = _server.PersistedStore.GetLastIndex(out lastIndex);
+
+            _outgoingMessages.Enqueue(new VoteRequest()
+            {
+                From = _server.ID,
+                Term = _server.PersistedStore.Term,
+                LastTerm = lastIndex.Term,
+                LogLength = lastLogIndex
+            });
         }
 
         public void Update()
@@ -210,11 +218,8 @@ namespace Raft
 
             while (_incomingMessages.Count > 0)
             {
-                var message = _incomingMessages.Peek();
-                if (!_server.ProcessMessage(message))
-                    return;
-
-                _incomingMessages.Dequeue();
+                var message = _incomingMessages.Dequeue();
+                _server.ProcessMessage(message);
             }
         }
 
@@ -275,25 +280,31 @@ namespace Raft
         public virtual void Enter() { }
         public virtual void Update() { }
         public virtual void Exit() { }
-        public virtual bool VoteRequest(VoteRequest request) { return true; }
-        public virtual bool VoteReply(VoteReply reply) { return true; }
+        public virtual bool VoteRequest(VoteRequest request) { return false; }
+        public virtual bool AppendEntries(AppendEntriesRequest request) { }
+        public virtual void VoteReply(VoteReply reply) { }
     }
 
-    public class InitializeState : State
+    public class StoppedState : State
     {
-        public InitializeState(Server server) : base(server) { }
-
-        public override void Enter()
-        {
-            //load persisted state
-        }
-
-        public override void Update()
-        {
-            _server.InitializePersistedStore();
-            _server.ChangeState(new FollowerState(_server));
-        }
+        public StoppedState(Server _server) : base(_server) { }
     }
+
+    //public class InitializeState : State
+    //{
+    //    public InitializeState(Server server) : base(server) { }
+
+    //    public override void Enter()
+    //    {
+    //        //load persisted state
+    //    }
+
+    //    public override void Update()
+    //    {
+    //        _server.InitializePersistedStore();
+    //        _server.ChangeState(new FollowerState(_server));
+    //    }
+    //}
 
     public class FollowerState : State
     {
@@ -308,13 +319,9 @@ namespace Raft
 
         public override void Update()
         {
-            if (_heatbeatTimeout > _server.TimeInMS)
+            if (_server.TimeInMS > _heatbeatTimeout)
                 _server.ChangeState(new CandidateState(_server));
-            else
-            {
-                foreach (var client in _server.Clients)
-                    client.GetHashCode();
-            }
+
         }
 
         private void resetHeartbeat()
@@ -333,13 +340,14 @@ namespace Raft
 
         public override void Enter()
         {
-            Console.WriteLine("{0}: Starting new election for term {1}", _server.ID, _server.PersistedStore.Term);
 
             var timeout = _server.PersistedStore.ELECTION_TIMEOUT;
             var randomTimeout = _server.Random.Next(timeout, timeout + timeout) / 2;
             _electionTimeout = _server.TimeInMS + randomTimeout;
 
             _server.PersistedStore.UpdateState(_server.PersistedStore.Term + 1, _server.ID);
+
+            Console.WriteLine("{0}: Starting new election for term {1}", _server.ID, _server.PersistedStore.Term);
 
             //only request from peers that are allowed to vote
             foreach (var client in _server.Voters)
@@ -369,23 +377,72 @@ namespace Raft
     {
         public LeaderState(Server server) : base(server) { }
 
+        public override void Enter()
+        {
+            var votes = _server.Voters.Count(x => x.VoteGranted) + 1;
+            Console.WriteLine("{0}: I am now leader of term {2} with {1} votes", _server.ID, votes, _server.PersistedStore.Term);
+            foreach (var client in _server.Clients)
+            {
+                client.NextIndex = _server.PersistedStore.Length + 1;
+                client.NextHeartBeat = 0;
+            }
+        }
 
+        public override void Update()
+        {
+            foreach (var client in _server.Clients)
+            {
+                if(client.NextHeartBeat <= _server.TimeInMS ||
+                    (client.NextIndex <= _server.PersistedStore.Length && !client.WaitingForResponse))
+                {
+                    //Console.WriteLine("Send heart beat")
+                //var prevIndex = peer.NextIndex - 1;
+                //var lastIndex = Math.Min(prevIndex + BATCH_SIZE, _persistedState.Length);
+                //if (peer.MatchIndex + 1 < peer.NextIndex)
+                //    lastIndex = prevIndex;
+
+                //var entries = _persistedState.GetEntries(prevIndex, lastIndex);
+                //if (entries != null && entries.Length > 0)
+                //    Console.WriteLine("{0}: Send AppendEnties[{1}-{2}] to {3}", _id, prevIndex, lastIndex, peer.ID);
+
+                //peer.RpcDue = model.Tick + RPC_TIMEOUT;
+                //peer.HeartBeartDue = model.Tick + (ELECTION_TIMEOUT / 2);
+                //model.SendRequest(peer, new AppendEntriesRequest()
+                //{
+                //    From = _id,
+                //    Term = _persistedState.Term,
+                //    PrevIndex = prevIndex,
+                //    PrevTerm = _persistedState.GetTerm(prevIndex),
+                //    Entries = entries,
+                //    CommitIndex = Math.Min(_commitIndex, lastIndex)
+                //});
+                }
+            }
+        }
     }
 
-    public class Server : Node
+    public class Server : INodeProxy, IDisposable
     {
+        private static object _syncLock = new object();
+
+        private int _id;
         private Random _random;
         private Stopwatch _timer;
         private string _dataDir;
         private PersistedStore _persistedStore;
         private List<Client> _clients = new List<Client>();
         private State _currentState;
+        private long _tick = 0;
 
-        public long TimeInMS { get { return (long)_timer.ElapsedMilliseconds; } }
+        public int ID { get { return _id; } }
+
+        public long TimeInMS { get { return _tick; } }
 
         public PersistedStore PersistedStore { get { return _persistedStore; } }
 
         public Random Random { get { return _random; } }
+
+        public State CurrentState { get { return _currentState; } }
 
         public IEnumerable<Client> Voters
         {
@@ -406,18 +463,24 @@ namespace Raft
         }
 
         public Server(int id, string dataDir)
-            : base(id)
         {
+            _id = id;
             _random = new Random((int)DateTime.UtcNow.Ticks ^ id);
             _dataDir = dataDir;
-            _timer = Stopwatch.StartNew();
+            _currentState = new StoppedState(this);
         }
 
-        public void InitializePersistedStore()
+        public void Initialize()
         {
             if (_persistedStore == null)
+            {
                 _persistedStore = new PersistedStore(_dataDir);
+                _persistedStore.Initialize();
 
+                _timer = Stopwatch.StartNew();
+
+                ChangeState(new FollowerState(this));
+            }
         }
 
         public void ChangeState(State newState)
@@ -429,31 +492,48 @@ namespace Raft
             _currentState.Enter();
         }
 
-        public bool ProcessMessage(object message)
+        public void ProcessMessage(object message)
         {
-            if (message is VoteRequest)
-                return _currentState.VoteRequest((VoteRequest)message);
-            else if (message is VoteReply)
-                return _currentState.VoteReply((VoteReply)message);
-            //TODO: Unhandled message, we want to return true to remove it from the queue
-            return true;
+            if (message is VoteReply)
+                _currentState.VoteReply((VoteReply)message);
         }
 
         public void Update()
         {
+            lock (_syncLock)
+            {
+                _tick = (long)_timer.ElapsedMilliseconds;
+
+                _currentState.Update();
+
+                foreach (var client in Clients)
+                    client.Update();
+            }
+        }
+
+        public bool VoteRequest(VoteRequest request, out VoteReply reply)
+        {
+            lock (_syncLock)
+            {
+                var granted = _currentState.VoteRequest(request);
+                return new VoteReply() { From = _id, Term = _persistedStore.Term, Granted = granted };
+            }
+        }
+
+        public AppendEntriesReply AppendEntries(AppendEntriesRequest request)
+        {
+            lock (_syncLock)
+            {
+                //var granted = _currentState.VoteRequest(request);
+                //return new VoteReply() { From = _id, Term = _persistedStore.Term, Granted = granted };
+            }
+        }
+
+        public void Dispose()
+        {
 
         }
-        //public int LastTerm { get { return 0; } }
-        //public int LastLog { get { return 0; } }
     }
-
-    public class Cluster
-    {
-
-    }
-
-
-
 
     public class MyService : INodeProxy
     {
@@ -491,6 +571,19 @@ namespace Raft
     {
         static void Main(string[] args)
         {
+            var dataDir = System.IO.Path.Combine(System.Environment.CurrentDirectory, "server\\1");
+            if (System.IO.Directory.Exists(dataDir))
+                System.IO.Directory.Delete(dataDir, true);
+
+            var server = new Server(1, dataDir);
+            server.Initialize();
+
+            System.Threading.Thread.Sleep(200);
+            server.Update();
+            System.Threading.Thread.Sleep(200);
+            server.Update();
+
+            Console.Read();
             //new TypedServiceReference
             var endpoint = new Uri("http://localhost:7741/CategoryServiceHost.svc");
             var host = new ServiceHost(typeof(MyService), endpoint);
