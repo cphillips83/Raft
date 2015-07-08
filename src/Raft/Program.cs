@@ -161,6 +161,7 @@ namespace Raft
         private uint _nextIndex;
         private Queue<object> _outgoingMessages = new Queue<object>();
         private Queue<object> _incomingMessages = new Queue<object>();
+        private Stack<IAsyncResult> _discardRPC = new Stack<IAsyncResult>();
 
         public long NextHeartBeat { get { return _nextHeartBeat; } }
         public bool WaitingForResponse { get { return _currentRPC != null; } }
@@ -188,23 +189,23 @@ namespace Raft
         {
             if (_currentRPC != null && _currentRPC.IsCompleted)
             {
-                try
-                {
-                    var message = _currentRPC.AsyncState;
-                    if (message is VoteRequest)
-                        _incomingMessages.Enqueue(_nodeProxy.EndVoteRequest(_currentRPC));
-                }
-                catch
-                {
-                    //TODO: Track client unavailable 
-                }
+                var message = ReceiveMessage(_currentRPC);
+
+                //if null, mark client failure
+                if (message != null)
+                    _incomingMessages.Enqueue(message);
             }
 
             if (_currentRPC == null && _outgoingMessages.Count > 0)
             {
                 var message = _outgoingMessages.Dequeue();
-                if (message is VoteRequest)
-                    _currentRPC = _nodeProxy.BeginVoteRequest((VoteRequest)message, null, message);
+                SendMessage(message);
+            }
+
+            while (_discardRPC.Count > 0)
+            {
+                if (_discardRPC.Peek().IsCompleted)
+                    ReceiveMessage(_discardRPC.Pop());
             }
 
             while (_incomingMessages.Count > 0)
@@ -217,6 +218,18 @@ namespace Raft
             }
         }
 
+        public void Reset()
+        {
+            if (_currentRPC != null)
+                _discardRPC.Push(_currentRPC);
+
+            _currentRPC = null;
+            _voteGranted = false;
+            _matchIndex = 0;
+            _nextIndex = 0;
+            _nextHeartBeat = 0;
+        }
+
         public void Dispose()
         {
             if (_nodeProxy != null)
@@ -227,6 +240,27 @@ namespace Raft
             }
 
             _nodeProxy = null;
+        }
+
+        private object ReceiveMessage(IAsyncResult ar)
+        {
+            try
+            {
+                var message = _currentRPC.AsyncState;
+                if (message is VoteRequest)
+                    return _nodeProxy.EndVoteRequest(_currentRPC);
+            }
+            catch
+            {
+                //TODO: Track client unavailable 
+            }
+            return null;
+        }
+
+        private void SendMessage(object message)
+        {
+            if (message is VoteRequest)
+                _currentRPC = _nodeProxy.BeginVoteRequest((VoteRequest)message, null, message);
         }
     }
 
@@ -245,13 +279,10 @@ namespace Raft
         public virtual bool VoteReply(VoteReply reply) { return true; }
     }
 
-    public class Follower : State
-    {
-
-    }
-
     public class InitializeState : State
     {
+        public InitializeState(Server server) : base(server) { }
+
         public override void Enter()
         {
             //load persisted state
@@ -260,13 +291,15 @@ namespace Raft
         public override void Update()
         {
             _server.InitializePersistedStore();
-            _server.ChangeState(new Follower());
+            _server.ChangeState(new FollowerState(_server));
         }
     }
 
     public class FollowerState : State
     {
         private long _heatbeatTimeout = long.MaxValue;
+
+        public FollowerState(Server server) : base(server) { }
 
         public override void Enter()
         {
@@ -276,17 +309,11 @@ namespace Raft
         public override void Update()
         {
             if (_heatbeatTimeout > _server.TimeInMS)
-                _server.ChangeState(new CandidateState());
+                _server.ChangeState(new CandidateState(_server));
             else
             {
-                resetHeartbeat();
-                _server.PersistedStore.UpdateState(_server.PersistedStore.Term + 1, _server.ID);
-
-                //only request from peers that are allowed to vote
-                foreach (var client in _server.Voters)
-                    client.Reset();
-
-                Console.WriteLine("{0}: Starting new election for term {1}", _server.ID, _server.PersistedStore.Term);
+                foreach (var client in _server.Clients)
+                    client.GetHashCode();
             }
         }
 
@@ -300,11 +327,48 @@ namespace Raft
 
     public class CandidateState : State
     {
+        private long _electionTimeout = long.MaxValue;
+
+        public CandidateState(Server server) : base(server) { }
+
+        public override void Enter()
+        {
+            Console.WriteLine("{0}: Starting new election for term {1}", _server.ID, _server.PersistedStore.Term);
+
+            var timeout = _server.PersistedStore.ELECTION_TIMEOUT;
+            var randomTimeout = _server.Random.Next(timeout, timeout + timeout) / 2;
+            _electionTimeout = _server.TimeInMS + randomTimeout;
+
+            _server.PersistedStore.UpdateState(_server.PersistedStore.Term + 1, _server.ID);
+
+            //only request from peers that are allowed to vote
+            foreach (var client in _server.Voters)
+                client.Reset();
+
+            foreach (var client in _server.Voters)
+                if (!client.WaitingForResponse)
+                    client.SendRequestVote();
+        }
+
+        public override void Update()
+        {
+            if (_electionTimeout > _server.TimeInMS)
+                _server.ChangeState(new CandidateState(_server));
+            else
+            {
+                var votes = _server.Voters.Count(x => x.VoteGranted) + 1;
+                var votesNeeded = ((_server.Voters.Count() + 1) / 2) + 1;
+                if (votes >= votesNeeded)
+                    _server.ChangeState(new LeaderState(_server));
+            }
+        }
 
     }
 
     public class LeaderState : State
     {
+        public LeaderState(Server server) : base(server) { }
+
 
     }
 
@@ -324,6 +388,15 @@ namespace Raft
         public Random Random { get { return _random; } }
 
         public IEnumerable<Client> Voters
+        {
+            get
+            {
+                foreach (var client in _clients)
+                    yield return client;
+            }
+        }
+
+        public IEnumerable<Client> Clients
         {
             get
             {
