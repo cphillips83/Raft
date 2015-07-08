@@ -8,14 +8,10 @@ using Lidgren.Network;
 
 namespace Raft.Messages
 {
-    [DataContract]
     public struct VoteReply
     {
-        [DataMember]
         public int From;
-        [DataMember]
         public int Term;
-        [DataMember]
         public bool Granted;
 
         public override string ToString()

@@ -160,7 +160,7 @@ namespace Raft
         public int ID { get { return _id; } }
         public long NextHeartBeat { get { return _nextHeartBeat; } set { _nextHeartBeat = value; } }
         //public bool WaitingForResponse { get { return _currentRPC != null; } }
-        public uint MatchIndex { get { return _matchIndex; } }
+        public uint MatchIndex { get { return _matchIndex; } set { _matchIndex = value; } }
         public uint NextIndex { get { return _nextIndex; } set { _nextIndex = value; } }
         public bool VoteGranted { get { return _voteGranted; } set { _voteGranted = value; } }
         public long RpcDue { get { return _rpcDue; } set { _rpcDue = long.MaxValue; } }
@@ -310,7 +310,7 @@ namespace Raft
 
             var message = new AppendEntriesRequest()
             {
-                From = _id,
+                From = _server.ID,
                 Term = _persistedState.Term,
                 PrevIndex = prevIndex,
                 PrevTerm = _persistedState.GetTerm(prevIndex),
@@ -321,10 +321,27 @@ namespace Raft
             var netMsg = _server.IO.CreateMessage();
             AppendEntriesRequest.Write(message, netMsg);
             _server.IO.SendUnconnectedMessage(netMsg, _endPoint);
-         
+
             _rpcDue = _server.TimeInMS + RPC_TIMEOUT;
         }
 
+        public void SendAppendEntriesReply(uint matchIndex, bool success)
+        {
+            var _persistedState = _server.PersistedStore;
+            var message = new AppendEntriesReply()
+            {
+                From = _server.ID,
+                Term = _persistedState.Term,
+                MatchIndex = matchIndex,
+                Success = success
+            };
+
+            var netMsg = _server.IO.CreateMessage();
+            AppendEntriesReply.Write(message, netMsg);
+            _server.IO.SendUnconnectedMessage(netMsg, _endPoint);
+
+            _rpcDue = _server.TimeInMS + RPC_TIMEOUT;
+        }
 
         public void Update()
         {
@@ -413,7 +430,7 @@ namespace Raft
         public abstract bool VoteReply(Client client, VoteReply reply);
 
         public abstract bool AppendEntriesRequest(Client client, AppendEntriesRequest request);
-
+        public abstract bool AppendEntriesReply(Client client, AppendEntriesReply reply);
     }
 
     public class StoppedState : State
@@ -430,6 +447,11 @@ namespace Raft
         }
 
         public override bool AppendEntriesRequest(Client client, AppendEntriesRequest request)
+        {
+            return true;
+        }
+
+        public override bool AppendEntriesReply(Client client, AppendEntriesReply reply)
         {
             return true;
         }
@@ -509,7 +531,51 @@ namespace Raft
                 _persistedState.Term = request.Term;
 
             //Console.WriteLine("heatbeat");
-            resetHeartbeat();
+
+            var success = false;
+            var matchIndex = 0u;
+
+            if (_persistedState.Term == request.Term)
+            {
+                resetHeartbeat();
+
+                if (request.PrevIndex == 0 ||
+                    (request.PrevIndex <= _persistedState.Length && _persistedState.GetTerm(request.PrevIndex) == request.PrevTerm))
+                {
+                    success = true;
+
+                    var index = request.PrevIndex;
+                    for (var i = 0; request.Entries != null && i < request.Entries.Length; i++)
+                    {
+                        index++;
+                        if (_persistedState.GetTerm(index) != request.Entries[i].Index.Term)
+                        {
+                            while (_persistedState.Length > index - 1)
+                            {
+                                Console.WriteLine("{0}: Rolling back log {1}", _server.ID, _persistedState.Length - 1);
+                                _persistedState.Pop();
+                            }
+
+                            //Console.WriteLine("{0}: Writing log value {1}", _id, request.Entries[i].Offset);
+                            _persistedState.Push(request.Entries[i]);
+                        }
+                    }
+
+                    matchIndex = index;
+                    _server.CommitIndex2(Math.Max(_server.CommitIndex, request.CommitIndex));
+                }
+            }
+
+            client.SendAppendEntriesReply(matchIndex, success);
+            return true;
+        }
+
+        public override bool AppendEntriesReply(Client client, AppendEntriesReply reply)
+        {
+            var _persistedState = _server.PersistedStore;
+            if (_persistedState.Term < reply.Term)
+                _persistedState.Term = reply.Term;
+
             return true;
         }
     }
@@ -577,7 +643,17 @@ namespace Raft
 
         public override bool AppendEntriesRequest(Client client, AppendEntriesRequest request)
         {
-            if (StepDown(request.Term))
+            var _persistedState = _server.PersistedStore;
+            if (_persistedState.Term < request.Term)
+                _persistedState.Term = request.Term;
+
+            _server.ChangeState(new FollowerState(_server));
+            return false; ;
+        }
+
+        public override bool AppendEntriesReply(Client client, AppendEntriesReply reply)
+        {
+            if (StepDown(reply.Term))
                 return true;
 
             return true;
@@ -601,6 +677,20 @@ namespace Raft
 
         public override void Update()
         {
+            var _clients = _server._clients;
+            var _persistedStore = _server.PersistedStore;
+
+            var matchIndexes = new uint[_clients.Count + 1];
+            matchIndexes[matchIndexes.Length - 1] = _persistedStore.Length;
+            for (var i = 0; i < _clients.Count; i++)
+                matchIndexes[i] = _clients[i].MatchIndex;
+
+            Array.Sort(matchIndexes);
+
+            var n = matchIndexes[_clients.Count / 2];
+            if (_persistedStore.GetTerm(n) == _persistedStore.Term)
+                _server.CommitIndex2(Math.Max(_server.CommitIndex, n));
+
             foreach (var client in _server.Clients)
             {
                 if (client.NextHeartBeat <= _server.TimeInMS ||
@@ -628,9 +718,29 @@ namespace Raft
 
         public override bool AppendEntriesRequest(Client client, AppendEntriesRequest request)
         {
-            if (StepDown(request.Term))
+            var _persistedState = _server.PersistedStore;
+            if (_persistedState.Term < request.Term)
+                _persistedState.Term = request.Term;
+
+            _server.ChangeState(new FollowerState(_server));
+            return false;
+        }
+
+        public override bool AppendEntriesReply(Client client, AppendEntriesReply reply)
+        {
+            if (StepDown(reply.Term))
                 return true;
 
+            if (reply.Success)
+            {
+                client.MatchIndex = Math.Max(client.MatchIndex, reply.MatchIndex);
+                client.NextIndex = reply.MatchIndex + 1;
+            }
+            else
+            {
+                client.NextIndex = Math.Max(1, client.NextIndex - 1);
+            }
+            client.RpcDue = 0;
             return true;
         }
     }
@@ -780,6 +890,15 @@ namespace Raft
                                         _currentState.AppendEntriesRequest(client, appendEntriesRequest);
                                 }
                                 break;
+                            case MessageTypes.AppendEntriesReply:
+                                {
+                                    var appendEntriesReply = Messages.AppendEntriesReply.Read(msg);
+                                    var client = _clients.FirstOrDefault(x => x.ID == appendEntriesReply.From);
+
+                                    if (!_currentState.AppendEntriesReply(client, appendEntriesReply))
+                                        _currentState.AppendEntriesReply(client, appendEntriesReply);
+                                }
+                                break;
                         }
                         break;
                     case NetIncomingMessageType.DebugMessage:
@@ -804,6 +923,39 @@ namespace Raft
         public void Dispose()
         {
 
+        }
+
+        public bool CommitIndex2(uint newCommitIndex)
+        {
+            if (newCommitIndex != _commitIndex)
+            {
+                Console.WriteLine("{0}: Advancing commit index from {1} to {2}", _id, _commitIndex, newCommitIndex);
+                _commitIndex = newCommitIndex;
+                //for (var i = _commitIndex; i < newCommitIndex; i++)
+                //{
+                //    if (i == _stateMachine.LastCommitApplied)
+                //    {
+                //        LogIndex index;
+                //        if (!_persistedState.GetIndex(i + 1, out index))
+                //            return false;
+
+                //        if (index.Type == LogIndexType.StateMachine)
+                //        {
+                //            using (var br = new BinaryReader(new MemoryStream(_persistedState.GetData(index))))
+                //            {
+                //                var name = br.ReadString();
+                //                _stateMachine.Apply(name, i + 1);
+                //            }
+                //        }
+                //        _commitIndex++;
+                //    }
+                //    // make commit index 
+                //    _commitIndex++;
+                //}
+                return true;
+            }
+
+            return false;
         }
 
         public void VoteRequest(VoteRequest request)
@@ -871,6 +1023,15 @@ namespace Raft
                 s1.Update();
                 s2.Update();
                 System.Threading.Thread.Sleep(0);
+
+                var leader = s1.CurrentState is LeaderState ? s1 : s2;
+
+                if (leader.CurrentState is LeaderState && (leader.RawTimeInMS % 1000) == 0)
+                {
+                    Console.WriteLine("create");
+                    leader.PersistedStore.Create(new byte[] { (byte)leader.ID });
+                    System.Threading.Thread.Sleep(5);
+                }
             }
 
 
