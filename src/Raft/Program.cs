@@ -33,14 +33,56 @@ namespace Raft
      */
 
 
+    public static class Helper
+    {
+        public static int id;
+
+        public static Server CreateServer()
+        {
+            var sid = ++id;
+            var port = sid + 7000;
+
+            return new Server(new Configuration(sid, IPAddress.Loopback, port));
+        }
+
+    }
+
     class Program
     {
+        public static void NodeGrantsVoteWithLongerLogOlderTerm()
+        {
+            using (var s1 = Helper.CreateServer())
+            using (var s2 = Helper.CreateServer())
+            {
+                var transport = new MemoryTransport();
+
+                s1.Initialize(new MemoryLog(), transport, s2.Config);
+                s2.Initialize(new MemoryLog(), transport, s1.Config);
+
+                s1.PersistedStore.Term = 1;
+                s2.PersistedStore.Term = 1;
+
+                s1.PersistedStore.Create(new[] { (byte)s1.ID });
+                s1.PersistedStore.Term = 2;
+                s1.PersistedStore.Create(new[] { (byte)s1.ID });
+                
+                s2.PersistedStore.Create(new[] { (byte)s1.ID });
+                s2.PersistedStore.Create(new[] { (byte)s2.ID });
+
+                s1.ChangeState(new CandidateState(s1)); // will push s1 to term 2
+
+
+                s2.Advance();
+
+                s1.Advance();
+
+            }
+        }
+
         static void Main(string[] args)
         {
-            var dataDir = System.IO.Path.Combine(System.Environment.CurrentDirectory, "server");
-            if (System.IO.Directory.Exists(dataDir))
-                System.IO.Directory.Delete(dataDir, true);
-
+            NodeGrantsVoteWithLongerLogOlderTerm();
+            Console.Read();
 
             var s1 = new Server(new Configuration(1, IPAddress.Loopback, 7741));
             var s2 = new Server(new Configuration(2, IPAddress.Loopback, 7742));

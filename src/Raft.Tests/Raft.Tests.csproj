@@ -57,7 +57,8 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
-    <Compile Include="Basic.cs" />
+    <Compile Include="Helper.cs" />
+    <Compile Include="Unit\BasicNodeTest.cs" />
     <Compile Include="Election.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
