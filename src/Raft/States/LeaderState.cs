@@ -27,13 +27,13 @@ namespace Raft.States
             _server.AdvanceCommits(); 
         }
 
-        public override bool VoteReply(Client client, VoteReply reply)
+        protected override bool VoteReply(Client client, VoteReply reply)
         {
             StepDown(reply.Term);
             return true;
         }
 
-        public override bool VoteRequest(Client client, VoteRequest request)
+        protected override bool VoteRequest(Client client, VoteRequest request)
         {
             if (StepDown(request.Term))
                 return false;
@@ -42,7 +42,7 @@ namespace Raft.States
             return true;
         }
 
-        public override bool AppendEntriesRequest(Client client, AppendEntriesRequest request)
+        protected override bool AppendEntriesRequest(Client client, AppendEntriesRequest request)
         {
             var _persistedState = _server.PersistedStore;
             if (_persistedState.Term < request.Term)
@@ -52,7 +52,7 @@ namespace Raft.States
             return false;
         }
 
-        public override bool AppendEntriesReply(Client client, AppendEntriesReply reply)
+        protected override bool AppendEntriesReply(Client client, AppendEntriesReply reply)
         {
             if (StepDown(reply.Term))
                 return true;

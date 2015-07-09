@@ -69,7 +69,6 @@
     <Compile Include="Enums.cs" />
     <Compile Include="Messages\AppendEntriesReply.cs" />
     <Compile Include="Messages\AppendEntriesRequest.cs" />
-    <Compile Include="Messages\MessageTypes.cs" />
     <Compile Include="Messages\VoteReply.cs" />
     <Compile Include="Messages\VoteRequest.cs" />
     <Compile Include="Server.cs" />
@@ -86,6 +85,9 @@
     <Compile Include="States\LeaderState.cs" />
     <Compile Include="States\StoppedState.cs" />
     <Compile Include="OLD\WCFStuff.cs" />
+    <Compile Include="Transports\AbstractTransport.cs" />
+    <Compile Include="Transports\LidgrenTransport.cs" />
+    <Compile Include="Transports\ITransport.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

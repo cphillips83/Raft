@@ -23,6 +23,7 @@ namespace Raft
 
         public int ID { get { return _id; } }
         public Configuration Config { get { return _config; } }
+        public IPEndPoint EndPoint { get { return _endPoint; } }
         public long NextHeartBeat { get { return _nextHeartBeat; } set { _nextHeartBeat = value; } }
         public uint MatchIndex { get { return _matchIndex; } set { _matchIndex = value; } }
         public uint NextIndex { get { return _nextIndex; } set { _nextIndex = value; } }
@@ -51,10 +52,7 @@ namespace Raft
                 LogLength = lastLogIndex
             };
 
-            var netMsg = _server.IO.CreateMessage();
-            VoteRequest.Write(message, netMsg);
-            _server.IO.SendUnconnectedMessage(netMsg, _endPoint);
-            
+            _server.Transport.SendMessage(this, message);
             _rpcDue = _server.Tick + _server.PersistedStore.RPC_TIMEOUT;
         }
 
@@ -66,9 +64,7 @@ namespace Raft
                 Term = _server.PersistedStore.Term,
                 Granted = granted
             };
-            var netMsg = _server.IO.CreateMessage();
-            VoteReply.Write(message, netMsg);
-            _server.IO.SendUnconnectedMessage(netMsg, _endPoint);
+            _server.Transport.SendMessage(this, message);
         }
 
         public void SendAppendEntriesRequest()
@@ -97,10 +93,7 @@ namespace Raft
                 CommitIndex = Math.Min(_server.CommitIndex, lastIndex)
             };
 
-            var netMsg = _server.IO.CreateMessage();
-            AppendEntriesRequest.Write(message, netMsg);
-            _server.IO.SendUnconnectedMessage(netMsg, _endPoint);
-
+            _server.Transport.SendMessage(this, message);
             _rpcDue = _server.Tick + _server.PersistedStore.RPC_TIMEOUT;
         }
 
@@ -115,9 +108,7 @@ namespace Raft
                 Success = success
             };
 
-            var netMsg = _server.IO.CreateMessage();
-            AppendEntriesReply.Write(message, netMsg);
-            _server.IO.SendUnconnectedMessage(netMsg, _endPoint);
+            _server.Transport.SendMessage(this, message);
         }
 
         public void Update()

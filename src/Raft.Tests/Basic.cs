@@ -1,78 +1,102 @@
-﻿//using System;
-//using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using System;
+using System.Linq;
+using System.Net;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Raft.Logs;
+using Raft.States;
+using Raft.Transports;
 
-//namespace Raft.Tests
-//{
-//    public static class Helper
-//    {
-//        public static int id;
+namespace Raft.Tests
+{
+    public static class Helper
+    {
+        public static int id;
 
-//        public static Server CreateServer()
-//        {
-//            var sid = ++id;
-//            var dataDir = System.IO.Path.Combine(System.Environment.CurrentDirectory, "server\\" + sid);
-//            if (System.IO.Directory.Exists(dataDir))
-//                System.IO.Directory.Delete(dataDir, true);
+        public static Server CreateServer()
+        {
+            var sid = ++id;
+            var port = sid + 7000;
 
-//            return new Server(sid, dataDir);
-//        }
-//    }
+            return new Server(new Configuration(sid, IPAddress.Loopback, port));
+        }
+    }
 
-//    [TestClass]
-//    public class Test
-//    {
-//        [TestMethod]
-//        public void AppendLogEntries()
-//        {
-//            using (var server = Helper.CreateServer())
-//            {
+    [TestClass]
+    public class Test
+    {
+        //[TestMethod]
+        //public void AppendLogEntries()
+        //{
+        //    using (var server = Helper.CreateServer())
+        //    {
 
-//            }
-//        }
+        //    }
+        //}
 
-//        [TestMethod]
-//        public void StartsAsFollower()
-//        {
-//            using (var server = Helper.CreateServer())
-//            {
-//                server.Initialize();
+        [TestMethod]
+        public void IsFollower()
+        {
+            using (var server = Helper.CreateServer())
+            {
+                server.Initialize(new MemoryLog(), new LidgrenTransport());
+                server.Advance(1);
 
-//                //System.Threading.Thread.Sleep(200);
-//                //server.Update();
+                Assert.AreEqual(typeof(FollowerState), server.CurrentState.GetType());
+            }
+        }
 
-//                Assert.IsTrue(server.CurrentState is FollowerState);
-//            }
-//        }
+        [TestMethod]
+        public void IsCandidate()
+        {
+            using (var server = Helper.CreateServer())
+            {
+                server.Initialize(new MemoryLog(), new LidgrenTransport());
+                var ticks = server.PersistedStore.ELECTION_TIMEOUT;
+                while (ticks-- > 0 && server.CurrentState is FollowerState)
+                    server.Advance();
 
-//        [TestMethod]
-//        public void ConvertsToCandidate()
-//        {
-//            using (var server = Helper.CreateServer())
-//            {
-//                server.Initialize();
+                Assert.AreEqual(typeof(CandidateState), server.CurrentState.GetType());
+            }
+        }
 
-//                System.Threading.Thread.Sleep(200);
-//                server.Update();
+        [TestMethod]
+        public void IsLeader()
+        {
+            using (var server = Helper.CreateServer())
+            {
+                server.Initialize(new MemoryLog(), new LidgrenTransport());
+                server.Advance(server.PersistedStore.ELECTION_TIMEOUT);
+                server.Advance(server.PersistedStore.ELECTION_TIMEOUT);
 
-//                Assert.IsTrue(server.CurrentState is CandidateState);
-//            }
-//        }
+                Assert.AreEqual(typeof(LeaderState), server.CurrentState.GetType());
+            }
+        }
 
-//        [TestMethod]
-//        public void BecomesLeader()
-//        {
-//            using (var server = Helper.CreateServer())
-//            {
-//                server.Initialize();
+        [TestMethod]
+        public void NodeGrantsVote()
+        {
+            using (var s1 = Helper.CreateServer())
+            using (var s2 = Helper.CreateServer())
+            {
+                s1.Initialize(new MemoryLog(), new LidgrenTransport(), s2.Config);
+                s2.Initialize(new MemoryLog(), new LidgrenTransport(), s1.Config);
 
-//                System.Threading.Thread.Sleep(200);
-//                server.Update();
-//                System.Threading.Thread.Sleep(200);
-//                server.Update();
+                s1.ChangeState(new CandidateState(s1));
 
-//                Assert.IsTrue(server.CurrentState is LeaderState);
-//            }
-//        }
-//    }
+                s1.Advance();
+                System.Threading.Thread.Sleep(50);
 
-//}
+                s2.Advance();
+                System.Threading.Thread.Sleep(50);
+
+                s1.Advance();
+                //System.Threading.Thread.Sleep(10);
+
+                Assert.AreEqual(s2.PersistedStore.VotedFor, s1.ID);
+                Assert.AreEqual(s1.Clients.First().VoteGranted, true);
+            }
+
+        }
+    }
+
+}

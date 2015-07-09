@@ -10,22 +10,22 @@ namespace Raft.States
     public class StoppedState : AbstractState
     {
         public StoppedState(Server _server) : base(_server) { }
-        public override bool VoteReply(Client client, VoteReply reply)
+        protected override bool VoteReply(Client client, VoteReply reply)
         {
             return true;
         }
 
-        public override bool VoteRequest(Client client, VoteRequest request)
+        protected override bool VoteRequest(Client client, VoteRequest request)
         {
             return true;
         }
 
-        public override bool AppendEntriesRequest(Client client, AppendEntriesRequest request)
+        protected override bool AppendEntriesRequest(Client client, AppendEntriesRequest request)
         {
             return true;
         }
 
-        public override bool AppendEntriesReply(Client client, AppendEntriesReply reply)
+        protected override bool AppendEntriesReply(Client client, AppendEntriesReply reply)
         {
             return true;
         }

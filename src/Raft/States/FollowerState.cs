@@ -31,7 +31,7 @@ namespace Raft.States
             _heatbeatTimeout = _server.Tick + randomTimeout;
         }
 
-        public override bool VoteRequest(Client client, VoteRequest request)
+        protected override bool VoteRequest(Client client, VoteRequest request)
         {
             var _persistedState = _server.PersistedStore;
             if (_persistedState.Term < request.Term)
@@ -68,13 +68,13 @@ namespace Raft.States
             return true;
         }
 
-        public override bool VoteReply(Client client, VoteReply reply)
+        protected override bool VoteReply(Client client, VoteReply reply)
         {
             //we aren't looking for votes, ignore
             return true;
         }
 
-        public override bool AppendEntriesRequest(Client client, AppendEntriesRequest request)
+        protected override bool AppendEntriesRequest(Client client, AppendEntriesRequest request)
         {
             var _persistedState = _server.PersistedStore;
             if (_persistedState.Term < request.Term)
@@ -120,7 +120,7 @@ namespace Raft.States
             return true;
         }
 
-        public override bool AppendEntriesReply(Client client, AppendEntriesReply reply)
+        protected override bool AppendEntriesReply(Client client, AppendEntriesReply reply)
         {
             var _persistedState = _server.PersistedStore;
             if (_persistedState.Term < reply.Term)

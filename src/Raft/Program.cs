@@ -15,6 +15,7 @@ using Lidgren.Network;
 using Raft.Logs;
 using Raft.Messages;
 using Raft.States;
+using Raft.Transports;
 
 namespace Raft
 {
@@ -44,8 +45,8 @@ namespace Raft
             var s1 = new Server(new Configuration(1, IPAddress.Loopback, 7741));
             var s2 = new Server(new Configuration(2, IPAddress.Loopback, 7742));
 
-            s1.Initialize(new MemoryLog(), s2.Config);
-            s2.Initialize(new MemoryLog(), s1.Config);
+            s1.Initialize(new MemoryLog(), new LidgrenTransport(), s2.Config);
+            s2.Initialize(new MemoryLog(), new LidgrenTransport(), s1.Config);
 
             while (true)
             {

@@ -7,6 +7,7 @@ using Lidgren.Network;
 using Raft.Logs;
 using Raft.Messages;
 using Raft.States;
+using Raft.Transports;
 
 namespace Raft
 {
@@ -15,13 +16,15 @@ namespace Raft
     {
         private static object _syncLock = new object();
 
-        private NetPeer _rpc;
+        //private NetPeer _rpc;
+
         private int _id;
         private uint _commitIndex = 0;
         private Random _random;
         //private Stopwatch _timer;
         private Configuration _config;
         private Log _persistedStore;
+        private ITransport _transport;
         private List<Client> _clients = new List<Client>();
         private AbstractState _currentState;
         private long _tick = 0;
@@ -33,7 +36,8 @@ namespace Raft
         //public long RawTimeInMS { get { return _timer.ElapsedMilliseconds; } }
         public Configuration Config { get { return _config; } }
 
-        public NetPeer IO { get { return _rpc; } }
+        public ITransport Transport { get { return _transport; } }
+        //public NetPeer IO { get { return _rpc; } }
 
         public Log PersistedStore { get { return _persistedStore; } }
 
@@ -68,7 +72,12 @@ namespace Raft
             _currentState = new StoppedState(this);
         }
 
-        public void Initialize(Log log, params Configuration[] clients)
+        public Client GetClient(int id)
+        {
+            return _clients.First(x => x.ID == id);
+        }
+
+        public void Initialize(Log log, ITransport transport, params Configuration[] clients)
         {
             if (_persistedStore == null)
             {
@@ -100,13 +109,9 @@ namespace Raft
                 //});
 
                 //host.Open();
+                _transport = transport;
+                transport.Start(_config);
 
-                NetPeerConfiguration config = new NetPeerConfiguration("masterserver");
-                config.SetMessageTypeEnabled(NetIncomingMessageType.UnconnectedData, true);
-                config.Port = _config.Port;
-
-                _rpc = new NetPeer(config);
-                _rpc.Start();
             }
 
         }
@@ -147,7 +152,8 @@ namespace Raft
 
         public void Process()
         {
-            processNetworkIO();
+            _transport.Process(this);
+
             foreach (var client in Clients)
                 client.Update();
 
@@ -174,10 +180,17 @@ namespace Raft
 
         public void Dispose()
         {
-            if (_rpc != null)
-                _rpc.Shutdown(string.Empty);
+            if (_transport != null)
+                _transport.Shutdown();
 
-            _rpc = null;
+            if (_persistedStore != null)
+                _persistedStore.Dispose();
+
+            _clients.Clear();
+
+            _transport = null;
+            _persistedStore = null;
+            _currentState = null;
         }
 
         public bool CommitIndex2(uint newCommitIndex)
@@ -211,65 +224,6 @@ namespace Raft
             }
 
             return false;
-        }
-
-        private void processNetworkIO()
-        {
-            NetIncomingMessage msg;
-            while ((msg = _rpc.ReadMessage()) != null)
-            {
-                switch (msg.MessageType)
-                {
-                    case NetIncomingMessageType.UnconnectedData:
-                        switch ((MessageTypes)msg.ReadByte())
-                        {
-                            case MessageTypes.VoteRequest:
-                                {
-                                    var voteRequest = Messages.VoteRequest.Read(msg);
-                                    var client = _clients.FirstOrDefault(x => x.ID == voteRequest.From);
-
-                                    if (!_currentState.VoteRequest(client, voteRequest))
-                                        _currentState.VoteRequest(client, voteRequest);
-                                }
-                                break;
-                            case MessageTypes.VoteReply:
-                                {
-                                    var voteReply = Messages.VoteReply.Read(msg);
-                                    var client = _clients.FirstOrDefault(x => x.ID == voteReply.From);
-
-                                    if (!_currentState.VoteReply(client, voteReply))
-                                        _currentState.VoteReply(client, voteReply);
-                                }
-                                break;
-                            case MessageTypes.AppendEntriesRequest:
-                                {
-                                    var appendEntriesRequest = Messages.AppendEntriesRequest.Read(msg);
-                                    var client = _clients.FirstOrDefault(x => x.ID == appendEntriesRequest.From);
-
-                                    if (!_currentState.AppendEntriesRequest(client, appendEntriesRequest))
-                                        _currentState.AppendEntriesRequest(client, appendEntriesRequest);
-                                }
-                                break;
-                            case MessageTypes.AppendEntriesReply:
-                                {
-                                    var appendEntriesReply = Messages.AppendEntriesReply.Read(msg);
-                                    var client = _clients.FirstOrDefault(x => x.ID == appendEntriesReply.From);
-
-                                    if (!_currentState.AppendEntriesReply(client, appendEntriesReply))
-                                        _currentState.AppendEntriesReply(client, appendEntriesReply);
-                                }
-                                break;
-                        }
-                        break;
-                    case NetIncomingMessageType.DebugMessage:
-                    case NetIncomingMessageType.VerboseDebugMessage:
-                    case NetIncomingMessageType.WarningMessage:
-                    case NetIncomingMessageType.ErrorMessage:
-                        // print diagnostics message
-                        Console.WriteLine(msg.ReadString());
-                        break;
-                }
-            }
         }
     }
 
