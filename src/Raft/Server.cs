@@ -20,9 +20,8 @@ namespace Raft
         private uint _commitIndex = 0;
         private Random _random;
         //private Stopwatch _timer;
-        private string _dataDir;
         private INodeSettings _nodeSettings;
-        private PersistedStore _persistedStore;
+        private Log _persistedStore;
         public List<Client> _clients = new List<Client>();
         private AbstractState _currentState;
         private long _tick = 0;
@@ -36,7 +35,7 @@ namespace Raft
 
         public NetPeer IO { get { return _rpc; } }
 
-        public PersistedStore PersistedStore { get { return _persistedStore; } }
+        public Log PersistedStore { get { return _persistedStore; } }
 
         public Random Random { get { return _random; } }
 
@@ -73,7 +72,7 @@ namespace Raft
         {
             if (_persistedStore == null)
             {
-                _persistedStore = new PersistedStore(this);
+                _persistedStore = new Log(this);
                 _persistedStore.Initialize();
 
                 //_timer = Stopwatch.StartNew();

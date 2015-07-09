@@ -39,7 +39,7 @@ namespace Raft
         public byte[] Data;
     }
 
-    public class PersistedStore : IDisposable
+    public class Log : IDisposable
     {
         public int RPC_TIMEOUT = 50;
         public int ELECTION_TIMEOUT = 100;
@@ -108,7 +108,7 @@ namespace Raft
             }
         }
 
-        public PersistedStore(Server server)
+        public Log(Server server)
         {
             _peers = new List<Peer>();
             _server = server;

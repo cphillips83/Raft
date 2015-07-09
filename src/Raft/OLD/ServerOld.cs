@@ -29,7 +29,7 @@ namespace Raft
         #endregion
 
         protected StateMachine _stateMachine;
-        protected PersistedStore _persistedState;
+        protected Log _persistedState;
         protected Random _random;
         protected int _id;
         protected ServerState _state;
@@ -405,7 +405,7 @@ namespace Raft
         {
             if (_persistedState == null)
             {
-                _persistedState = new PersistedStore(null);
+                _persistedState = new Log(null);
                 _persistedState.Initialize();
             }
 
