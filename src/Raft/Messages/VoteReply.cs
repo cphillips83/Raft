@@ -10,7 +10,7 @@ namespace Raft.Messages
 {
     public struct VoteReply
     {
-        public int From;
+        public string From;
         public int Term;
         public bool Granted;
 

@@ -10,7 +10,7 @@ namespace Raft.Messages
 {
     public struct AppendEntriesReply
     {
-        public int From;
+        public string From;
         public int Term;
         public uint MatchIndex;
         public bool Success;

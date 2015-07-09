@@ -18,7 +18,7 @@ namespace Raft
 
         //private NetPeer _rpc;
 
-        private int _id;
+        private string _id;
         private uint _commitIndex = 0;
         private Random _random;
         //private Stopwatch _timer;
@@ -29,7 +29,7 @@ namespace Raft
         private AbstractState _currentState;
         private long _tick = 0;
 
-        public int ID { get { return _id; } }
+        public string ID { get { return _id; } }
         public uint CommitIndex { get { return _commitIndex; } set { _commitIndex = value; } }
 
         public long Tick { get { return _tick; } }
@@ -69,12 +69,12 @@ namespace Raft
         {
             _config = config;
             _id = config.ID;
-            _random = new Random((int)DateTime.UtcNow.Ticks ^ _id);
+            _random = new Random((int)DateTime.UtcNow.Ticks ^ _id.GetHashCode());
             //_dataDir = dataDir;
             _currentState = new StoppedState(this);
         }
 
-        public Client GetClient(int id)
+        public Client GetClient(string id)
         {
             return _clients.First(x => x.ID == id);
         }

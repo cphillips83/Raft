@@ -11,7 +11,7 @@ namespace Raft.Messages
 {
     public struct AppendEntriesRequest
     {
-        public int From;
+        public string From;
         public int Term;
         public int PrevTerm;
         public uint PrevIndex;

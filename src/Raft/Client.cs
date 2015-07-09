@@ -11,7 +11,7 @@ namespace Raft
 {
     public class Client 
     {
-        private int _id;
+        private string _id;
         private Configuration _config;
         private IPEndPoint _endPoint;
         private Server _server;
@@ -21,7 +21,7 @@ namespace Raft
         private uint _nextIndex;
         private long _rpcDue;
 
-        public int ID { get { return _id; } }
+        public string ID { get { return _id; } }
         public Configuration Config { get { return _config; } }
         public IPEndPoint EndPoint { get { return _endPoint; } }
         public long NextHeartBeat { get { return _nextHeartBeat; } set { _nextHeartBeat = value; } }

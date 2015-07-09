@@ -8,6 +8,6 @@
 //{
 //    public struct AddServerRequest
 //    {
-//        public int From;
+//        public string From;
 //    }
 //}

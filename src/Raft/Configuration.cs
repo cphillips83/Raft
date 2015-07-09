@@ -8,18 +8,19 @@ using System.Threading.Tasks;
 
 namespace Raft
 {
-    public class Configuration 
+    public class Configuration
     {
-        private int _id, _port;
+        private string _id;
+        private int _port;
         private IPAddress _ip;
 
-        public int ID { get { return _id; } }
+        public string ID { get { return _id; } }
 
         public IPAddress IP { get { return _ip; } }
 
         public int Port { get { return _port; } }
 
-        public Configuration(int serverID, IPAddress ip, int port)
+        public Configuration(string serverID, IPAddress ip, int port)
         {
             _id = serverID;
             _ip = ip;

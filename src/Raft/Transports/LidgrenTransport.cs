@@ -124,7 +124,7 @@ namespace Raft.Transports
                             case MessageTypes.VoteRequest:
                                 {
                                     var incomingMessage = new VoteRequest();
-                                    incomingMessage.From = msg.ReadInt32();
+                                    incomingMessage.From = msg.ReadString();
                                     incomingMessage.Term = msg.ReadInt32();
                                     incomingMessage.LastTerm = msg.ReadInt32();
                                     incomingMessage.LogLength = msg.ReadUInt32();
@@ -135,7 +135,7 @@ namespace Raft.Transports
                             case MessageTypes.VoteReply:
                                 {
                                     var incomingMessage = new VoteReply();
-                                    incomingMessage.From = msg.ReadInt32();
+                                    incomingMessage.From = msg.ReadString();
                                     incomingMessage.Term = msg.ReadInt32();
                                     incomingMessage.Granted = msg.ReadBoolean();
 
@@ -145,7 +145,7 @@ namespace Raft.Transports
                             case MessageTypes.AppendEntriesRequest:
                                 {
                                     var incomingMessage = new AppendEntriesRequest();
-                                    incomingMessage.From = msg.ReadInt32();
+                                    incomingMessage.From = msg.ReadString();
                                     incomingMessage.Term = msg.ReadInt32();
                                     incomingMessage.PrevTerm = msg.ReadInt32();
                                     incomingMessage.PrevIndex = msg.ReadUInt32();
@@ -180,7 +180,7 @@ namespace Raft.Transports
                             case MessageTypes.AppendEntriesReply:
                                 {
                                     var incomingMessage = new AppendEntriesReply();
-                                    incomingMessage.From = msg.ReadInt32();
+                                    incomingMessage.From = msg.ReadString();
                                     incomingMessage.Term = msg.ReadInt32();
                                     incomingMessage.MatchIndex = msg.ReadUInt32();
                                     incomingMessage.Success = msg.ReadBoolean();

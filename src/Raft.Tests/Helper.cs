@@ -18,7 +18,7 @@ namespace Raft.Tests
             var sid = ++id;
             var port = sid + 7000;
 
-            return new Server(new Configuration(sid, IPAddress.Loopback, port));
+            return new Server(new Configuration(sid.ToString(), IPAddress.Loopback, port));
         }
 
 

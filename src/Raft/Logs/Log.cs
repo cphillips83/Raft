@@ -23,7 +23,7 @@ namespace Raft.Logs
         private uint _appliedIndex;
 
         // who we last voted for
-        private int? _votedFor;
+        private string _votedFor;
 
         private Stream _indexStream, _logDataFile;
         private BinaryWriter _logIndexWriter;
@@ -48,7 +48,7 @@ namespace Raft.Logs
             }
         }
 
-        public int? VotedFor
+        public string VotedFor
         {
             get { return _votedFor; }
             set
@@ -58,9 +58,6 @@ namespace Raft.Logs
             }
         }
 
-        //public string DataDirectory { get { return _dataDir; } }
-        //public string IndexFile { get { return _indexFilePath; } }
-        //public string DataFile { get { return _dataFilePath; } }
         public uint Length { get { return _logLength; } }
 
         public uint DataPosition
@@ -77,13 +74,6 @@ namespace Raft.Logs
 
         protected Log()
         {
-            //_peers = new List<Peer>();
-            //_server = server;
-            //_nodeSettings = nodeSettings;
-
-            //_dataDir = dataDir;
-            //_indexFilePath = System.IO.Path.Combine(dataDir, "index");
-            //_dataFilePath = System.IO.Path.Combine(dataDir, "data");
         }
 
         protected abstract Stream OpenIndexFile();
@@ -97,14 +87,16 @@ namespace Raft.Logs
 
             //read term and last vote
             _currentTerm = br.ReadInt32();
-            _votedFor = br.ReadBoolean() ? (int?)br.ReadInt32() : null;
+
+            _votedFor = br.ReadBoolean() ? br.ReadString() : null;
+
             _appliedIndex = br.ReadUInt32();
 
             // peers
             var peerCount = br.ReadInt32();
             for (var i = 0; i < peerCount; i++)
             {
-                var id = br.ReadInt32();
+                var id = br.ReadString();
                 var addrBytesLen = br.ReadInt32();
                 var addrBytes = br.ReadBytes(addrBytesLen);
                 var port = br.ReadInt32();
@@ -155,10 +147,16 @@ namespace Raft.Logs
             _logIndexWriter.Write(_currentTerm);
 
             // did we vote?
-            _logIndexWriter.Write(_votedFor.HasValue);
+            if (string.IsNullOrEmpty(_votedFor))
+                _logIndexWriter.Write(false);
+            else
+            {
+                _logIndexWriter.Write(true);
 
-            // who did we vote for
-            _logIndexWriter.Write(_votedFor.HasValue ? _votedFor.Value : -1);
+                // who did we vote for
+                _logIndexWriter.Write(_votedFor);
+
+            }
 
             // last applied index
             _logIndexWriter.Write(_appliedIndex);
@@ -218,7 +216,7 @@ namespace Raft.Logs
 
         }
 
-        public void UpdateState(int term, int? votedFor)
+        public void UpdateState(int term, string votedFor)
         {
             _currentTerm = term;
             _votedFor = votedFor;

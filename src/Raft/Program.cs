@@ -42,7 +42,7 @@ namespace Raft
             var sid = ++id;
             var port = sid + 7000;
 
-            return new Server(new Configuration(sid, IPAddress.Loopback, port));
+            return new Server(new Configuration("s" + sid, IPAddress.Loopback, port));
         }
 
     }
@@ -62,12 +62,12 @@ namespace Raft
                 s1.PersistedStore.Term = 1;
                 s2.PersistedStore.Term = 1;
 
-                s1.PersistedStore.Create(new[] { (byte)s1.ID });
+                s1.PersistedStore.Create(new[] { (byte)s1.ID.GetHashCode() });
                 s1.PersistedStore.Term = 2;
-                s1.PersistedStore.Create(new[] { (byte)s1.ID });
-                
-                s2.PersistedStore.Create(new[] { (byte)s1.ID });
-                s2.PersistedStore.Create(new[] { (byte)s2.ID });
+                s1.PersistedStore.Create(new[] { (byte)s1.ID.GetHashCode() });
+
+                s2.PersistedStore.Create(new[] { (byte)s1.ID.GetHashCode() });
+                s2.PersistedStore.Create(new[] { (byte)s2.ID.GetHashCode() });
 
                 s1.ChangeState(new CandidateState(s1)); // will push s1 to term 2
 
@@ -81,8 +81,8 @@ namespace Raft
 
         static void Main(string[] args)
         {
-            var s1 = new Server(new Configuration(1, IPAddress.Loopback, 7741));
-            var s2 = new Server(new Configuration(2, IPAddress.Loopback, 7742));
+            var s1 = new Server(new Configuration("delta", IPAddress.Loopback, 7741));
+            var s2 = new Server(new Configuration("bravo", IPAddress.Loopback, 7742));
 
             var transport = new MemoryTransport();
 
@@ -100,7 +100,7 @@ namespace Raft
                 if (leader.CurrentState is LeaderState && (leader.Tick % 1000) == 0)
                 {
                     //Console.WriteLine("create");
-                    leader.PersistedStore.Create(new byte[] { (byte)leader.ID });
+                    leader.PersistedStore.Create(new byte[] { (byte)leader.ID.GetHashCode() });
                     System.Threading.Thread.Sleep(5);
                 }
                 System.Threading.Thread.Sleep(1);

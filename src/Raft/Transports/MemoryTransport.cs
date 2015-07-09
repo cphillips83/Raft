@@ -40,9 +40,9 @@ namespace Raft.Transports
             }
         }
 
-        private Dictionary<int, ClientTransport> _clients = new Dictionary<int, ClientTransport>();
+        private Dictionary<string, ClientTransport> _clients = new Dictionary<string, ClientTransport>();
 
-        private ClientTransport GetClient(int client)
+        private ClientTransport GetClient(string client)
         {
             ClientTransport transport;
             if (!_clients.TryGetValue(client, out transport))
