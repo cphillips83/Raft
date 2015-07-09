@@ -16,4 +16,16 @@ namespace Raft.Messages
         public int LastTerm;
         public uint LogLength;
     }
+
+    public struct VoteReply
+    {
+        public string From;
+        public int Term;
+        public bool Granted;
+
+        public override string ToString()
+        {
+            return string.Format("{{ From: {0}, Term: {1}, Granted: {2}", From, Term, Granted);
+        }
+    }
 }

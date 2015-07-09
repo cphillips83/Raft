@@ -18,4 +18,12 @@ namespace Raft.Messages
         public uint CommitIndex;
         public LogEntry[] Entries;
     }
+
+    public struct AppendEntriesReply
+    {
+        public string From;
+        public int Term;
+        public uint MatchIndex;
+        public bool Success;
+    }
 }

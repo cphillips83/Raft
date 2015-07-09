@@ -66,10 +66,8 @@
     <Compile Include="Logs\LogIndex.cs" />
     <Compile Include="Logs\MemoryLog.cs" />
     <Compile Include="Enums.cs" />
-    <Compile Include="Messages\AppendEntriesReply.cs" />
-    <Compile Include="Messages\AppendEntriesRequest.cs" />
-    <Compile Include="Messages\AssServerRequest.cs" />
-    <Compile Include="Messages\VoteReply.cs" />
+    <Compile Include="Messages\AppendEntries.cs" />
+    <Compile Include="Messages\AddServer.cs" />
     <Compile Include="Messages\VoteRequest.cs" />
     <Compile Include="Server.cs" />
     <Compile Include="Configuration.cs" />
