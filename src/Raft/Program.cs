@@ -65,7 +65,7 @@ namespace Raft
 
                 if (leader.CurrentState is LeaderState && (leader.Tick % 1000) == 0)
                 {
-                    Console.WriteLine("create");
+                    //Console.WriteLine("create");
                     leader.PersistedStore.Create(new byte[] { (byte)leader.ID });
                     System.Threading.Thread.Sleep(5);
                 }

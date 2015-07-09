@@ -154,7 +154,7 @@ namespace Raft
         {
             if (newCommitIndex != _commitIndex)
             {
-                Console.WriteLine("{0}: Advancing commit index from {1} to {2}", _id, _commitIndex, newCommitIndex);
+                //Console.WriteLine("{0}: Advancing commit index from {1} to {2}", _id, _commitIndex, newCommitIndex);
                 _commitIndex = newCommitIndex;
                 //for (var i = _commitIndex; i < newCommitIndex; i++)
                 //{

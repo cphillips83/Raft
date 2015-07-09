@@ -187,8 +187,8 @@ namespace Raft
                 lastIndex = prevIndex;
 
             var entries = _persistedState.GetEntries(prevIndex, lastIndex);
-            if (entries != null && entries.Length > 0)
-                Console.WriteLine("{0}: Send AppendEnties[{1}-{2}] to {3}", _server.ID, prevIndex, lastIndex, ID);
+            //if (entries != null && entries.Length > 0)
+            //    Console.WriteLine("{0}: Send AppendEnties[{1}-{2}] to {3}", _server.ID, prevIndex, lastIndex, ID);
 
             _rpcDue = _server.Tick + _server.PersistedStore.RPC_TIMEOUT;
             _nextHeartBeat = _server.Tick + (_server.PersistedStore.ELECTION_TIMEOUT / 2);

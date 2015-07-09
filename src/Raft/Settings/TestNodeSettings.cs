@@ -25,17 +25,17 @@ namespace Raft.Settings
 
         public Stream OpenIndexFile()
         {
-            System.Diagnostics.Debug.Assert(_indexFile == null);
+            if (_indexFile == null)
+                _indexFile = new MemoryStream();
 
-            _indexFile = new MemoryStream();
             return _indexFile;
         }
 
         public Stream OpenDataFile()
         {
-            System.Diagnostics.Debug.Assert(_dataFile == null);
+            if(_dataFile == null)
+                _dataFile = new MemoryStream();
 
-            _dataFile = new MemoryStream();
             return _dataFile;
         }
 

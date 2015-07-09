@@ -60,7 +60,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Client.cs" />
-    <Compile Include="Consensus.cs" />
+    <Compile Include="OLD\Consensus.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="Messages\AppendEntriesReply.cs" />
     <Compile Include="Messages\AppendEntriesRequest.cs" />
@@ -71,19 +71,19 @@
     <Compile Include="Settings\INodeSettings.cs" />
     <Compile Include="Settings\NodeSettings.cs" />
     <Compile Include="Settings\TestNodeSettings.cs" />
-    <Compile Include="StateMachine.cs" />
-    <Compile Include="Peer.cs" />
+    <Compile Include="OLD\StateMachine.cs" />
+    <Compile Include="OLD\Peer.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="ServerOld.cs" />
-    <Compile Include="Simulation.cs" />
+    <Compile Include="OLD\ServerOld.cs" />
+    <Compile Include="OLD\Simulation.cs" />
     <Compile Include="PersistedStore.cs" />
     <Compile Include="States\AbstractState.cs" />
     <Compile Include="States\CandidateState.cs" />
     <Compile Include="States\FollowerState.cs" />
     <Compile Include="States\LeaderState.cs" />
     <Compile Include="States\StoppedState.cs" />
-    <Compile Include="WCFStuff.cs" />
+    <Compile Include="OLD\WCFStuff.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
