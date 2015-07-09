@@ -15,6 +15,7 @@ namespace Raft.Logs
         public FileLog(string dataDir)
             : base()
         {
+            _dataDir = dataDir;
             if (!System.IO.Directory.Exists(_dataDir))
                 System.IO.Directory.CreateDirectory(_dataDir);
 

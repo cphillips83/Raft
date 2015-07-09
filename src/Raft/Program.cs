@@ -44,17 +44,8 @@ namespace Raft
             var s1 = new Server(new Configuration(1, IPAddress.Loopback, 7741));
             var s2 = new Server(new Configuration(2, IPAddress.Loopback, 7742));
 
-            var c1 = new Client(s2, s1.Config);
-            var c2 = new Client(s1, s2.Config);
-
-            s1._clients.Add(c2);
-            s2._clients.Add(c1);
-
-            c1.Initialize();
-            c2.Initialize();
-
-            s1.Initialize(new MemoryLog());
-            s2.Initialize(new MemoryLog());
+            s1.Initialize(new MemoryLog(), s2.Config);
+            s2.Initialize(new MemoryLog(), s1.Config);
 
             while (true)
             {

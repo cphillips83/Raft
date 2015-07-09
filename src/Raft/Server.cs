@@ -22,7 +22,7 @@ namespace Raft
         //private Stopwatch _timer;
         private Configuration _config;
         private Log _persistedStore;
-        public List<Client> _clients = new List<Client>();
+        private List<Client> _clients = new List<Client>();
         private AbstractState _currentState;
         private long _tick = 0;
 
@@ -68,12 +68,18 @@ namespace Raft
             _currentState = new StoppedState(this);
         }
 
-        public void Initialize(Log log)
+        public void Initialize(Log log, params Configuration[] clients)
         {
             if (_persistedStore == null)
             {
                 _persistedStore = log;
                 _persistedStore.Initialize();
+
+                if (clients != null && clients.Length > 0)
+                    _persistedStore.UpdateClients(clients);
+
+                foreach (var client in _persistedStore.Clients)
+                    _clients.Add(new Client(this, client));
 
                 //_timer = Stopwatch.StartNew();
 
@@ -112,6 +118,31 @@ namespace Raft
 
             _currentState = newState;
             _currentState.Enter();
+        }
+
+        public void AdvanceCommits()
+        {
+            var _persistedStore = PersistedStore;
+
+            var matchIndexes = new uint[_clients.Count + 1];
+            matchIndexes[matchIndexes.Length - 1] = _persistedStore.Length;
+            for (var i = 0; i < _clients.Count; i++)
+                matchIndexes[i] = _clients[i].MatchIndex;
+
+            Array.Sort(matchIndexes);
+
+            var n = matchIndexes[_clients.Count / 2];
+            if (_persistedStore.GetTerm(n) == _persistedStore.Term)
+                CommitIndex2(Math.Max(CommitIndex, n));
+
+            foreach (var client in Clients)
+            {
+                if (client.NextHeartBeat <= Tick ||
+                    (client.NextIndex <= PersistedStore.Length && client.ReadyToSend))
+                {
+                    client.SendAppendEntriesRequest();
+                }
+            }
         }
 
         public void Process()

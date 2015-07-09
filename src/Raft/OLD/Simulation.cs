@@ -49,8 +49,6 @@ namespace Raft
         private const float TIME_SCALE = 10f;
 
         private Stopwatch _timer = Stopwatch.StartNew();
-        private double _counter = 0.0;
-        private double _lastTime = 0.0;
         private long _tick;
         private Random _random = new Random();
         private List<SimulationServer> _servers;
@@ -69,7 +67,6 @@ namespace Raft
             Advance(1);
         }
 
-        private long lastUpdate = 0;
         public void Advance(int steps)
         {
             while (steps-- > 0)

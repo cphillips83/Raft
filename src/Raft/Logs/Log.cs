@@ -25,19 +25,17 @@ namespace Raft.Logs
         // who we last voted for
         private int? _votedFor;
 
-        //private string _dataDir;
-        //private string _indexFilePath;
-        //private string _dataFilePath;
-        private Server _server;
         private Stream _indexStream, _logDataFile;
+        private BinaryWriter _logIndexWriter;
 
         // log index
         private LogIndex[] _logIndices;
         private uint _logLength;
 
-        private BinaryWriter _logIndexWriter;
-        //private FileStream _logDataFile;
-        private List<Peer> _peers;
+        //private List<Peer> _peers;
+        private List<Configuration> _clients = new List<Configuration>();
+
+        public IEnumerable<Configuration> Clients { get { return _clients; } }
 
         public int Term
         {
@@ -78,7 +76,7 @@ namespace Raft.Logs
 
         protected Log()
         {
-            _peers = new List<Peer>();
+            //_peers = new List<Peer>();
             //_server = server;
             //_nodeSettings = nodeSettings;
 
@@ -106,9 +104,11 @@ namespace Raft.Logs
             for (var i = 0; i < peerCount; i++)
             {
                 var id = br.ReadInt32();
-                //var state = (PeerState)br.ReadInt32();
+                var addrBytesLen = br.ReadInt32();
+                var addrBytes = br.ReadBytes(addrBytesLen);
+                var port = br.ReadInt32();
 
-                _peers.Add(new Peer(id, false));
+                _clients.Add(new Configuration(id, new System.Net.IPAddress(addrBytes), port));
             }
 
             //seek to end of superblock for data
@@ -163,11 +163,15 @@ namespace Raft.Logs
             _logIndexWriter.Write(_appliedIndex);
 
             // peers
-            _logIndexWriter.Write(_peers.Count);
-            for (var i = 0; i < _peers.Count; i++)
+            _logIndexWriter.Write(_clients.Count);
+            for (var i = 0; i < _clients.Count; i++)
             {
-                _logIndexWriter.Write(_peers[i].ID);
-                //_logIndexWriter.Write((int)_peers[i].State);
+                _logIndexWriter.Write(_clients[i].ID);
+                
+                var addrBytes = _clients[i].IP.GetAddressBytes();
+                _logIndexWriter.Write(addrBytes.Length);
+                _logIndexWriter.Write(addrBytes);
+                _logIndexWriter.Write(_clients[i].Port);
             }
 
             // ensure its on the HDD
@@ -200,21 +204,6 @@ namespace Raft.Logs
 
         public void Initialize()
         {
-            //if (!System.IO.Directory.Exists(_dataDir))
-            //    System.IO.Directory.CreateDirectory(_dataDir);
-
-            //var stateExists = System.IO.File.Exists(_indexFilePath);
-            //if (stateExists)
-            //{
-            //    using (var br = new BinaryReader(File.Open(_indexFilePath, FileMode.Open, FileAccess.Read, FileShare.None)))
-            //        readState(br);
-            //}
-
-            //_logIndexWriter = new BinaryWriter(System.IO.File.Open(_indexFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None));
-            //if (!stateExists)
-            //    createSuperBlock();
-
-            //_logDataFile = File.Open(_dataFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
             _indexStream = OpenIndexFile();
             _logDataFile = OpenDataFile();
 
@@ -225,8 +214,6 @@ namespace Raft.Logs
             _logIndexWriter = new BinaryWriter(_indexStream);
             if (_indexStream.Length == 0)
                 createSuperBlock();
-
-            //_logDataFile = _dataStream;
 
         }
 
@@ -298,13 +285,14 @@ namespace Raft.Logs
             _logLength--;
         }
 
-        //public bool ApplyIndex(uint index)
-        //{
-        //    if (index == 0 && index < _logLength)
-        //    {
+        public void UpdateClients(IEnumerable<Configuration> clients)
+        {
+            _clients.Clear();
+            foreach (var client in clients)
+                _clients.Add(client);
 
-        //    }
-        //}
+            saveSuperBlock();
+        }
 
         public bool GetIndex(uint key, out LogIndex index)
         {

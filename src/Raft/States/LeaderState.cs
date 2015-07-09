@@ -24,28 +24,7 @@ namespace Raft.States
 
         public override void Update()
         {
-            var _clients = _server._clients;
-            var _persistedStore = _server.PersistedStore;
-
-            var matchIndexes = new uint[_clients.Count + 1];
-            matchIndexes[matchIndexes.Length - 1] = _persistedStore.Length;
-            for (var i = 0; i < _clients.Count; i++)
-                matchIndexes[i] = _clients[i].MatchIndex;
-
-            Array.Sort(matchIndexes);
-
-            var n = matchIndexes[_clients.Count / 2];
-            if (_persistedStore.GetTerm(n) == _persistedStore.Term)
-                _server.CommitIndex2(Math.Max(_server.CommitIndex, n));
-
-            foreach (var client in _server.Clients)
-            {
-                if (client.NextHeartBeat <= _server.Tick ||
-                    (client.NextIndex <= _server.PersistedStore.Length && client.ReadyToSend))
-                {
-                    client.SendAppendEntriesRequest();
-                }
-            }
+            _server.AdvanceCommits(); 
         }
 
         public override bool VoteReply(Client client, VoteReply reply)
