@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using Raft.Settings;
 
 namespace Raft
 {
@@ -56,20 +57,19 @@ namespace Raft
         // who we last voted for
         private int? _votedFor;
 
-        private string _dataDir;
-        private string _indexFilePath;
-        private string _dataFilePath;
+        //private string _dataDir;
+        //private string _indexFilePath;
+        //private string _dataFilePath;
+        private Server _server;
+        private Stream _indexStream, _logDataFile;
 
         // log index
         private LogIndex[] _logIndices;
         private uint _logLength;
 
         private BinaryWriter _logIndexWriter;
-        private FileStream _logDataFile;
+        //private FileStream _logDataFile;
         private List<Peer> _peers;
-        //<Key, LogIndex> - Consumer can compare their LogIndex to determine
-        //                  if they need to pull new data
-        //private Dictionary<uint, uint> _state = new Dictionary<uint, uint>();
 
         public int Term
         {
@@ -91,9 +91,9 @@ namespace Raft
             }
         }
 
-        public string DataDirectory { get { return _dataDir; } }
-        public string IndexFile { get { return _indexFilePath; } }
-        public string DataFile { get { return _dataFilePath; } }
+        //public string DataDirectory { get { return _dataDir; } }
+        //public string IndexFile { get { return _indexFilePath; } }
+        //public string DataFile { get { return _dataFilePath; } }
         public uint Length { get { return _logLength; } }
 
         public uint DataPosition
@@ -108,12 +108,15 @@ namespace Raft
             }
         }
 
-        public PersistedStore(string dataDir)
+        public PersistedStore(Server server)
         {
             _peers = new List<Peer>();
-            _dataDir = dataDir;
-            _indexFilePath = System.IO.Path.Combine(dataDir, "index");
-            _dataFilePath = System.IO.Path.Combine(dataDir, "data");
+            _server = server;
+            //_nodeSettings = nodeSettings;
+
+            //_dataDir = dataDir;
+            //_indexFilePath = System.IO.Path.Combine(dataDir, "index");
+            //_dataFilePath = System.IO.Path.Combine(dataDir, "data");
         }
 
         private void readState(BinaryReader br)
@@ -225,21 +228,34 @@ namespace Raft
 
         public void Initialize()
         {
-            if (!System.IO.Directory.Exists(_dataDir))
-                System.IO.Directory.CreateDirectory(_dataDir);
+            //if (!System.IO.Directory.Exists(_dataDir))
+            //    System.IO.Directory.CreateDirectory(_dataDir);
 
-            var stateExists = System.IO.File.Exists(_indexFilePath);
-            if (stateExists)
-            {
-                using (var br = new BinaryReader(File.Open(_indexFilePath, FileMode.Open, FileAccess.Read, FileShare.None)))
+            //var stateExists = System.IO.File.Exists(_indexFilePath);
+            //if (stateExists)
+            //{
+            //    using (var br = new BinaryReader(File.Open(_indexFilePath, FileMode.Open, FileAccess.Read, FileShare.None)))
+            //        readState(br);
+            //}
+
+            //_logIndexWriter = new BinaryWriter(System.IO.File.Open(_indexFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None));
+            //if (!stateExists)
+            //    createSuperBlock();
+
+            //_logDataFile = File.Open(_dataFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            _indexStream = _server.Settings.OpenIndexFile();
+            _logDataFile = _server.Settings.OpenDataFile();
+
+            if (_indexStream.Length > 0)
+                using (var br = new BinaryReader(_indexStream))
                     readState(br);
-            }
 
-            _logIndexWriter = new BinaryWriter(System.IO.File.Open(_indexFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None));
-            if (!stateExists)
+            _logIndexWriter = new BinaryWriter(_indexStream);
+            if (_indexStream.Length == 0)
                 createSuperBlock();
 
-            _logDataFile = File.Open(_dataFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            //_logDataFile = _dataStream;
+            
         }
 
         public void UpdateState(int term, int? votedFor)

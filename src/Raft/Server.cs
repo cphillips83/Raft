@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Lidgren.Network;
 using Raft.Messages;
+using Raft.Settings;
 using Raft.States;
 
 namespace Raft
@@ -20,6 +21,7 @@ namespace Raft
         private Random _random;
         //private Stopwatch _timer;
         private string _dataDir;
+        private INodeSettings _nodeSettings;
         private PersistedStore _persistedStore;
         public List<Client> _clients = new List<Client>();
         private AbstractState _currentState;
@@ -30,6 +32,7 @@ namespace Raft
 
         public long Tick { get { return _tick; } }
         //public long RawTimeInMS { get { return _timer.ElapsedMilliseconds; } }
+        public INodeSettings Settings { get { return _nodeSettings; } }
 
         public NetPeer IO { get { return _rpc; } }
 
@@ -57,19 +60,20 @@ namespace Raft
             }
         }
 
-        public Server(int id, string dataDir)
+        public Server(INodeSettings nodeSettings)
         {
-            _id = id;
-            _random = new Random((int)DateTime.UtcNow.Ticks ^ id);
-            _dataDir = dataDir;
+            _nodeSettings = nodeSettings;
+            _id = nodeSettings.ID;
+            _random = new Random((int)DateTime.UtcNow.Ticks ^ _id);
+            //_dataDir = dataDir;
             _currentState = new StoppedState(this);
         }
 
-        public void Initialize(int port)
+        public void Initialize()
         {
             if (_persistedStore == null)
             {
-                _persistedStore = new PersistedStore(_dataDir);
+                _persistedStore = new PersistedStore(this);
                 _persistedStore.Initialize();
 
                 //_timer = Stopwatch.StartNew();
@@ -94,7 +98,7 @@ namespace Raft
 
                 NetPeerConfiguration config = new NetPeerConfiguration("masterserver");
                 config.SetMessageTypeEnabled(NetIncomingMessageType.UnconnectedData, true);
-                config.Port = port;
+                config.Port = _nodeSettings.Port;
 
                 _rpc = new NetPeer(config);
                 _rpc.Start();
@@ -178,27 +182,6 @@ namespace Raft
 
             return false;
         }
-
-        //public void VoteRequest(VoteRequest request)
-        //{
-        //    //System.Threading.Thread.Sleep(1000);
-        //    //throw new NotImplementedException();
-        //}
-
-        //public void VoteReply(VoteReply reply)
-        //{
-        //    //throw new NotImplementedException();
-        //}
-
-        //public void AppendEntriesRequest(AppendEntriesRequest request)
-        //{
-        //    //throw new NotImplementedException();
-        //}
-
-        //public void AppendEntriesReply(AppendEntriesReply reply)
-        //{
-        //    //throw new NotImplementedException();
-        //}
 
         private void processNetworkIO()
         {

@@ -405,7 +405,7 @@ namespace Raft
         {
             if (_persistedState == null)
             {
-                _persistedState = new PersistedStore(_dataDir);
+                _persistedState = new PersistedStore(null);
                 _persistedState.Initialize();
             }
 
