@@ -111,6 +111,28 @@ namespace Raft
             _server.Transport.SendMessage(this, message);
         }
 
+        public void SendAddServerRequest()
+        {
+            var message = new AddServerRequest()
+            {
+                From = _server.ID,
+                EndPoint = new IPEndPoint(_server.Config.IP, _server.Config.Port)
+            };
+            _server.Transport.SendMessage(this, message);
+        }
+
+        public void SendAddServerReply(AddServerStatus status, IPEndPoint leaderHint)
+        {
+            var message = new AddServerReply()
+            {
+                From = _server.ID,
+                Status = status,
+                LeaderHint = leaderHint,
+            };
+            _server.Transport.SendMessage(this, message);
+        }
+
+
         public void Update()
         {
             if (_rpcDue > 0 && _rpcDue <= _server.Tick)

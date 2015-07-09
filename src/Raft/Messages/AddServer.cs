@@ -11,8 +11,8 @@ namespace Raft.Messages
      * AddServer RPC
      *  Arguments:
      *      From        ID of new server to add
-     *      EndPoint    IP endpoint of this server (ip + port)
-     *  
+     *      EndPoint    IP endpoint of this machine (ip + port)
+     *
      *  Results:
      *      From        Server ID
      *      Status      OK if server was added successfully

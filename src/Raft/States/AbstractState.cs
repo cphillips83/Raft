@@ -56,11 +56,42 @@ namespace Raft.States
             return AppendEntriesReply(client, reply);
         }
 
+        public bool AddServerRequest(AddServerRequest request)
+        {
+            var client = new Client(_server, new Configuration(request.From, request.EndPoint.Address , request.EndPoint.Port));
+            return AddServerRequest(client, request);
+        }
+
+        public bool AddServerReply(AddServerReply reply)
+        {
+            if (reply.Status == AddServerStatus.NotLeader && reply.LeaderHint == null)
+            {
+                Console.WriteLine("{0}: Server {1} replied with not leader and doesn't know who is the leader", _server.ID, reply.From);
+                return AddServerReply(null, reply);
+            }
+            else
+            {
+                var client = new Client(_server, new Configuration(reply.From, reply.LeaderHint.Address, reply.LeaderHint.Port));
+                return AddServerReply(client, reply);
+            }
+        }
+
         protected abstract bool VoteRequest(Client client, VoteRequest request);
         protected abstract bool VoteReply(Client client, VoteReply reply);
 
         protected abstract bool AppendEntriesRequest(Client client, AppendEntriesRequest request);
         protected abstract bool AppendEntriesReply(Client client, AppendEntriesReply reply);
+
+        protected virtual bool AddServerRequest(Client client, AddServerRequest request)
+        {
+            client.SendAddServerReply(AddServerStatus.NotLeader, null);
+            return true;
+        }
+
+        protected virtual bool AddServerReply(Client client, AddServerReply reply)
+        {
+            return true;
+        }
     }
 
 }

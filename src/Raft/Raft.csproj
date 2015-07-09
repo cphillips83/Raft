@@ -77,6 +77,7 @@
     <Compile Include="States\CandidateState.cs" />
     <Compile Include="States\FollowerState.cs" />
     <Compile Include="States\LeaderState.cs" />
+    <Compile Include="States\TestState.cs" />
     <Compile Include="States\StoppedState.cs" />
     <Compile Include="Transports\AbstractTransport.cs" />
     <Compile Include="Transports\LidgrenTransport.cs" />

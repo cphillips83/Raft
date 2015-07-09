@@ -58,6 +58,7 @@
   </Choose>
   <ItemGroup>
     <Compile Include="Helper.cs" />
+    <Compile Include="Unit\AddServer.cs" />
     <Compile Include="Unit\LogReplicationTest.cs" />
     <Compile Include="Unit\BasicNodeTest.cs" />
     <Compile Include="Election.cs" />

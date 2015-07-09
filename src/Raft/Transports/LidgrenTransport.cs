@@ -17,7 +17,9 @@ namespace Raft.Transports
             VoteRequest,
             VoteReply,
             AppendEntriesReply,
-            AppendEntriesRequest
+            AppendEntriesRequest,
+            AddServerRequest,
+            AddServerReply
         }
 
         private NetPeer _rpc;
@@ -111,6 +113,27 @@ namespace Raft.Transports
             _rpc.FlushSendQueue();
         }
 
+        public override void SendMessage(Client client, AddServerRequest request)
+        {
+            var msg = _rpc.CreateMessage();
+            msg.Write((byte)MessageTypes.AddServerRequest);
+            msg.Write(request.From);
+            msg.Write(request.EndPoint);
+            _rpc.SendUnconnectedMessage(msg, client.EndPoint);
+            _rpc.FlushSendQueue();
+        }
+
+        public override void SendMessage(Client client, AddServerReply reply)
+        {
+            var msg = _rpc.CreateMessage();
+            msg.Write((byte)MessageTypes.AddServerReply);
+            msg.Write(reply.From);
+            msg.Write((uint)reply.Status);
+            msg.Write(reply.LeaderHint);
+            _rpc.SendUnconnectedMessage(msg, client.EndPoint);
+            _rpc.FlushSendQueue();
+        }
+
         public override void Process(Server server)
         {
             NetIncomingMessage msg;
@@ -185,6 +208,23 @@ namespace Raft.Transports
                                     incomingMessage.MatchIndex = msg.ReadUInt32();
                                     incomingMessage.Success = msg.ReadBoolean();
 
+                                    _incomingMessages.Enqueue(incomingMessage);
+                                }
+                                break;
+                            case MessageTypes.AddServerRequest:
+                                {
+                                    var incomingMessage = new AddServerRequest();
+                                    incomingMessage.From = msg.ReadString();
+                                    incomingMessage.EndPoint = msg.ReadIPEndPoint();
+                                    _incomingMessages.Enqueue(incomingMessage);
+                                }
+                                break;
+                            case MessageTypes.AddServerReply:
+                                {
+                                    var incomingMessage = new AddServerReply();
+                                    incomingMessage.From = msg.ReadString();
+                                    incomingMessage.Status = (AddServerStatus)msg.ReadUInt32();
+                                    incomingMessage.LeaderHint = msg.ReadIPEndPoint();
                                     _incomingMessages.Enqueue(incomingMessage);
                                 }
                                 break;

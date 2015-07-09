@@ -15,6 +15,8 @@ namespace Raft.Transports
         public abstract void SendMessage(Client client, VoteReply reply);
         public abstract void SendMessage(Client client, AppendEntriesRequest request);
         public abstract void SendMessage(Client client, AppendEntriesReply reply);
+        public abstract void SendMessage(Client client, AddServerRequest request);
+        public abstract void SendMessage(Client client, AddServerReply relpy);
 
         public abstract void Start(Configuration config);
         public abstract void Shutdown();
@@ -39,6 +41,10 @@ namespace Raft.Transports
                 return server.CurrentState.AppendEntriesRequest((AppendEntriesRequest)msg);
             else if (msg is AppendEntriesReply)
                 return server.CurrentState.AppendEntriesReply((AppendEntriesReply)msg);
+            else if (msg is AddServerRequest)
+                return server.CurrentState.AddServerRequest((AddServerRequest)msg);
+            else if (msg is AddServerReply)
+                return server.CurrentState.AddServerReply((AddServerReply)msg);
 
             System.Diagnostics.Debug.Assert(false);
             return true;

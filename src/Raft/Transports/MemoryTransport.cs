@@ -31,6 +31,16 @@ namespace Raft.Transports
                 _incomingMessages.Enqueue(reply);
             }
 
+            public override void SendMessage(Client client, AddServerRequest request)
+            {
+                _incomingMessages.Enqueue(request);
+            }
+
+            public override void SendMessage(Client client, AddServerReply reply)
+            {
+                _incomingMessages.Enqueue(reply);
+            }
+
             public override void Start(Configuration config)
             {
             }
@@ -73,6 +83,18 @@ namespace Raft.Transports
         }
 
         public void SendMessage(Client client, AppendEntriesReply reply)
+        {
+            var transport = GetClient(client.ID);
+            transport.SendMessage(client, reply);
+        }
+
+        public void SendMessage(Client client, AddServerRequest request)
+        {
+            var transport = GetClient(client.ID);
+            transport.SendMessage(client, request);
+        }
+
+        public void SendMessage(Client client, AddServerReply reply)
         {
             var transport = GetClient(client.ID);
             transport.SendMessage(client, reply);
