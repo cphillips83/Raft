@@ -45,8 +45,10 @@ namespace Raft
             var s1 = new Server(new Configuration(1, IPAddress.Loopback, 7741));
             var s2 = new Server(new Configuration(2, IPAddress.Loopback, 7742));
 
-            s1.Initialize(new MemoryLog(), new LidgrenTransport(), s2.Config);
-            s2.Initialize(new MemoryLog(), new LidgrenTransport(), s1.Config);
+            var transport = new MemoryTransport();
+
+            s1.Initialize(new MemoryLog(), transport, s2.Config);
+            s2.Initialize(new MemoryLog(), transport, s1.Config);
 
             while (true)
             {
@@ -78,43 +80,43 @@ namespace Raft
             Console.Read();
         }
 
-        static void TestConsole()
-        {
-            var running = true;
-            var model = SimulationModel.SetupFreshScenario();
-            while (running)
-            {
-                if (Console.KeyAvailable)
-                {
-                    var key = Console.ReadKey();
-                    switch (key.KeyChar)
-                    {
-                        case 'x': running = false; break;
-                        case 'k':
-                            {
-                                var leader = model.GetLeader();
-                                if (leader != null)
-                                    leader.Stop(model);
-                            }
-                            break;
-                        case 'u':
-                            model.ResumeAllStopped();
-                            break;
-                        case 'r': model.ClientRequest(); break;
-                        case 'a':
-                            {
-                                //add server to cluster
-                                var leader = model.GetLeader();
-                                if (leader != null)
-                                    model.JoinServer(leader);
-                            }
-                            break;
-                    }
-                }
-                model.Advance();
-                System.Threading.Thread.Sleep(1);
-            }
-        }
+        //static void TestConsole()
+        //{
+        //    var running = true;
+        //    var model = SimulationModel.SetupFreshScenario();
+        //    while (running)
+        //    {
+        //        if (Console.KeyAvailable)
+        //        {
+        //            var key = Console.ReadKey();
+        //            switch (key.KeyChar)
+        //            {
+        //                case 'x': running = false; break;
+        //                case 'k':
+        //                    {
+        //                        var leader = model.GetLeader();
+        //                        if (leader != null)
+        //                            leader.Stop(model);
+        //                    }
+        //                    break;
+        //                case 'u':
+        //                    model.ResumeAllStopped();
+        //                    break;
+        //                case 'r': model.ClientRequest(); break;
+        //                case 'a':
+        //                    {
+        //                        //add server to cluster
+        //                        var leader = model.GetLeader();
+        //                        if (leader != null)
+        //                            model.JoinServer(leader);
+        //                    }
+        //                    break;
+        //            }
+        //        }
+        //        model.Advance();
+        //        System.Threading.Thread.Sleep(1);
+        //    }
+        //}
 
     }
 
