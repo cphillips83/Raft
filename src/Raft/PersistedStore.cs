@@ -95,6 +95,7 @@ namespace Raft
         public string IndexFile { get { return _indexFilePath; } }
         public string DataFile { get { return _dataFilePath; } }
         public uint Length { get { return _logLength; } }
+
         public uint DataPosition
         {
             get
