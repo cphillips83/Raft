@@ -38,7 +38,9 @@ namespace Raft.Tests
         {
             using (var server = Helper.CreateServer())
             {
-                server.Initialize(new MemoryLog(), new LidgrenTransport());
+                var transport = new MemoryTransport();
+
+                server.Initialize(new MemoryLog(), transport);
                 server.Advance(1);
 
                 Assert.AreEqual(typeof(FollowerState), server.CurrentState.GetType());
@@ -50,7 +52,9 @@ namespace Raft.Tests
         {
             using (var server = Helper.CreateServer())
             {
-                server.Initialize(new MemoryLog(), new LidgrenTransport());
+                var transport = new MemoryTransport();
+
+                server.Initialize(new MemoryLog(), transport);
                 var ticks = server.PersistedStore.ELECTION_TIMEOUT;
                 while (ticks-- > 0 && server.CurrentState is FollowerState)
                     server.Advance();
@@ -64,7 +68,9 @@ namespace Raft.Tests
         {
             using (var server = Helper.CreateServer())
             {
-                server.Initialize(new MemoryLog(), new LidgrenTransport());
+                var transport = new MemoryTransport();
+
+                server.Initialize(new MemoryLog(), transport);
                 server.Advance(server.PersistedStore.ELECTION_TIMEOUT);
                 server.Advance(server.PersistedStore.ELECTION_TIMEOUT);
 
@@ -78,16 +84,16 @@ namespace Raft.Tests
             using (var s1 = Helper.CreateServer())
             using (var s2 = Helper.CreateServer())
             {
-                s1.Initialize(new MemoryLog(), new LidgrenTransport(), s2.Config);
-                s2.Initialize(new MemoryLog(), new LidgrenTransport(), s1.Config);
+                var transport = new MemoryTransport();
+
+                s1.Initialize(new MemoryLog(), transport, s2.Config);
+                s2.Initialize(new MemoryLog(), transport, s1.Config);
 
                 s1.ChangeState(new CandidateState(s1));
 
                 s1.Advance();
-                System.Threading.Thread.Sleep(50);
 
                 s2.Advance();
-                System.Threading.Thread.Sleep(50);
 
                 s1.Advance();
                 //System.Threading.Thread.Sleep(10);

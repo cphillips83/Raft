@@ -88,6 +88,7 @@
     <Compile Include="Transports\AbstractTransport.cs" />
     <Compile Include="Transports\LidgrenTransport.cs" />
     <Compile Include="Transports\ITransport.cs" />
+    <Compile Include="Transports\MemoryTransport.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
