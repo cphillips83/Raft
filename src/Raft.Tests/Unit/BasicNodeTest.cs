@@ -199,6 +199,12 @@ namespace Raft.Tests.Unit
         }
 
         [TestMethod]
+        public void CanJoinCluster()
+        {
+
+        }
+
+        [TestMethod]
         public void MajorityWorks()
         {
             TestMajority(2, 2);

@@ -68,6 +68,7 @@
     <Compile Include="Enums.cs" />
     <Compile Include="Messages\AppendEntriesReply.cs" />
     <Compile Include="Messages\AppendEntriesRequest.cs" />
+    <Compile Include="Messages\AssServerRequest.cs" />
     <Compile Include="Messages\VoteReply.cs" />
     <Compile Include="Messages\VoteRequest.cs" />
     <Compile Include="Server.cs" />
