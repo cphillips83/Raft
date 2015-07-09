@@ -12,8 +12,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Lidgren.Network;
+using Raft.Logs;
 using Raft.Messages;
-using Raft.Settings;
 using Raft.States;
 
 namespace Raft
@@ -40,11 +40,12 @@ namespace Raft
             if (System.IO.Directory.Exists(dataDir))
                 System.IO.Directory.Delete(dataDir, true);
 
-            var s1 = new Server(new TestNodeSettings(1, 7741));
-            var s2 = new Server(new TestNodeSettings(2, 7742));
 
-            var c1 = new Client(s2, 1, new IPEndPoint(IPAddress.Loopback, 7741));
-            var c2 = new Client(s1, 2, new IPEndPoint(IPAddress.Loopback, 7742));
+            var s1 = new Server(new Configuration(1, IPAddress.Loopback, 7741));
+            var s2 = new Server(new Configuration(2, IPAddress.Loopback, 7742));
+
+            var c1 = new Client(s2, s1.Config);
+            var c2 = new Client(s1, s2.Config);
 
             s1._clients.Add(c2);
             s2._clients.Add(c1);
@@ -52,8 +53,8 @@ namespace Raft
             c1.Initialize();
             c2.Initialize();
 
-            s1.Initialize();
-            s2.Initialize();
+            s1.Initialize(new MemoryLog());
+            s2.Initialize(new MemoryLog());
 
             while (true)
             {

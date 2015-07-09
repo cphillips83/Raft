@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using Raft.Logs;
 using Raft.Messages;
 
 namespace Raft
@@ -27,6 +28,7 @@ namespace Raft
         //}
 
         private int _id;
+        private Configuration _config;
         private IPEndPoint _endPoint;
         private Server _server;
         //private INodeProxyAsync _nodeProxy;
@@ -51,11 +53,12 @@ namespace Raft
         public long RpcDue { get { return _rpcDue; } set { _rpcDue = long.MaxValue; } }
         public bool ReadyToSend { get { return _rpcDue <= _server.Tick; } }
 
-        public Client(Server server, int id, IPEndPoint endPoint)
+        public Client(Server server, Configuration config)
         {
-            _id = id;
+            _config = config;
+            _id = _config.ID;
+            _endPoint = new IPEndPoint(config.IP, config.Port);
             _server = server;
-            _endPoint = endPoint;
         }
 
         public void Initialize()

@@ -2,48 +2,16 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using Raft.Settings;
 
-namespace Raft
+namespace Raft.Logs
 {
-    /*
-     * Persistent server state
-     *  State is not thread safe
-     *  Setting Term or VotedFor causes a write to HDD before returning
-     *  FileStream will flush on dispose/close, need to wrap it for safety (don't want stale data out)
-     *  
-     */
-
-    [StructLayout(LayoutKind.Explicit, Size = 16, Pack = 0)]
-    public struct LogIndex
-    {
-        [FieldOffset(0)]
-        public int Term;
-
-        [FieldOffset(4)]
-        public LogIndexType Type;
-
-        [FieldOffset(8)]
-        public uint Offset;
-
-        [FieldOffset(12)]
-        public uint Size;
-    }
-
-    public struct LogEntry
-    {
-        public LogIndex Index;
-        public byte[] Data;
-    }
-
-    public class Log : IDisposable
+    public abstract class Log : IDisposable
     {
         public int RPC_TIMEOUT = 50;
         public int ELECTION_TIMEOUT = 100;
-        
+
         //can not change once in production
         public const int SUPER_BLOCK_SIZE = 1024;
         public const int LOG_DEFAULT_ARRAY_SIZE = 65536;
@@ -108,16 +76,20 @@ namespace Raft
             }
         }
 
-        public Log(Server server)
+        protected Log()
         {
             _peers = new List<Peer>();
-            _server = server;
+            //_server = server;
             //_nodeSettings = nodeSettings;
 
             //_dataDir = dataDir;
             //_indexFilePath = System.IO.Path.Combine(dataDir, "index");
             //_dataFilePath = System.IO.Path.Combine(dataDir, "data");
         }
+
+        protected abstract Stream OpenIndexFile();
+
+        protected abstract Stream OpenDataFile();
 
         private void readState(BinaryReader br)
         {
@@ -243,8 +215,8 @@ namespace Raft
             //    createSuperBlock();
 
             //_logDataFile = File.Open(_dataFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
-            _indexStream = _server.Settings.OpenIndexFile();
-            _logDataFile = _server.Settings.OpenDataFile();
+            _indexStream = OpenIndexFile();
+            _logDataFile = OpenDataFile();
 
             if (_indexStream.Length > 0)
                 using (var br = new BinaryReader(_indexStream))
@@ -255,7 +227,7 @@ namespace Raft
                 createSuperBlock();
 
             //_logDataFile = _dataStream;
-            
+
         }
 
         public void UpdateState(int term, int? votedFor)
@@ -428,5 +400,4 @@ namespace Raft
             _logIndexWriter = null;
         }
     }
-
 }

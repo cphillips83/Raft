@@ -4,8 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Lidgren.Network;
+using Raft.Logs;
 using Raft.Messages;
-using Raft.Settings;
 using Raft.States;
 
 namespace Raft
@@ -20,7 +20,7 @@ namespace Raft
         private uint _commitIndex = 0;
         private Random _random;
         //private Stopwatch _timer;
-        private INodeSettings _nodeSettings;
+        private Configuration _config;
         private Log _persistedStore;
         public List<Client> _clients = new List<Client>();
         private AbstractState _currentState;
@@ -31,7 +31,7 @@ namespace Raft
 
         public long Tick { get { return _tick; } }
         //public long RawTimeInMS { get { return _timer.ElapsedMilliseconds; } }
-        public INodeSettings Settings { get { return _nodeSettings; } }
+        public Configuration Config { get { return _config; } }
 
         public NetPeer IO { get { return _rpc; } }
 
@@ -59,20 +59,20 @@ namespace Raft
             }
         }
 
-        public Server(INodeSettings nodeSettings)
+        public Server(Configuration config)
         {
-            _nodeSettings = nodeSettings;
-            _id = nodeSettings.ID;
+            _config = config;
+            _id = config.ID;
             _random = new Random((int)DateTime.UtcNow.Ticks ^ _id);
             //_dataDir = dataDir;
             _currentState = new StoppedState(this);
         }
 
-        public void Initialize()
+        public void Initialize(Log log)
         {
             if (_persistedStore == null)
             {
-                _persistedStore = new Log(this);
+                _persistedStore = log;
                 _persistedStore.Initialize();
 
                 //_timer = Stopwatch.StartNew();
@@ -97,7 +97,7 @@ namespace Raft
 
                 NetPeerConfiguration config = new NetPeerConfiguration("masterserver");
                 config.SetMessageTypeEnabled(NetIncomingMessageType.UnconnectedData, true);
-                config.Port = _nodeSettings.Port;
+                config.Port = _config.Port;
 
                 _rpc = new NetPeer(config);
                 _rpc.Start();

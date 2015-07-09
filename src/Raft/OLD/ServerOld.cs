@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Raft.Logs;
 using Raft.Messages;
 
 namespace Raft
@@ -405,7 +406,7 @@ namespace Raft
         {
             if (_persistedState == null)
             {
-                _persistedState = new Log(null);
+                _persistedState = new MemoryLog();
                 _persistedState.Initialize();
             }
 

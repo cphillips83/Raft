@@ -5,25 +5,16 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Raft.Settings
+namespace Raft.Logs
 {
-    public class NodeSettings : INodeSettings
+    public class FileLog : Log
     {
-        private int _id, _port;
         private string _dataDir, _indexFilePath, _dataFilePath;
-
         private FileStream _indexFile, _dataFile;
 
-        public int ID { get { return _id; } }
-
-        public int Port { get { return _port; } }
-
-        public NodeSettings(int serverID, int port, string dataDir)
+        public FileLog(string dataDir)
+            : base()
         {
-            _id = serverID;
-            _port = port;
-            _dataDir = dataDir;
-
             if (!System.IO.Directory.Exists(_dataDir))
                 System.IO.Directory.CreateDirectory(_dataDir);
 
@@ -31,7 +22,7 @@ namespace Raft.Settings
             _dataFilePath = System.IO.Path.Combine(dataDir, "data");
         }
 
-        public Stream OpenIndexFile()
+        protected override System.IO.Stream OpenIndexFile()
         {
             System.Diagnostics.Debug.Assert(_indexFile == null);
 
@@ -39,25 +30,12 @@ namespace Raft.Settings
             return _indexFile;
         }
 
-        public Stream OpenDataFile()
+        protected override System.IO.Stream OpenDataFile()
         {
             System.Diagnostics.Debug.Assert(_dataFile == null);
 
             _dataFile = File.Open(_dataFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
             return _dataFile;
         }
-
-        public void Dispose()
-        {
-            if (_indexFile != null)
-                _indexFile.Dispose();
-
-            if (_dataFile != null)
-                _dataFile.Dispose();
-
-            _indexFile = null;
-            _dataFile = null;
-        }
     }
-
 }
