@@ -197,6 +197,25 @@ namespace Raft.Tests.Unit
                 Assert.AreEqual(true, s1.Clients.First().VoteGranted);
             }
         }
+
+        [TestMethod]
+        public void MajorityWorks()
+        {
+            TestMajority(2, 2);
+            TestMajority(3, 2);
+            TestMajority(4, 3);
+            TestMajority(5, 3);
+        }
+
+        private void TestMajority(int count, int majority)
+        {
+            var servers = Helper.CreateServers(count);
+
+            for (var i = 0; i < servers.Length; i++)
+                Assert.AreEqual(majority, servers[i].Majority);
+
+            Helper.CleanupServers(servers);
+        }
     }
 
 }

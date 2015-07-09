@@ -44,9 +44,10 @@ namespace Raft.States
             var ourLastLogTerm = _persistedState.GetLastTerm();
             var termCheck = _persistedState.Term == request.Term;
             var canVote = _persistedState.VotedFor == null || _persistedState.VotedFor == request.From;
-            var logTermFurther = request.LastTerm > ourLastLogTerm;
-            var logIndexLonger = request.LastTerm == ourLastLogTerm && request.LogLength >= _persistedState.Length;
-            var granted = termCheck && canVote && (logTermFurther || logIndexLonger);
+            var ourLogIsBetter = _persistedState.LogIsBetter(request.LogLength, request.LastTerm);
+            //var logTermFurther = request.LastTerm > ourLastLogTerm;
+            //var logIndexLonger = request.LastTerm == ourLastLogTerm && request.LogLength >= _persistedState.Length;
+            var granted = termCheck && canVote && !ourLogIsBetter;
 
             if (!termCheck)
                 Console.WriteLine("{0}: Can not vote for {1} because term {2}, expected {3}", _server.ID, client.ID, request.Term, _persistedState.Term);
@@ -54,7 +55,7 @@ namespace Raft.States
             if (!canVote)
                 Console.WriteLine("{0}: Can not vote for {1} because I already voted for {2}", _server.ID, client.ID, _persistedState.VotedFor);
 
-            if (!(logTermFurther || logIndexLonger))
+            if (ourLogIsBetter)
                 Console.WriteLine("{0}: Can not vote for {1} because my log is more update to date", _server.ID, client.ID);
 
             if (granted)

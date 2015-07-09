@@ -43,6 +43,7 @@ namespace Raft.Logs
             set
             {
                 _currentTerm = value;
+                _votedFor = null;
                 saveSuperBlock();
             }
         }
@@ -294,6 +295,17 @@ namespace Raft.Logs
             saveSuperBlock();
         }
 
+        public LogIndex this[int index]
+        {
+            get
+            {
+                if (index < 0 || index >= _logLength)
+                    return new LogIndex() { Type = 0, Offset = 0, Size = 0, Term = 0 };
+
+                return _logIndices[index];
+            }
+        } 
+
         public bool GetIndex(uint key, out LogIndex index)
         {
             if (key < 1 || key > _logLength)
@@ -319,6 +331,14 @@ namespace Raft.Logs
             return GetTerm(_logLength);
         }
 
+        public uint GetLastIndex()
+        {
+            if (_logLength == 0)
+                return 0;
+
+            return _logLength - 1;
+        }
+
         public uint GetLastIndex(out LogIndex index)
         {
             if (_logLength == 0)
@@ -328,7 +348,7 @@ namespace Raft.Logs
             }
 
             index = _logIndices[_logLength - 1];
-            return _logLength;
+            return _logLength - 1;
         }
 
         public byte[] GetData(LogIndex index)
@@ -368,6 +388,15 @@ namespace Raft.Logs
             }
 
             return entries;
+        }
+
+        public bool LogIsBetter(uint logLength, int term)
+        {
+            var ourLastLogTerm = GetLastTerm();
+            var logTermFurther = term > ourLastLogTerm;
+            var logIndexLonger = term == ourLastLogTerm && logLength >= Length;
+
+            return !(logTermFurther || logIndexLonger);
         }
 
         public void Dispose()

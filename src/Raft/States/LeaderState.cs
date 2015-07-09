@@ -24,7 +24,16 @@ namespace Raft.States
 
         public override void Update()
         {
-            _server.AdvanceCommits(); 
+            _server.AdvanceCommits();
+
+            foreach (var client in _server.Clients)
+            {
+                if (client.NextHeartBeat <= _server.Tick ||
+                    (client.NextIndex <= _server.PersistedStore.Length && client.ReadyToSend))
+                {
+                    client.SendAppendEntriesRequest();
+                }
+            }
         }
 
         protected override bool VoteReply(Client client, VoteReply reply)

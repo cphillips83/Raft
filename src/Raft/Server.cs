@@ -45,6 +45,8 @@ namespace Raft
 
         public AbstractState CurrentState { get { return _currentState; } }
 
+        public int Majority { get { return ((_clients.Count() + 1) / 2) + 1; } }
+
         public IEnumerable<Client> Voters
         {
             get
@@ -139,15 +141,6 @@ namespace Raft
             var n = matchIndexes[_clients.Count / 2];
             if (_persistedStore.GetTerm(n) == _persistedStore.Term)
                 CommitIndex2(Math.Max(CommitIndex, n));
-
-            foreach (var client in Clients)
-            {
-                if (client.NextHeartBeat <= Tick ||
-                    (client.NextIndex <= PersistedStore.Length && client.ReadyToSend))
-                {
-                    client.SendAppendEntriesRequest();
-                }
-            }
         }
 
         public void Process()
@@ -197,7 +190,7 @@ namespace Raft
         {
             if (newCommitIndex != _commitIndex)
             {
-                //Console.WriteLine("{0}: Advancing commit index from {1} to {2}", _id, _commitIndex, newCommitIndex);
+                Console.WriteLine("{0}: Advancing commit index from {1} to {2}", _id, _commitIndex, newCommitIndex);
                 _commitIndex = newCommitIndex;
                 //for (var i = _commitIndex; i < newCommitIndex; i++)
                 //{

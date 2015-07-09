@@ -81,9 +81,6 @@ namespace Raft
 
         static void Main(string[] args)
         {
-            NodeGrantsVoteWithLongerLogOlderTerm();
-            Console.Read();
-
             var s1 = new Server(new Configuration(1, IPAddress.Loopback, 7741));
             var s2 = new Server(new Configuration(2, IPAddress.Loopback, 7742));
 

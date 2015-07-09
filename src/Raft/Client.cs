@@ -49,7 +49,7 @@ namespace Raft
                 From = _server.ID,
                 Term = _server.PersistedStore.Term,
                 LastTerm = lastIndex.Term,
-                LogLength = lastLogIndex
+                LogLength = _server.PersistedStore.Length
             };
 
             _server.Transport.SendMessage(this, message);

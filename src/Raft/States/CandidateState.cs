@@ -42,7 +42,7 @@ namespace Raft.States
             else
             {
                 var votes = _server.Voters.Count(x => x.VoteGranted) + 1;
-                var votesNeeded = ((_server.Voters.Count() + 1) / 2) + 1;
+                var votesNeeded = _server.Majority;
                 if (votes >= votesNeeded)
                     _server.ChangeState(new LeaderState(_server));
             }
