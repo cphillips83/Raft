@@ -13,6 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Lidgren.Network;
 using Raft.Messages;
+using Raft.States;
 
 namespace Raft
 {
@@ -402,348 +403,11 @@ namespace Raft
 
     }
 
-    public abstract class State
-    {
-        protected Server _server;
-        protected State(Server server)
-        {
-            _server = server;
-        }
 
-        public virtual bool StepDown(int term)
-        {
-            if (_server.PersistedStore.Term < term)
-            {
-                _server.PersistedStore.UpdateState(term, null);
-                _server.ChangeState(new FollowerState(_server));
-                return true;
-            }
 
-            return false;
-        }
 
-        public virtual void Enter() { }
-        public virtual void Update() { }
-        public virtual void Exit() { }
+    
 
-        public abstract bool VoteRequest(Client client, VoteRequest request);
-        public abstract bool VoteReply(Client client, VoteReply reply);
-
-        public abstract bool AppendEntriesRequest(Client client, AppendEntriesRequest request);
-        public abstract bool AppendEntriesReply(Client client, AppendEntriesReply reply);
-    }
-
-    public class StoppedState : State
-    {
-        public StoppedState(Server _server) : base(_server) { }
-        public override bool VoteReply(Client client, VoteReply reply)
-        {
-            return true;
-        }
-
-        public override bool VoteRequest(Client client, VoteRequest request)
-        {
-            return true;
-        }
-
-        public override bool AppendEntriesRequest(Client client, AppendEntriesRequest request)
-        {
-            return true;
-        }
-
-        public override bool AppendEntriesReply(Client client, AppendEntriesReply reply)
-        {
-            return true;
-        }
-    }
-
-    public class FollowerState : State
-    {
-        private long _heatbeatTimeout = long.MaxValue;
-
-        public FollowerState(Server server) : base(server) { }
-
-        public override void Enter()
-        {
-            resetHeartbeat();
-        }
-
-        public override void Update()
-        {
-            if (_server.TimeInMS > _heatbeatTimeout)
-                _server.ChangeState(new CandidateState(_server));
-        }
-
-        private void resetHeartbeat()
-        {
-            var timeout = _server.PersistedStore.ELECTION_TIMEOUT;
-            var randomTimeout = _server.Random.Next(timeout, timeout + timeout) / 2;
-            _heatbeatTimeout = _server.TimeInMS + randomTimeout;
-        }
-
-        public override bool VoteRequest(Client client, VoteRequest request)
-        {
-            var _persistedState = _server.PersistedStore;
-            if (_persistedState.Term < request.Term)
-            {
-                _persistedState.Term = request.Term;
-                if (_heatbeatTimeout <= _server.TimeInMS)
-                    resetHeartbeat();
-            }
-
-            var ourLastLogTerm = _persistedState.GetLastTerm();
-            var termCheck = _persistedState.Term == request.Term;
-            var canVote = _persistedState.VotedFor == null || _persistedState.VotedFor == request.From;
-            var logTermFurther = request.LastTerm > ourLastLogTerm;
-            var logIndexLonger = request.LastTerm == ourLastLogTerm && request.LogLength >= _persistedState.Length;
-            var granted = termCheck && canVote && (logTermFurther || logIndexLonger);
-
-            if (!termCheck)
-                Console.WriteLine("{0}: Can not vote for {1} because term {2}, expected {3}", _server.ID, client.ID, request.Term, _persistedState.Term);
-
-            if (!canVote)
-                Console.WriteLine("{0}: Can not vote for {1} because I already voted for {2}", _server.ID, client.ID, _persistedState.VotedFor);
-
-            if (!(logTermFurther || logIndexLonger))
-                Console.WriteLine("{0}: Can not vote for {1} because my log is more update to date", _server.ID, client.ID);
-
-            if (granted)
-            {
-                Console.WriteLine("{0}: Voted for {1}", _server.ID, client.ID);
-                _persistedState.VotedFor = client.ID;
-                resetHeartbeat();
-            }
-
-            client.SendVoteReply(granted);
-            return true;
-        }
-
-        public override bool VoteReply(Client client, VoteReply reply)
-        {
-            //we aren't looking for votes, ignore
-            return true;
-        }
-
-        public override bool AppendEntriesRequest(Client client, AppendEntriesRequest request)
-        {
-            var _persistedState = _server.PersistedStore;
-            if (_persistedState.Term < request.Term)
-                _persistedState.Term = request.Term;
-
-            //Console.WriteLine("heatbeat");
-
-            var success = false;
-            var matchIndex = 0u;
-
-            if (_persistedState.Term == request.Term)
-            {
-                resetHeartbeat();
-
-                if (request.PrevIndex == 0 ||
-                    (request.PrevIndex <= _persistedState.Length && _persistedState.GetTerm(request.PrevIndex) == request.PrevTerm))
-                {
-                    success = true;
-
-                    var index = request.PrevIndex;
-                    for (var i = 0; request.Entries != null && i < request.Entries.Length; i++)
-                    {
-                        index++;
-                        if (_persistedState.GetTerm(index) != request.Entries[i].Index.Term)
-                        {
-                            while (_persistedState.Length > index - 1)
-                            {
-                                Console.WriteLine("{0}: Rolling back log {1}", _server.ID, _persistedState.Length - 1);
-                                _persistedState.Pop();
-                            }
-
-                            //Console.WriteLine("{0}: Writing log value {1}", _id, request.Entries[i].Offset);
-                            _persistedState.Push(request.Entries[i]);
-                        }
-                    }
-
-                    matchIndex = index;
-                    _server.CommitIndex2(Math.Max(_server.CommitIndex, request.CommitIndex));
-                }
-            }
-
-            client.SendAppendEntriesReply(matchIndex, success);
-            return true;
-        }
-
-        public override bool AppendEntriesReply(Client client, AppendEntriesReply reply)
-        {
-            var _persistedState = _server.PersistedStore;
-            if (_persistedState.Term < reply.Term)
-                _persistedState.Term = reply.Term;
-
-            return true;
-        }
-    }
-
-    public class CandidateState : State
-    {
-        private long _electionTimeout = long.MaxValue;
-
-        public CandidateState(Server server) : base(server) { }
-
-        public override void Enter()
-        {
-            var timeout = _server.PersistedStore.ELECTION_TIMEOUT;
-            var randomTimeout = _server.Random.Next(timeout, timeout + timeout) / 2;
-            _electionTimeout = _server.TimeInMS + randomTimeout;
-
-            _server.PersistedStore.UpdateState(_server.PersistedStore.Term + 1, _server.ID);
-
-            Console.WriteLine("{0}: Starting new election for term {1}", _server.ID, _server.PersistedStore.Term);
-
-            //only request from peers that are allowed to vote
-            foreach (var client in _server.Voters)
-                client.Reset();
-
-            foreach (var client in _server.Voters)
-                if (client.ReadyToSend)
-                    client.SendVoteRequest();
-        }
-
-        public override void Update()
-        {
-            if (_electionTimeout <= _server.TimeInMS)
-            {
-                Console.WriteLine("{0}: Election timeout for term {1}", _server.ID, _server.PersistedStore.Term);
-                _server.ChangeState(new CandidateState(_server));
-            }
-            else
-            {
-                var votes = _server.Voters.Count(x => x.VoteGranted) + 1;
-                var votesNeeded = ((_server.Voters.Count() + 1) / 2) + 1;
-                if (votes >= votesNeeded)
-                    _server.ChangeState(new LeaderState(_server));
-            }
-        }
-
-        public override bool VoteRequest(Client client, VoteRequest request)
-        {
-            if (StepDown(request.Term))
-                return false;
-
-            client.SendVoteReply(false);
-            return true;
-        }
-
-        public override bool VoteReply(Client client, VoteReply reply)
-        {
-            if (StepDown(reply.Term))
-                return true;
-
-            client.RpcDue = long.MaxValue;
-            client.VoteGranted = reply.Granted;
-            Console.WriteLine("{0}: Peer {1} voted {2}", _server.ID, client.ID, reply.Granted);
-            return true;
-        }
-
-        public override bool AppendEntriesRequest(Client client, AppendEntriesRequest request)
-        {
-            var _persistedState = _server.PersistedStore;
-            if (_persistedState.Term < request.Term)
-                _persistedState.Term = request.Term;
-
-            _server.ChangeState(new FollowerState(_server));
-            return false; ;
-        }
-
-        public override bool AppendEntriesReply(Client client, AppendEntriesReply reply)
-        {
-            if (StepDown(reply.Term))
-                return true;
-
-            return true;
-        }
-    }
-
-    public class LeaderState : State
-    {
-        public LeaderState(Server server) : base(server) { }
-
-        public override void Enter()
-        {
-            var votes = _server.Voters.Count(x => x.VoteGranted) + 1;
-            Console.WriteLine("{0}: I am now leader of term {2} with {1} votes", _server.ID, votes, _server.PersistedStore.Term);
-            foreach (var client in _server.Clients)
-            {
-                client.NextIndex = _server.PersistedStore.Length + 1;
-                client.NextHeartBeat = 0;
-            }
-        }
-
-        public override void Update()
-        {
-            var _clients = _server._clients;
-            var _persistedStore = _server.PersistedStore;
-
-            var matchIndexes = new uint[_clients.Count + 1];
-            matchIndexes[matchIndexes.Length - 1] = _persistedStore.Length;
-            for (var i = 0; i < _clients.Count; i++)
-                matchIndexes[i] = _clients[i].MatchIndex;
-
-            Array.Sort(matchIndexes);
-
-            var n = matchIndexes[_clients.Count / 2];
-            if (_persistedStore.GetTerm(n) == _persistedStore.Term)
-                _server.CommitIndex2(Math.Max(_server.CommitIndex, n));
-
-            foreach (var client in _server.Clients)
-            {
-                if (client.NextHeartBeat <= _server.TimeInMS ||
-                    (client.NextIndex <= _server.PersistedStore.Length && client.ReadyToSend))
-                {
-                    client.SendAppendEntriesRequest();
-                }
-            }
-        }
-
-        public override bool VoteReply(Client client, VoteReply reply)
-        {
-            StepDown(reply.Term);
-            return true;
-        }
-
-        public override bool VoteRequest(Client client, VoteRequest request)
-        {
-            if (StepDown(request.Term))
-                return false;
-
-            client.SendVoteReply(false);
-            return true;
-        }
-
-        public override bool AppendEntriesRequest(Client client, AppendEntriesRequest request)
-        {
-            var _persistedState = _server.PersistedStore;
-            if (_persistedState.Term < request.Term)
-                _persistedState.Term = request.Term;
-
-            _server.ChangeState(new FollowerState(_server));
-            return false;
-        }
-
-        public override bool AppendEntriesReply(Client client, AppendEntriesReply reply)
-        {
-            if (StepDown(reply.Term))
-                return true;
-
-            if (reply.Success)
-            {
-                client.MatchIndex = Math.Max(client.MatchIndex, reply.MatchIndex);
-                client.NextIndex = reply.MatchIndex + 1;
-            }
-            else
-            {
-                client.NextIndex = Math.Max(1, client.NextIndex - 1);
-            }
-            client.RpcDue = 0;
-            return true;
-        }
-    }
 
     [ServiceBehavior(InstanceContextMode = InstanceContextMode.Single)]
     public class Server : INodeProxy, IDisposable
@@ -758,7 +422,7 @@ namespace Raft
         private string _dataDir;
         private PersistedStore _persistedStore;
         public List<Client> _clients = new List<Client>();
-        private State _currentState;
+        private AbstractState _currentState;
         private long _tick = 0;
 
         public int ID { get { return _id; } }
@@ -773,7 +437,7 @@ namespace Raft
 
         public Random Random { get { return _random; } }
 
-        public State CurrentState { get { return _currentState; } }
+        public AbstractState CurrentState { get { return _currentState; } }
 
         public IEnumerable<Client> Voters
         {
@@ -838,7 +502,7 @@ namespace Raft
 
         }
 
-        public void ChangeState(State newState)
+        public void ChangeState(AbstractState newState)
         {
             if (_currentState != null)
                 _currentState.Exit();
@@ -1032,6 +696,15 @@ namespace Raft
                     leader.PersistedStore.Create(new byte[] { (byte)leader.ID });
                     System.Threading.Thread.Sleep(5);
                 }
+
+                //if (Console.KeyAvailable)
+                //{
+                //    var key = Console.ReadKey().KeyChar;
+                //    switch (key)
+                //    {
+                //        case 'a':
+                //    }
+                //}
             }
 
 

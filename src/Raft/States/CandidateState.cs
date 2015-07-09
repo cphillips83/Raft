@@ -1,0 +1,89 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Raft.Messages;
+
+namespace Raft.States
+{
+    public class CandidateState : AbstractState
+    {
+        private long _electionTimeout = long.MaxValue;
+
+        public CandidateState(Server server) : base(server) { }
+
+        public override void Enter()
+        {
+            var timeout = _server.PersistedStore.ELECTION_TIMEOUT;
+            var randomTimeout = _server.Random.Next(timeout, timeout + timeout) / 2;
+            _electionTimeout = _server.TimeInMS + randomTimeout;
+
+            _server.PersistedStore.UpdateState(_server.PersistedStore.Term + 1, _server.ID);
+
+            Console.WriteLine("{0}: Starting new election for term {1}", _server.ID, _server.PersistedStore.Term);
+
+            //only request from peers that are allowed to vote
+            foreach (var client in _server.Voters)
+                client.Reset();
+
+            foreach (var client in _server.Voters)
+                if (client.ReadyToSend)
+                    client.SendVoteRequest();
+        }
+
+        public override void Update()
+        {
+            if (_electionTimeout <= _server.TimeInMS)
+            {
+                Console.WriteLine("{0}: Election timeout for term {1}", _server.ID, _server.PersistedStore.Term);
+                _server.ChangeState(new CandidateState(_server));
+            }
+            else
+            {
+                var votes = _server.Voters.Count(x => x.VoteGranted) + 1;
+                var votesNeeded = ((_server.Voters.Count() + 1) / 2) + 1;
+                if (votes >= votesNeeded)
+                    _server.ChangeState(new LeaderState(_server));
+            }
+        }
+
+        public override bool VoteRequest(Client client, VoteRequest request)
+        {
+            if (StepDown(request.Term))
+                return false;
+
+            client.SendVoteReply(false);
+            return true;
+        }
+
+        public override bool VoteReply(Client client, VoteReply reply)
+        {
+            if (StepDown(reply.Term))
+                return true;
+
+            client.RpcDue = long.MaxValue;
+            client.VoteGranted = reply.Granted;
+            Console.WriteLine("{0}: Peer {1} voted {2}", _server.ID, client.ID, reply.Granted);
+            return true;
+        }
+
+        public override bool AppendEntriesRequest(Client client, AppendEntriesRequest request)
+        {
+            var _persistedState = _server.PersistedStore;
+            if (_persistedState.Term < request.Term)
+                _persistedState.Term = request.Term;
+
+            _server.ChangeState(new FollowerState(_server));
+            return false; ;
+        }
+
+        public override bool AppendEntriesReply(Client client, AppendEntriesReply reply)
+        {
+            if (StepDown(reply.Term))
+                return true;
+
+            return true;
+        }
+    }
+}
