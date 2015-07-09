@@ -20,7 +20,7 @@ namespace Raft.States
 
         public override void Update()
         {
-            if (_server.TimeInMS > _heatbeatTimeout)
+            if (_server.Tick > _heatbeatTimeout)
                 _server.ChangeState(new CandidateState(_server));
         }
 
@@ -28,7 +28,7 @@ namespace Raft.States
         {
             var timeout = _server.PersistedStore.ELECTION_TIMEOUT;
             var randomTimeout = _server.Random.Next(timeout, timeout + timeout) / 2;
-            _heatbeatTimeout = _server.TimeInMS + randomTimeout;
+            _heatbeatTimeout = _server.Tick + randomTimeout;
         }
 
         public override bool VoteRequest(Client client, VoteRequest request)
@@ -37,7 +37,7 @@ namespace Raft.States
             if (_persistedState.Term < request.Term)
             {
                 _persistedState.Term = request.Term;
-                if (_heatbeatTimeout <= _server.TimeInMS)
+                if (_heatbeatTimeout <= _server.Tick)
                     resetHeartbeat();
             }
 

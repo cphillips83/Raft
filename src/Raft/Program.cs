@@ -165,7 +165,7 @@ namespace Raft
         public uint NextIndex { get { return _nextIndex; } set { _nextIndex = value; } }
         public bool VoteGranted { get { return _voteGranted; } set { _voteGranted = value; } }
         public long RpcDue { get { return _rpcDue; } set { _rpcDue = long.MaxValue; } }
-        public bool ReadyToSend { get { return _rpcDue <= _server.TimeInMS; } }
+        public bool ReadyToSend { get { return _rpcDue <= _server.Tick; } }
 
         public Client(Server server, int id, IPEndPoint endPoint)
         {
@@ -261,7 +261,7 @@ namespace Raft
             //// ar = _nodeProxy.BeginVoteReply(message, null, message);
             ////Console.WriteLine(_outgoingMessages.Count);
             ////_outgoingMessages.Enqueue(ar);
-            _rpcDue = _server.TimeInMS + RPC_TIMEOUT;
+            _rpcDue = _server.Tick + RPC_TIMEOUT;
         }
 
         public void SendVoteReply(bool granted)
@@ -306,8 +306,8 @@ namespace Raft
             if (entries != null && entries.Length > 0)
                 Console.WriteLine("{0}: Send AppendEnties[{1}-{2}] to {3}", _server.ID, prevIndex, lastIndex, ID);
 
-            _rpcDue = _server.TimeInMS + Client.RPC_TIMEOUT;
-            _nextHeartBeat = _server.TimeInMS + (_server.PersistedStore.ELECTION_TIMEOUT / 2);
+            _rpcDue = _server.Tick + Client.RPC_TIMEOUT;
+            _nextHeartBeat = _server.Tick + (_server.PersistedStore.ELECTION_TIMEOUT / 2);
 
             var message = new AppendEntriesRequest()
             {
@@ -323,7 +323,7 @@ namespace Raft
             AppendEntriesRequest.Write(message, netMsg);
             _server.IO.SendUnconnectedMessage(netMsg, _endPoint);
 
-            _rpcDue = _server.TimeInMS + RPC_TIMEOUT;
+            _rpcDue = _server.Tick + RPC_TIMEOUT;
         }
 
         public void SendAppendEntriesReply(uint matchIndex, bool success)
@@ -341,14 +341,14 @@ namespace Raft
             AppendEntriesReply.Write(message, netMsg);
             _server.IO.SendUnconnectedMessage(netMsg, _endPoint);
 
-            _rpcDue = _server.TimeInMS + RPC_TIMEOUT;
+            _rpcDue = _server.Tick + RPC_TIMEOUT;
         }
 
         public void Update()
         {
-            if (_rpcDue > 0 && _rpcDue <= _server.TimeInMS)
+            if (_rpcDue > 0 && _rpcDue <= _server.Tick)
             {
-                Console.WriteLine("{0}: dropped at {1} - {2}", _server.ID, _server.RawTimeInMS, _currentmsg);
+                Console.WriteLine("{0}: dropped at {1} - {2}", _server.ID, _server.Tick, _currentmsg);
                 _rpcDue = 0;
             }
             //while (_outgoingMessages.Count > 0)
@@ -418,7 +418,7 @@ namespace Raft
         private int _id;
         private uint _commitIndex = 0;
         private Random _random;
-        private Stopwatch _timer;
+        //private Stopwatch _timer;
         private string _dataDir;
         private PersistedStore _persistedStore;
         public List<Client> _clients = new List<Client>();
@@ -428,8 +428,8 @@ namespace Raft
         public int ID { get { return _id; } }
         public uint CommitIndex { get { return _commitIndex; } set { _commitIndex = value; } }
 
-        public long TimeInMS { get { return _tick; } }
-        public long RawTimeInMS { get { return _timer.ElapsedMilliseconds; } }
+        public long Tick { get { return _tick; } }
+        //public long RawTimeInMS { get { return _timer.ElapsedMilliseconds; } }
 
         public NetPeer IO { get { return _rpc; } }
 
@@ -472,7 +472,7 @@ namespace Raft
                 _persistedStore = new PersistedStore(_dataDir);
                 _persistedStore.Initialize();
 
-                _timer = Stopwatch.StartNew();
+                //_timer = Stopwatch.StartNew();
 
                 ChangeState(new FollowerState(this));
 
@@ -511,13 +511,96 @@ namespace Raft
             _currentState.Enter();
         }
 
-        //public void ProcessMessage(object message)
-        //{
-        //    if (message is VoteReply)
-        //        _currentState.VoteReply((VoteReply)message);
-        //}
+        public void Process()
+        {
+            processNetworkIO();
+            foreach (var client in Clients)
+                client.Update();
 
-        public void Update()
+            _currentState.Update();
+        }
+
+        public void Advance()
+        {
+            _tick++;
+            Process();
+        }
+
+        public void Advance(long ticks)
+        {
+            while (ticks-- > 0)
+                Advance();
+        }
+
+        public void AdvanceTo(long tick)
+        {
+            while (_tick < tick)
+                Advance();
+        }
+
+        public void Dispose()
+        {
+            if (_rpc != null)
+                _rpc.Shutdown(string.Empty);
+
+            _rpc = null;
+        }
+
+        public bool CommitIndex2(uint newCommitIndex)
+        {
+            if (newCommitIndex != _commitIndex)
+            {
+                Console.WriteLine("{0}: Advancing commit index from {1} to {2}", _id, _commitIndex, newCommitIndex);
+                _commitIndex = newCommitIndex;
+                //for (var i = _commitIndex; i < newCommitIndex; i++)
+                //{
+                //    if (i == _stateMachine.LastCommitApplied)
+                //    {
+                //        LogIndex index;
+                //        if (!_persistedState.GetIndex(i + 1, out index))
+                //            return false;
+
+                //        if (index.Type == LogIndexType.StateMachine)
+                //        {
+                //            using (var br = new BinaryReader(new MemoryStream(_persistedState.GetData(index))))
+                //            {
+                //                var name = br.ReadString();
+                //                _stateMachine.Apply(name, i + 1);
+                //            }
+                //        }
+                //        _commitIndex++;
+                //    }
+                //    // make commit index 
+                //    _commitIndex++;
+                //}
+                return true;
+            }
+
+            return false;
+        }
+
+        public void VoteRequest(VoteRequest request)
+        {
+            //System.Threading.Thread.Sleep(1000);
+            //throw new NotImplementedException();
+        }
+
+        public void VoteReply(VoteReply reply)
+        {
+            //throw new NotImplementedException();
+        }
+
+        public void AppendEntriesRequest(AppendEntriesRequest request)
+        {
+            //throw new NotImplementedException();
+        }
+
+        public void AppendEntriesReply(AppendEntriesReply reply)
+        {
+            //throw new NotImplementedException();
+        }
+
+        private void processNetworkIO()
         {
             NetIncomingMessage msg;
             while ((msg = _rpc.ReadMessage()) != null)
@@ -574,73 +657,6 @@ namespace Raft
                         break;
                 }
             }
-
-            _tick = (long)_timer.ElapsedMilliseconds;
-            foreach (var client in Clients)
-                client.Update();
-
-            _currentState.Update();
-
-
-        }
-
-        public void Dispose()
-        {
-
-        }
-
-        public bool CommitIndex2(uint newCommitIndex)
-        {
-            if (newCommitIndex != _commitIndex)
-            {
-                Console.WriteLine("{0}: Advancing commit index from {1} to {2}", _id, _commitIndex, newCommitIndex);
-                _commitIndex = newCommitIndex;
-                //for (var i = _commitIndex; i < newCommitIndex; i++)
-                //{
-                //    if (i == _stateMachine.LastCommitApplied)
-                //    {
-                //        LogIndex index;
-                //        if (!_persistedState.GetIndex(i + 1, out index))
-                //            return false;
-
-                //        if (index.Type == LogIndexType.StateMachine)
-                //        {
-                //            using (var br = new BinaryReader(new MemoryStream(_persistedState.GetData(index))))
-                //            {
-                //                var name = br.ReadString();
-                //                _stateMachine.Apply(name, i + 1);
-                //            }
-                //        }
-                //        _commitIndex++;
-                //    }
-                //    // make commit index 
-                //    _commitIndex++;
-                //}
-                return true;
-            }
-
-            return false;
-        }
-
-        public void VoteRequest(VoteRequest request)
-        {
-            //System.Threading.Thread.Sleep(1000);
-            //throw new NotImplementedException();
-        }
-
-        public void VoteReply(VoteReply reply)
-        {
-            //throw new NotImplementedException();
-        }
-
-        public void AppendEntriesRequest(AppendEntriesRequest request)
-        {
-            //throw new NotImplementedException();
-        }
-
-        public void AppendEntriesReply(AppendEntriesReply reply)
-        {
-            //throw new NotImplementedException();
         }
     }
 
@@ -684,18 +700,19 @@ namespace Raft
 
             while (true)
             {
-                s1.Update();
-                s2.Update();
+                s1.Advance();
+                s2.Advance();
                 System.Threading.Thread.Sleep(0);
 
                 var leader = s1.CurrentState is LeaderState ? s1 : s2;
 
-                if (leader.CurrentState is LeaderState && (leader.RawTimeInMS % 1000) == 0)
+                if (leader.CurrentState is LeaderState && (leader.Tick % 1000) == 0)
                 {
                     Console.WriteLine("create");
                     leader.PersistedStore.Create(new byte[] { (byte)leader.ID });
                     System.Threading.Thread.Sleep(5);
                 }
+                System.Threading.Thread.Sleep(1);
 
                 //if (Console.KeyAvailable)
                 //{

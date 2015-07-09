@@ -40,7 +40,7 @@ namespace Raft.States
 
             foreach (var client in _server.Clients)
             {
-                if (client.NextHeartBeat <= _server.TimeInMS ||
+                if (client.NextHeartBeat <= _server.Tick ||
                     (client.NextIndex <= _server.PersistedStore.Length && client.ReadyToSend))
                 {
                     client.SendAppendEntriesRequest();

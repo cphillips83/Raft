@@ -17,7 +17,7 @@ namespace Raft.States
         {
             var timeout = _server.PersistedStore.ELECTION_TIMEOUT;
             var randomTimeout = _server.Random.Next(timeout, timeout + timeout) / 2;
-            _electionTimeout = _server.TimeInMS + randomTimeout;
+            _electionTimeout = _server.Tick + randomTimeout;
 
             _server.PersistedStore.UpdateState(_server.PersistedStore.Term + 1, _server.ID);
 
@@ -34,7 +34,7 @@ namespace Raft.States
 
         public override void Update()
         {
-            if (_electionTimeout <= _server.TimeInMS)
+            if (_electionTimeout <= _server.Tick)
             {
                 Console.WriteLine("{0}: Election timeout for term {1}", _server.ID, _server.PersistedStore.Term);
                 _server.ChangeState(new CandidateState(_server));
