@@ -59,6 +59,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Client.cs" />
     <Compile Include="Consensus.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="Messages\AppendEntriesReply.cs" />
@@ -66,6 +67,7 @@
     <Compile Include="Messages\MessageTypes.cs" />
     <Compile Include="Messages\VoteReply.cs" />
     <Compile Include="Messages\VoteRequest.cs" />
+    <Compile Include="Server.cs" />
     <Compile Include="StateMachine.cs" />
     <Compile Include="Peer.cs" />
     <Compile Include="Program.cs" />
@@ -78,6 +80,7 @@
     <Compile Include="States\FollowerState.cs" />
     <Compile Include="States\LeaderState.cs" />
     <Compile Include="States\StoppedState.cs" />
+    <Compile Include="WCFStuff.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
