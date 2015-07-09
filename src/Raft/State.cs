@@ -40,8 +40,8 @@ namespace Raft
 
     public class PersistedStore : IDisposable
     {
-        public  int RPC_TIMEOUT = 50;
-        public  int ELECTION_TIMEOUT = 100;
+        public int RPC_TIMEOUT = 50;
+        public int ELECTION_TIMEOUT = 100;
         
         //can not change once in production
         public const int SUPER_BLOCK_SIZE = 1024;

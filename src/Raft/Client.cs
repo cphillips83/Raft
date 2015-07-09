@@ -10,7 +10,6 @@ namespace Raft
 {
     public class Client : IDisposable
     {
-        public const int RPC_TIMEOUT = 50;
 
         //private static ChannelFactory<INodeProxyAsync> g_channelFactory;
         //private static BasicHttpBinding g_httpBinding;
@@ -146,7 +145,7 @@ namespace Raft
             //// ar = _nodeProxy.BeginVoteReply(message, null, message);
             ////Console.WriteLine(_outgoingMessages.Count);
             ////_outgoingMessages.Enqueue(ar);
-            _rpcDue = _server.Tick + RPC_TIMEOUT;
+            _rpcDue = _server.Tick + _server.PersistedStore.RPC_TIMEOUT;
         }
 
         public void SendVoteReply(bool granted)
@@ -191,7 +190,7 @@ namespace Raft
             if (entries != null && entries.Length > 0)
                 Console.WriteLine("{0}: Send AppendEnties[{1}-{2}] to {3}", _server.ID, prevIndex, lastIndex, ID);
 
-            _rpcDue = _server.Tick + Client.RPC_TIMEOUT;
+            _rpcDue = _server.Tick + _server.PersistedStore.RPC_TIMEOUT;
             _nextHeartBeat = _server.Tick + (_server.PersistedStore.ELECTION_TIMEOUT / 2);
 
             var message = new AppendEntriesRequest()
@@ -208,7 +207,7 @@ namespace Raft
             AppendEntriesRequest.Write(message, netMsg);
             _server.IO.SendUnconnectedMessage(netMsg, _endPoint);
 
-            _rpcDue = _server.Tick + RPC_TIMEOUT;
+            _rpcDue = _server.Tick + _server.PersistedStore.RPC_TIMEOUT;
         }
 
         public void SendAppendEntriesReply(uint matchIndex, bool success)
@@ -226,7 +225,7 @@ namespace Raft
             AppendEntriesReply.Write(message, netMsg);
             _server.IO.SendUnconnectedMessage(netMsg, _endPoint);
 
-            _rpcDue = _server.Tick + RPC_TIMEOUT;
+            //_rpcDue = _server.Tick + RPC_TIMEOUT;
         }
 
         public void Update()
