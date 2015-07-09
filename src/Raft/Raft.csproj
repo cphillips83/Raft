@@ -76,6 +76,7 @@
     <Compile Include="States\AbstractState.cs" />
     <Compile Include="States\CandidateState.cs" />
     <Compile Include="States\FollowerState.cs" />
+    <Compile Include="States\JoinState.cs" />
     <Compile Include="States\LeaderState.cs" />
     <Compile Include="States\TestState.cs" />
     <Compile Include="States\StoppedState.cs" />

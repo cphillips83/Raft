@@ -21,10 +21,15 @@ namespace Raft.States
         public override void Update()
         {
             if (_server.Tick > _heatbeatTimeout)
-                _server.ChangeState(new CandidateState(_server));
+                HeartbeatTimeout();
         }
 
-        private void resetHeartbeat()
+        protected virtual void HeartbeatTimeout()
+        {
+            _server.ChangeState(new CandidateState(_server));
+        }
+
+        protected void resetHeartbeat()
         {
             var timeout = _server.PersistedStore.ELECTION_TIMEOUT;
             var randomTimeout = _server.Random.Next(timeout, timeout + timeout) / 2;

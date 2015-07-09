@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using Raft.Messages;
@@ -9,6 +10,16 @@ namespace Raft.States
 {
     public class LeaderState : AbstractState
     {
+        private class ServerJoin
+        {
+            public Client Client;
+            public int Round;
+            public uint RoundIndex;
+            public long NextRound;
+        }
+
+        private List<ServerJoin> _serversToAdd = new List<ServerJoin>();
+
         public LeaderState(Server server) : base(server) { }
 
         public override void Enter()
@@ -22,12 +33,30 @@ namespace Raft.States
             }
         }
 
+        public override void Exit()
+        {
+            foreach (var requests in _serversToAdd)
+                requests.Client.SendAddServerReply(AddServerStatus.NotLeader, null);
+            
+            _serversToAdd.Clear();
+        }
+
         public override void Update()
         {
             _server.AdvanceCommits();
 
             foreach (var client in _server.Clients)
             {
+                if (client.NextHeartBeat <= _server.Tick ||
+                    (client.NextIndex <= _server.PersistedStore.Length && client.ReadyToSend))
+                {
+                    client.SendAppendEntriesRequest();
+                }
+            }
+
+            foreach (var join in _serversToAdd)
+            {
+                var client = join.Client;
                 if (client.NextHeartBeat <= _server.Tick ||
                     (client.NextIndex <= _server.PersistedStore.Length && client.ReadyToSend))
                 {
@@ -66,6 +95,10 @@ namespace Raft.States
             if (StepDown(reply.Term))
                 return true;
 
+            var joiningServer = _serversToAdd.FirstOrDefault(x => x.Client.ID == client.ID);
+            if (joiningServer != null)
+                client = joiningServer.Client;
+
             if (reply.Success)
             {
                 client.MatchIndex = Math.Max(client.MatchIndex, reply.MatchIndex);
@@ -76,7 +109,68 @@ namespace Raft.States
                 client.NextIndex = Math.Max(1, client.NextIndex - 1);
             }
             client.RpcDue = 0;
+
+            if (joiningServer != null)
+            {
+                if (joiningServer.NextRound <= _server.Tick)
+                {
+                    joiningServer.Round--;
+                    if (joiningServer.Client.MatchIndex != _server.CommitIndex)
+                    {
+                        //at the end of the rounds and still not caught up
+                        //or we made no progress in a single round
+                        if (joiningServer.Round <= 0 || joiningServer.RoundIndex == client.MatchIndex)
+                        {
+                            client.SendAddServerReply(AddServerStatus.TimedOut, new IPEndPoint(_server.Config.IP, _server.Config.Port));
+                            TimeoutServerJoin(client);
+                        }
+                        else
+                        {
+                            joiningServer.RoundIndex = client.MatchIndex;
+                            joiningServer.NextRound = _server.Tick + _server.PersistedStore.ELECTION_TIMEOUT;
+                        }
+                    }
+                    else
+                    {
+                        //server is caught up to leader, add via log
+                        //here we have to flag that configuration is locked
+                        //client.SendAddServerReply(AddServerStatus.Ok, new IPEndPoint(_server.Config.IP, _server.Config.Port));
+                    }
+                }
+            }
             return true;
+        }
+
+        protected override bool AddServerRequest(Client client, AddServerRequest request)
+        {
+            QueueServerJoin(client);
+            return true;
+        }
+
+        private void QueueServerJoin(Client client)
+        {
+            foreach (var c in _serversToAdd)
+                if (c.Client.ID == client.ID)
+                    break;
+
+            _serversToAdd.Add(new ServerJoin() { 
+                Client = client, 
+                Round = 10,
+                NextRound = _server.Tick + _server.PersistedStore.ELECTION_TIMEOUT,
+                RoundIndex = 0
+            });
+        }
+
+        private void TimeoutServerJoin(Client client)
+        {
+            for (var i = 0; i < _serversToAdd.Count; i++)
+            {
+                if (_serversToAdd[i].Client.ID == client.ID)
+                {
+                    _serversToAdd.RemoveAt(i);
+                    break;
+                }
+            }
         }
     }
 }

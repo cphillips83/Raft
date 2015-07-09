@@ -26,6 +26,7 @@ namespace Raft
         private Log _persistedStore;
         private ITransport _transport;
         private List<Client> _clients = new List<Client>();
+
         private AbstractState _currentState;
         private long _tick = 0;
 
@@ -73,6 +74,7 @@ namespace Raft
             //_dataDir = dataDir;
             _currentState = new StoppedState(this);
         }
+
 
         public Client GetClient(string id)
         {

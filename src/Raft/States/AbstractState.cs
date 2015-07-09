@@ -66,7 +66,6 @@ namespace Raft.States
         {
             if (reply.Status == AddServerStatus.NotLeader && reply.LeaderHint == null)
             {
-                Console.WriteLine("{0}: Server {1} replied with not leader and doesn't know who is the leader", _server.ID, reply.From);
                 return AddServerReply(null, reply);
             }
             else

@@ -1,0 +1,54 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Raft.Messages;
+
+namespace Raft.States
+{
+    public class JoinState : FollowerState
+    {
+        public JoinState(Server server) : base(server) { }
+
+        protected override bool AddServerReply(Client client, AddServerReply reply)
+        {
+            if(client == null)
+                Console.WriteLine("{0}: Server {1} replied with not leader and doesn't know who is the leader", _server.ID, reply.From);
+            else
+            {
+                //try again, playing catch up or not leader
+                //client should be derived from leader hint
+                if (reply.Status == AddServerStatus.TimedOut || reply.Status == AddServerStatus.NotLeader)
+                    client.SendAddServerRequest();
+                else
+                {
+                    //ok, we were added! switch to follower
+                    //client list should be up to date via the log entries
+                    _server.ChangeState(new FollowerState(_server));
+                }
+            }
+            return true;
+        }
+
+        protected override bool VoteReply(Client client, VoteReply reply)
+        {
+            return true;
+        }
+
+        protected override bool AddServerRequest(Client client, AddServerRequest request)
+        {
+            return true;
+        }
+
+        protected override bool VoteRequest(Client client, VoteRequest request)
+        {
+            return true;
+        }
+
+        protected override bool AppendEntriesReply(Client client, AppendEntriesReply reply)
+        {
+            return true;
+        }
+    }
+}
