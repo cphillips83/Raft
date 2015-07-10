@@ -63,14 +63,25 @@ namespace Raft.States
                 }
             }
 
-            foreach (var join in _serversToAdd)
+            for (var i = 0; i < _serversToAdd.Count; i++)
             {
+                var join = _serversToAdd[i];
                 var client = join.Client;
                 if (client.NextHeartBeat <= _server.Tick ||
                     (client.NextIndex <= _server.PersistedStore.Length && client.ReadyToSend))
                 {
-                    Console.WriteLine("{0}: Catching up {1}", _server.ID, client.ID);
-                    client.SendAppendEntriesRequest();
+                    if (client.RpcDue > 0 && client.RpcDue <= _server.Tick)
+                    {
+                        Console.WriteLine("{0}: Signalling timeout to {1}", _server.ID, client.ID);
+                        client.SendAddServerReply(AddServerStatus.TimedOut, new IPEndPoint(_server.ID.Address, _server.ID.Port));
+                        RemoveServerJoin(client);
+                        i--;
+                    }
+                    else
+                    {
+                        Console.WriteLine("{0}: Catching up {1}", _server.ID, client.ID);
+                        client.SendAppendEntriesRequest();
+                    }
                 }
             }
         }
@@ -134,11 +145,13 @@ namespace Raft.States
                         //or we made no progress in a single round
                         if (joiningServer.Round <= 0 || joiningServer.RoundIndex == client.MatchIndex)
                         {
+                            Console.WriteLine("{0}: Signalling timeout to {1}", _server.ID, client.ID);
                             client.SendAddServerReply(AddServerStatus.TimedOut, new IPEndPoint(_server.ID.Address, _server.ID.Port));
                             RemoveServerJoin(client);
                         }
                         else
                         {
+                            Console.WriteLine("{0}: Round {1}/10 done for {2}", _server.ID, 10 - joiningServer.Round,  client.ID);
                             joiningServer.RoundIndex = client.MatchIndex;
                             joiningServer.NextRound = _server.Tick + _server.PersistedStore.ELECTION_TIMEOUT;
                         }

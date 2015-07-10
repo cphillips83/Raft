@@ -23,7 +23,7 @@ namespace Raft.Messages
      *      2.  Catch up new server for fixed number of rounds.
      *          Reply AddServerStatus.Timeout if new server does not make
      *          progress for an election timeout of if the last round
-     *          takes long than the election timeout
+     *          takes longer than the election timeout
      *      3.  Wait until previous configuration in log is committed
      *      4.  Append new configuration entry to log (old configuration plus
      *          newServer), commit it using majority of new configuration.
