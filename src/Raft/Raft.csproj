@@ -60,6 +60,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Client.cs" />
+    <Compile Include="Commands\Init.cs" />
     <Compile Include="Logs\FileLog.cs" />
     <Compile Include="Logs\Log.cs" />
     <Compile Include="Logs\LogEntry.cs" />
