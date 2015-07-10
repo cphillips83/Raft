@@ -20,7 +20,7 @@ namespace Raft.Logs
         //public const int MAX_LOG_DATA_READS = 16;
 
         // current term of the cluster
-        private int _currentTerm;
+        private int _currentTerm = 1;
         private uint _nextApplyIndex;
         private bool _configLocked;
 
@@ -38,6 +38,8 @@ namespace Raft.Logs
         private List<IPEndPoint> _clients = new List<IPEndPoint>();
 
         public IEnumerable<IPEndPoint> Clients { get { return _clients; } }
+
+        public uint NextApplyIndex { get { return _nextApplyIndex; } }
 
         public int Term
         {
@@ -367,8 +369,12 @@ namespace Raft.Logs
             //add server before commit
             if (data.Index.Type == LogIndexType.AddServer)
             {
+                var id = GetIPEndPoint(data.Data);
+                if (!server.ID.Equals(id))
+                    server.AddClientFromLog(id);
+                System.Diagnostics.Debug.Assert(_configLocked == false);
+                Console.WriteLine("{0}: Adding server {1} and locking config", server.ID, id);
                 _configLocked = true;
-                server.AddClientFromLog(GetIPEndPoint(data.Data));
                 saveSuperBlock();
             }
         }
@@ -378,18 +384,22 @@ namespace Raft.Logs
             if (index != _nextApplyIndex)
                 throw new Exception();
 
-
             var applyIndex = _logIndices[_nextApplyIndex];
             if(applyIndex.Type == LogIndexType.AddServer)
             {
+                System.Diagnostics.Debug.Assert(_configLocked);
+
                 var endPointData = GetData(applyIndex);
-                var endPoint = GetIPEndPoint(endPointData);
+                var id = GetIPEndPoint(endPointData);
 
-                System.Diagnostics.Debug.Assert(_clients.Count(x => x.Equals(endPoint)) == 0);
-                _clients.Add(endPoint);
-                server.CurrentState.CommittedAddServer(endPoint);
+                Console.WriteLine("{0}: Committing add server {1} and unlocking config", server.ID, id);
+                System.Diagnostics.Debug.Assert(_clients.Count(x => x.Equals(id)) == 0);
 
+                if(!server.ID.Equals(id))
+                    _clients.Add(id);
 
+                _configLocked = false;
+                server.CurrentState.CommittedAddServer(id);
             }
 
             _nextApplyIndex++;
@@ -406,8 +416,12 @@ namespace Raft.Logs
             //roll back add
             if (lastIndex.Type == LogIndexType.AddServer)
             {
+                System.Diagnostics.Debug.Assert(_configLocked);
+                var id = GetIPEndPoint(GetData(lastIndex));
                 _configLocked = false;
-                server.RemoveClientFromLog(GetIPEndPoint(GetData(lastIndex)));
+                if (!server.ID.Equals(id))
+                    server.RemoveClientFromLog(id);
+                Console.WriteLine("{0}x: Rolling back Adding server {1} and unlocking config", server.ID, id);
                 saveSuperBlock();
             }
 

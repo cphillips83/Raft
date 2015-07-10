@@ -40,11 +40,13 @@ namespace Raft.States
                 {
                     _bootstrap = client;
                     resetHeartbeat();
+                    Console.WriteLine("{0}: Server {1} replied with not leader or timedout and suggest {2}", _server.ID, reply.From, reply.From);
                 }
                 else
                 {
                     //ok, we were added! switch to follower
                     //client list should be up to date via the log entries
+                    Console.WriteLine("{0}: Server {1} replied with OK", _server.ID, reply.From);
                     _server.ChangeState(new FollowerState(_server));
                 }
             }

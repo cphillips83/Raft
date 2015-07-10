@@ -56,8 +56,8 @@ namespace Raft
             {
                 var transport = new MemoryTransport();
 
-                s1.Initialize(new MemoryLog(), transport, s2.ID);
-                s2.Initialize(new MemoryLog(), transport, s1.ID);
+                s1.Initialize(new MemoryLog(), transport, false, s2.ID);
+                s2.Initialize(new MemoryLog(), transport, false, s1.ID);
 
                 s1.PersistedStore.Term = 1;
                 s2.PersistedStore.Term = 1;
@@ -86,8 +86,8 @@ namespace Raft
 
             var transport = new MemoryTransport();
 
-            s1.Initialize(new MemoryLog(), transport, s2.ID);
-            s2.Initialize(new MemoryLog(), transport, s1.ID);
+            s1.Initialize(new MemoryLog(), transport, false, s2.ID);
+            s2.Initialize(new MemoryLog(), transport, false, s1.ID);
 
             while (true)
             {

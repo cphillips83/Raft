@@ -86,8 +86,8 @@ namespace Raft
 
         public void AddClientFromLog(IPEndPoint id)
         {
-            System.Diagnostics.Debug.Assert(GetClient(id) == null);
-            _clients.Add(new Client(this, id));
+            System.Diagnostics.Debug.Assert(_clients.Count(x => x.ID.Equals(id)) == 0);
+            _clients.Add(new Client(this, id) { NextHeartBeat = 0, NextIndex = _persistedStore.Length  });
         }
 
         public void RemoveClientFromLog(IPEndPoint id)
@@ -106,7 +106,11 @@ namespace Raft
             System.Diagnostics.Debug.Assert(false);
         }
 
-        public void Initialize(Log log, ITransport transport, params IPEndPoint[] clients)
+        public void Initialize(Log log, ITransport transport, params IPEndPoint[] clients){
+            Initialize(log, transport, false, clients);
+        }
+
+        public void Initialize(Log log, ITransport transport, bool bootstrap, params IPEndPoint[] clients)
         {
             if (_persistedStore == null)
             {
@@ -115,9 +119,12 @@ namespace Raft
 
                 if (clients != null && clients.Length > 0)
                     _persistedStore.UpdateClients(clients);
+                else if (!bootstrap)
+                    _persistedStore.AddServer(this, _id);
 
                 foreach (var client in _persistedStore.Clients)
                     _clients.Add(new Client(this, client));
+
 
                 //_timer = Stopwatch.StartNew();
 
@@ -217,8 +224,13 @@ namespace Raft
         {
             if (newCommitIndex != _commitIndex)
             {
-                Console.WriteLine("{0}: Advancing commit index from {1} to {2}", _id, _commitIndex, newCommitIndex);
-                _commitIndex = newCommitIndex;
+                    //Console.WriteLine("{0}: Advancing commit index from {1} to {2}", _id, _commitIndex, newCommitIndex);
+                    for (var i = _persistedStore.NextApplyIndex; i < newCommitIndex; i++)
+                    {
+                        Console.WriteLine("{0}: Applying commit index {1}", _id, i);
+                        _persistedStore.ApplyIndex(this, i);
+                    }
+                    _commitIndex = newCommitIndex;
                 //for (var i = _commitIndex; i < newCommitIndex; i++)
                 //{
                 //    if (i == _stateMachine.LastCommitApplied)

@@ -43,8 +43,11 @@ namespace Raft.States
 
         public override void CommittedAddServer(IPEndPoint endPoint)
         {
-            var client = _server.GetClient(endPoint);
-            client.SendAddServerReply(AddServerStatus.Ok, _server.ID);
+            if (!_server.ID.Equals(endPoint))
+            {
+                var client = _server.GetClient(endPoint);
+                client.SendAddServerReply(AddServerStatus.Ok, _server.ID);
+            }
         }
 
         public override void Update()
@@ -114,7 +117,9 @@ namespace Raft.States
             else
             {
                 client.NextIndex = Math.Max(1, client.NextIndex - 1);
+                client.NextHeartBeat = 0;
             }
+
             client.RpcDue = 0;
 
             if (joiningServer != null)
@@ -142,7 +147,7 @@ namespace Raft.States
                     {
 
                         // we are ready, but another change is in progress
-                        if (!_server.PersistedStore.ConfigLocked)
+                        if (_server.PersistedStore.ConfigLocked)
                         {
                             // reset the rounds because we are waiting for the config file to be free
                             // this should keep the server getting heart beats
@@ -176,7 +181,7 @@ namespace Raft.States
                 if (c.Client.ID.Equals(client.ID))
                     return;
 
-            client.NextIndex = _server.PersistedStore.Length + 1;
+            client.NextIndex = _server.PersistedStore.Length;
             client.NextHeartBeat = 0;
 
             _serversToAdd.Add(new ServerJoin()
