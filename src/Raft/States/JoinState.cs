@@ -53,10 +53,13 @@ namespace Raft.States
             return true;
         }
 
-        protected override bool AppendEntriesRequest(Client client, AppendEntriesRequest request)
-        {
-            return base.AppendEntriesRequest(client, request);
-        }
+        //protected override bool AppendEntriesRequest(Client client, AppendEntriesRequest request)
+        //{
+        //    if (client == null)
+        //        client = new Client(_server, request.From);
+
+        //    return base.AppendEntriesRequest(client, request);
+        //}
 
         protected override bool VoteReply(Client client, VoteReply reply)
         {
@@ -68,10 +71,19 @@ namespace Raft.States
             return true;
         }
 
-        protected override bool VoteRequest(Client client, VoteRequest request)
-        {
-            return true;
-        }
+        //protected override bool VoteRequest(Client client, VoteRequest request)
+        //{
+        //    if (client == null)
+        //        client = new Client(_server, request.From);
+
+        //    return base.VoteRequest(client, request);
+        //}
+
+        // should give its vote
+        //protected override bool VoteRequest(Client client, VoteRequest request)
+        //{
+        //    return true;
+        //}
 
         protected override bool AppendEntriesReply(Client client, AppendEntriesReply reply)
         {

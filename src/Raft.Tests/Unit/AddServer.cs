@@ -156,5 +156,44 @@ namespace Raft.Tests.Unit
                 Assert.AreEqual(AddServerStatus.TimedOut, ((AddServerReply)testState.LastMessage).Status);
             }
         }
+
+        [TestMethod]
+        public void AddServer_StillGrantsVote()
+        {
+            using (var s1 = Helper.CreateServer())
+            using (var s2 = Helper.CreateServer())
+            {
+                var transport = new MemoryTransport();
+
+                s1.Initialize(new MemoryLog(), transport);
+                s2.Initialize(new MemoryLog(), transport, true);
+
+                s1.ChangeState(new LeaderState(s1)); // will push s1 to term 2
+
+                // applies its own entry and advances commit
+                s1.Advance();
+
+                // this sends out an add request
+                s2.ChangeState(new JoinState(s2, new Client(s2, s1.ID)));
+
+                // reads add request and sends its self as the first entry
+                s1.Advance();
+
+                // s2 now has s1 as an added entry and has applied the index
+                s2.Advance();
+
+                // s1 sees that s2 is up to date and adds log entry for s2 and locks config
+                s1.Advance();
+
+                s1.ChangeState(new CandidateState(s1));
+
+                s2.Advance();
+                s1.Advance();
+
+                Assert.AreEqual(s1.ID, s2.PersistedStore.VotedFor);
+                Assert.AreEqual(true, s1.Clients.First().VoteGranted);
+            }
+        }
+
     }
 }

@@ -63,7 +63,7 @@ namespace Raft.States
 
         public bool AddServerRequest(AddServerRequest request)
         {
-            var client = new Client(_server, request.From);
+            var client = _server.GetClient(request.From);
             return AddServerRequest(client, request);
         }
 
