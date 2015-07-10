@@ -64,8 +64,8 @@ namespace Raft.Tests.Unit
             {
                 var transport = new MemoryTransport();
 
-                s1.Initialize(new MemoryLog(), transport, s2.Config);
-                s2.Initialize(new MemoryLog(), transport, s1.Config);
+                s1.Initialize(new MemoryLog(), transport, s2.ID);
+                s2.Initialize(new MemoryLog(), transport, s1.ID);
 
                 s1.ChangeState(new CandidateState(s1));
 
@@ -86,20 +86,20 @@ namespace Raft.Tests.Unit
             {
                 var transport = new MemoryTransport();
 
-                s1.Initialize(new MemoryLog(), transport, s2.Config);
-                s2.Initialize(new MemoryLog(), transport, s1.Config);
+                s1.Initialize(new MemoryLog(), transport, s2.ID);
+                s2.Initialize(new MemoryLog(), transport, s1.ID);
 
                 s1.PersistedStore.Term = 1;
                 s2.PersistedStore.Term = 1;
 
-                s1.PersistedStore.Create(new byte[] { 0 });
+                s1.PersistedStore.Create(s1, new byte[] { 0 });
                 s1.PersistedStore.Term = 2;
-                s1.PersistedStore.Create(new byte[] { 1 });
+                s1.PersistedStore.Create(s1, new byte[] { 1 });
 
-                s2.PersistedStore.Create(new byte[] { 0 });
-                s2.PersistedStore.Create(new byte[] { 1 });
-                s2.PersistedStore.Create(new byte[] { 2 });
-                s2.PersistedStore.Create(new byte[] { 3 });
+                s2.PersistedStore.Create(s2, new byte[] { 0 });
+                s2.PersistedStore.Create(s2, new byte[] { 1 });
+                s2.PersistedStore.Create(s2, new byte[] { 2 });
+                s2.PersistedStore.Create(s2, new byte[] { 3 });
 
                 s1.ChangeState(new CandidateState(s1)); // will push s1 to term 2
 
@@ -120,19 +120,19 @@ namespace Raft.Tests.Unit
             {
                 var transport = new MemoryTransport();
 
-                s1.Initialize(new MemoryLog(), transport, s2.Config);
-                s2.Initialize(new MemoryLog(), transport, s1.Config);
+                s1.Initialize(new MemoryLog(), transport, s2.ID);
+                s2.Initialize(new MemoryLog(), transport, s1.ID);
 
                 s1.PersistedStore.Term = 1;
                 s2.PersistedStore.Term = 1;
 
-                s1.PersistedStore.Create(new byte[] { 0 });
-                s1.PersistedStore.Create(new byte[] { 1 });
+                s1.PersistedStore.Create(s1, new byte[] { 0 });
+                s1.PersistedStore.Create(s1, new byte[] { 1 });
 
-                s2.PersistedStore.Create(new byte[] { 0 });
-                s2.PersistedStore.Create(new byte[] { 1 });
-                s2.PersistedStore.Create(new byte[] { 2 });
-                s2.PersistedStore.Create(new byte[] { 3 });
+                s2.PersistedStore.Create(s2, new byte[] { 0 });
+                s2.PersistedStore.Create(s2, new byte[] { 1 });
+                s2.PersistedStore.Create(s2, new byte[] { 2 });
+                s2.PersistedStore.Create(s2, new byte[] { 3 });
 
                 s1.ChangeState(new CandidateState(s1)); // will push s1 to term 2
 
@@ -152,8 +152,8 @@ namespace Raft.Tests.Unit
             {
                 var transport = new MemoryTransport();
 
-                s1.Initialize(new MemoryLog(), transport, s2.Config);
-                s2.Initialize(new MemoryLog(), transport, s1.Config);
+                s1.Initialize(new MemoryLog(), transport, s2.ID);
+                s2.Initialize(new MemoryLog(), transport, s1.ID);
 
                 s1.PersistedStore.Term = 1;
                 s2.PersistedStore.Term = 3;
@@ -176,17 +176,17 @@ namespace Raft.Tests.Unit
             {
                 var transport = new MemoryTransport();
 
-                s1.Initialize(new MemoryLog(), transport, s2.Config);
-                s2.Initialize(new MemoryLog(), transport, s1.Config);
+                s1.Initialize(new MemoryLog(), transport, s2.ID);
+                s2.Initialize(new MemoryLog(), transport, s1.ID);
 
                 s1.PersistedStore.Term = 1;
                 s2.PersistedStore.Term = 1;
 
-                s1.PersistedStore.Create(new byte[] { 0 });
-                s1.PersistedStore.Create(new byte[] { 1 });
+                s1.PersistedStore.Create(s1, new byte[] { 0 });
+                s1.PersistedStore.Create(s1, new byte[] { 1 });
 
-                s2.PersistedStore.Create(new byte[] { 0 });
-                s2.PersistedStore.Create(new byte[] { 1 });
+                s2.PersistedStore.Create(s2, new byte[] { 0 });
+                s2.PersistedStore.Create(s2, new byte[] { 1 });
 
                 s1.ChangeState(new CandidateState(s1)); // will push s1 to term 2
 

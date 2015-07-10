@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using Raft.Messages;
@@ -31,6 +32,10 @@ namespace Raft.States
         public virtual void Update() { }
         public virtual void Exit() { }
 
+        public virtual void CommittedAddServer(IPEndPoint endPoint)
+        {
+
+        }
 
         public bool VoteRequest(VoteRequest request)
         {
@@ -58,7 +63,7 @@ namespace Raft.States
 
         public bool AddServerRequest(AddServerRequest request)
         {
-            var client = new Client(_server, new Configuration(request.From.Address , request.From.Port));
+            var client = new Client(_server, request.From);
             return AddServerRequest(client, request);
         }
 
@@ -70,7 +75,7 @@ namespace Raft.States
             }
             else
             {
-                var client = new Client(_server, new Configuration(reply.LeaderHint.Address, reply.LeaderHint.Port));
+                var client = new Client(_server, reply.LeaderHint);
                 return AddServerReply(client, reply);
             }
         }

@@ -32,10 +32,10 @@ namespace Raft.Tests.Unit
             test.Initialize();
 
             test.Term = 1;
-            test.Create(new[] { (byte)5 });
+            test.Create(null, new[] { (byte)5 });
 
             test.Term = 2;
-            test.Create(new[] { (byte)6 });
+            test.Create(null, new[] { (byte)6 });
 
             Assert.AreEqual(2u, test.Length);
             Assert.AreEqual(1, test[0].Term);
@@ -49,7 +49,7 @@ namespace Raft.Tests.Unit
             test.Initialize();
 
             test.Term = 1;
-            test.Create(new[] { (byte)5 });
+            test.Create(null, new[] { (byte)5 });
 
             Assert.AreEqual(1, test.GetLastTerm());
             Assert.AreEqual(0u, test.GetLastIndex());
@@ -64,7 +64,7 @@ namespace Raft.Tests.Unit
 
             Assert.AreEqual(false, test.LogIsBetter(0, 1));
 
-            test.Create(new[] { (byte)5 });
+            test.Create(null, new[] { (byte)5 });
 
             Assert.AreEqual(true, test.LogIsBetter(0, 1));
             Assert.AreEqual(false, test.LogIsBetter(1, 1));
@@ -77,7 +77,7 @@ namespace Raft.Tests.Unit
             test.Initialize();
 
             test.Term = 1;
-            test.Create(new[] { (byte)5 });
+            test.Create(null, new[] { (byte)5 });
 
             var index = test[0];
             var data = test.GetData(index);

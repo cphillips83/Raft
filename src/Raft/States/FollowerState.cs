@@ -112,11 +112,11 @@ namespace Raft.States
                             while (_persistedState.Length > index - 1)
                             {
                                 Console.WriteLine("{0}: Rolling back log {1}", _server.ID, _persistedState.Length - 1);
-                                _persistedState.Pop();
+                                _persistedState.Pop(_server);
                             }
 
                             //Console.WriteLine("{0}: Writing log value {1}", _id, request.Entries[i].Offset);
-                            _persistedState.Push(request.Entries[i]);
+                            _persistedState.Push(_server, request.Entries[i]);
                         }
                     }
 

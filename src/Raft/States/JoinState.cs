@@ -51,6 +51,11 @@ namespace Raft.States
             return true;
         }
 
+        protected override bool AppendEntriesRequest(Client client, AppendEntriesRequest request)
+        {
+            return base.AppendEntriesRequest(client, request);
+        }
+
         protected override bool VoteReply(Client client, VoteReply reply)
         {
             return true;

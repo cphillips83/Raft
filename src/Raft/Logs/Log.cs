@@ -21,7 +21,8 @@ namespace Raft.Logs
 
         // current term of the cluster
         private int _currentTerm;
-        private uint _appliedIndex;
+        private uint _nextApplyIndex;
+        private bool _configLocked;
 
         // who we last voted for
         private IPEndPoint _votedFor;
@@ -34,9 +35,9 @@ namespace Raft.Logs
         private uint _logLength;
 
         //private List<Peer> _peers;
-        private List<Configuration> _clients = new List<Configuration>();
+        private List<IPEndPoint> _clients = new List<IPEndPoint>();
 
-        public IEnumerable<Configuration> Clients { get { return _clients; } }
+        public IEnumerable<IPEndPoint> Clients { get { return _clients; } }
 
         public int Term
         {
@@ -59,6 +60,19 @@ namespace Raft.Logs
             }
         }
 
+        public bool ConfigLocked
+        {
+            get
+            {
+                return _configLocked;
+            }
+            set
+            {
+                System.Diagnostics.Debug.Assert(!_configLocked);
+                _configLocked = value;
+                saveSuperBlock();
+            }
+        }
         public uint Length { get { return _logLength; } }
 
         public uint DataPosition
@@ -86,13 +100,16 @@ namespace Raft.Logs
             System.Diagnostics.Debug.Assert(br.BaseStream.Length >= SUPER_BLOCK_SIZE);
             System.Diagnostics.Debug.Assert(((br.BaseStream.Length - SUPER_BLOCK_SIZE)) % LOG_RECORD_SIZE == 0);
 
-            //read term and last vote
+            // read term and last vote
             _currentTerm = br.ReadInt32();
+
+            // read config lock
+            _configLocked = br.ReadBoolean();
 
             var voteForLen = br.ReadInt32();
             _votedFor = voteForLen > 0 ? new IPEndPoint(new IPAddress(br.ReadBytes(voteForLen)), br.ReadInt32()) : null;
 
-            _appliedIndex = br.ReadUInt32();
+            _nextApplyIndex = br.ReadUInt32();
 
             // peers
             var peerCount = br.ReadInt32();
@@ -103,7 +120,7 @@ namespace Raft.Logs
                 var addrBytes = br.ReadBytes(addrBytesLen);
                 var port = br.ReadInt32();
 
-                _clients.Add(new Configuration(new System.Net.IPAddress(addrBytes), port));
+                _clients.Add(new IPEndPoint(new System.Net.IPAddress(addrBytes), port));
             }
 
             //seek to end of superblock for data
@@ -148,6 +165,9 @@ namespace Raft.Logs
             // write current term
             _logIndexWriter.Write(_currentTerm);
 
+            // write config lock
+            _logIndexWriter.Write(_configLocked);
+
             // did we vote?
             if (_votedFor == null)
                 _logIndexWriter.Write(0);
@@ -162,7 +182,7 @@ namespace Raft.Logs
             }
 
             // last applied index
-            _logIndexWriter.Write(_appliedIndex);
+            _logIndexWriter.Write(_nextApplyIndex);
 
             // peers
             _logIndexWriter.Write(_clients.Count);
@@ -170,7 +190,7 @@ namespace Raft.Logs
             {
                 //_logIndexWriter.Write(_clients[i].ID);
                 
-                var addrBytes = _clients[i].IP.GetAddressBytes();
+                var addrBytes = _clients[i].Address.GetAddressBytes();
                 _logIndexWriter.Write(addrBytes.Length);
                 _logIndexWriter.Write(addrBytes);
                 _logIndexWriter.Write(_clients[i].Port);
@@ -226,7 +246,72 @@ namespace Raft.Logs
             saveSuperBlock();
         }
 
-        public LogEntry Create(byte[] data)
+        public LogEntry AddServer(Server server, IPEndPoint id)
+        {
+            var data = id.Address.GetAddressBytes();
+            Array.Resize(ref data, data.Length + 4);
+
+            data[data.Length - 4] = (byte)(id.Port >> 24);
+            data[data.Length - 3] = (byte)(id.Port >> 16);
+            data[data.Length - 2] = (byte)(id.Port >> 8);
+            data[data.Length - 1] = (byte)(id.Port);
+
+            var entry = new LogEntry()
+            {
+                Index = new LogIndex()
+                {
+                    Term = _currentTerm,
+                    Offset = DataPosition,
+                    Size = (uint)data.Length,
+                    Type = LogIndexType.AddServer
+                },
+                Data = data
+            };
+
+            Push(server, entry);
+            return entry;
+        }
+
+        public LogEntry RemoveServer(Server server, IPEndPoint id)
+        {
+            var data = id.Address.GetAddressBytes();
+            Array.Resize(ref data, data.Length + 4);
+
+            data[data.Length - 4] = (byte)(id.Port >> 24);
+            data[data.Length - 3] = (byte)(id.Port >> 16);
+            data[data.Length - 2] = (byte)(id.Port >> 8);
+            data[data.Length - 1] = (byte)(id.Port);
+
+            var entry = new LogEntry()
+            {
+                Index = new LogIndex()
+                {
+                    Term = _currentTerm,
+                    Offset = DataPosition,
+                    Size = (uint)data.Length,
+                    Type = LogIndexType.RemoveServer
+                },
+                Data = data
+            };
+
+            Push(server, entry);
+            return entry;
+        }
+
+        public IPEndPoint GetIPEndPoint(byte[] data)
+        {
+            var port = (data[data.Length - 4] << 24) +
+                       (data[data.Length - 3] << 16) +
+                       (data[data.Length - 2] << 8) +
+                       (data[data.Length - 1]);
+
+            Array.Resize(ref data, data.Length - 4);
+            var ip = new IPAddress(data);
+
+            return new IPEndPoint(ip, port);
+        }
+
+        public LogEntry Create(Server server, byte[] data)
         {
             var entry = new LogEntry()
             {
@@ -240,11 +325,11 @@ namespace Raft.Logs
                 Data = data
             };
 
-            Push(entry);
+            Push(server, entry);
             return entry;
         }
 
-        public void Push(LogEntry data)
+        public void Push(Server server, LogEntry data)
         {
             // we must first write the data to the dat file
             // in case of crash in between log data and log entry
@@ -278,16 +363,58 @@ namespace Raft.Logs
             _logIndexWriter.Write(data.Index.Size);
 
             _logIndexWriter.Flush();
+
+            //add server before commit
+            if (data.Index.Type == LogIndexType.AddServer)
+            {
+                _configLocked = true;
+                server.AddClientFromLog(GetIPEndPoint(data.Data));
+                saveSuperBlock();
+            }
         }
 
-        public void Pop()
+        public void ApplyIndex(Server server, uint index)
+        {
+            if (index != _nextApplyIndex)
+                throw new Exception();
+
+
+            var applyIndex = _logIndices[_nextApplyIndex];
+            if(applyIndex.Type == LogIndexType.AddServer)
+            {
+                var endPointData = GetData(applyIndex);
+                var endPoint = GetIPEndPoint(endPointData);
+
+                System.Diagnostics.Debug.Assert(_clients.Count(x => x.Equals(endPoint)) == 0);
+                _clients.Add(endPoint);
+                server.CurrentState.CommittedAddServer(endPoint);
+
+
+            }
+
+            _nextApplyIndex++;
+            saveSuperBlock();
+        }
+
+        public void Pop(Server server)
         {
             System.Diagnostics.Debug.Assert(_logLength > 0);
+
+
+            var lastIndex = _logIndices[--_logLength];
+
+            //roll back add
+            if (lastIndex.Type == LogIndexType.AddServer)
+            {
+                _configLocked = false;
+                server.RemoveClientFromLog(GetIPEndPoint(GetData(lastIndex)));
+                saveSuperBlock();
+            }
 
             _logLength--;
         }
 
-        public void UpdateClients(IEnumerable<Configuration> clients)
+        public void UpdateClients(IEnumerable<IPEndPoint> clients)
         {
             _clients.Clear();
             foreach (var client in clients)

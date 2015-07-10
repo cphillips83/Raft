@@ -42,7 +42,7 @@ namespace Raft
             var sid = ++id;
             var port = sid + 7000;
 
-            return new Server(new Configuration(IPAddress.Loopback, port));
+            return new Server(new IPEndPoint(IPAddress.Loopback, port));
         }
 
     }
@@ -56,18 +56,18 @@ namespace Raft
             {
                 var transport = new MemoryTransport();
 
-                s1.Initialize(new MemoryLog(), transport, s2.Config);
-                s2.Initialize(new MemoryLog(), transport, s1.Config);
+                s1.Initialize(new MemoryLog(), transport, s2.ID);
+                s2.Initialize(new MemoryLog(), transport, s1.ID);
 
                 s1.PersistedStore.Term = 1;
                 s2.PersistedStore.Term = 1;
 
-                s1.PersistedStore.Create(new[] { (byte)s1.ID.GetHashCode() });
+                s1.PersistedStore.Create(s1, new[] { (byte)s1.ID.GetHashCode() });
                 s1.PersistedStore.Term = 2;
-                s1.PersistedStore.Create(new[] { (byte)s1.ID.GetHashCode() });
+                s1.PersistedStore.Create(s1, new[] { (byte)s1.ID.GetHashCode() });
 
-                s2.PersistedStore.Create(new[] { (byte)s1.ID.GetHashCode() });
-                s2.PersistedStore.Create(new[] { (byte)s2.ID.GetHashCode() });
+                s2.PersistedStore.Create(s2, new[] { (byte)s1.ID.GetHashCode() });
+                s2.PersistedStore.Create(s2, new[] { (byte)s2.ID.GetHashCode() });
 
                 s1.ChangeState(new CandidateState(s1)); // will push s1 to term 2
 
@@ -81,13 +81,13 @@ namespace Raft
 
         static void Main(string[] args)
         {
-            var s1 = new Server(new Configuration(IPAddress.Loopback, 7741));
-            var s2 = new Server(new Configuration(IPAddress.Loopback, 7742));
+            var s1 = new Server(new IPEndPoint(IPAddress.Loopback, 7741));
+            var s2 = new Server(new IPEndPoint(IPAddress.Loopback, 7742));
 
             var transport = new MemoryTransport();
 
-            s1.Initialize(new MemoryLog(), transport, s2.Config);
-            s2.Initialize(new MemoryLog(), transport, s1.Config);
+            s1.Initialize(new MemoryLog(), transport, s2.ID);
+            s2.Initialize(new MemoryLog(), transport, s1.ID);
 
             while (true)
             {
@@ -100,7 +100,7 @@ namespace Raft
                 if (leader.CurrentState is LeaderState && (leader.Tick % 1000) == 0)
                 {
                     //Console.WriteLine("create");
-                    leader.PersistedStore.Create(new byte[] { (byte)leader.ID.GetHashCode() });
+                    leader.PersistedStore.Create(leader, new byte[] { (byte)leader.ID.GetHashCode() });
                     System.Threading.Thread.Sleep(5);
                 }
                 System.Threading.Thread.Sleep(1);

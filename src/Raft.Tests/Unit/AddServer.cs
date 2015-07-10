@@ -58,7 +58,7 @@ namespace Raft.Tests.Unit
                     From = s2.ID
                 };
 
-                s2.Transport.SendMessage(new Client(s2, s1.Config), request);
+                s2.Transport.SendMessage(new Client(s2, s1.ID), request);
                 s1.Advance();
                 s2.Advance();
 
@@ -72,8 +72,6 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void AddServer_ReplicateToLog()
         {
-
-
             using (var s1 = Helper.CreateServer())
             using (var s2 = Helper.CreateServer())
             {
@@ -89,7 +87,7 @@ namespace Raft.Tests.Unit
 
                 s2.Initialize(new MemoryLog(), transport);
 
-                s2.ChangeState(new JoinState(s2, new Client(s2, s1.Config)));
+                s2.ChangeState(new JoinState(s2, new Client(s2, s1.ID)));
                 s2.Advance();
                 s1.Advance();
                 s2.Advance();
@@ -109,19 +107,19 @@ namespace Raft.Tests.Unit
                 var transport = new MemoryTransport();
 
                 s1.Initialize(new MemoryLog(), transport);
-                
+
                 s1.PersistedStore.Term = 1;
                 s1.ChangeState(new LeaderState(s1)); // will push s1 to term 2
 
                 for (var i = 0; i < 100; i++)
-                    s1.PersistedStore.Create(new byte[] { (byte)i });
+                    s1.PersistedStore.Create(s1, new byte[] { (byte)i });
 
                 s1.Advance();
                 //s1.Advance();
 
-                s2.Initialize(new MemoryLog(), transport, s1.Config);
+                s2.Initialize(new MemoryLog(), transport, s1.ID);
 
-                s2.ChangeState(new JoinState(s2, new Client(s2, s1.Config)));
+                s2.ChangeState(new JoinState(s2, new Client(s2, s1.ID)));
                 s2.Advance();
 
 

@@ -42,7 +42,7 @@ namespace Raft.Transports
                 _incomingMessages.Enqueue(reply);
             }
 
-            public override void Start(Configuration config)
+            public override void Start(IPEndPoint config)
             {
             }
 
@@ -107,7 +107,7 @@ namespace Raft.Transports
             client.Process(server);
         }
 
-        public void Start(Configuration config)
+        public void Start(IPEndPoint config)
         {
             
         }

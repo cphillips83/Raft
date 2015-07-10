@@ -12,7 +12,7 @@ namespace Raft
     public class Client 
     {
         private IPEndPoint _id;
-        private Configuration _config;
+        //private Configuration _config;
         //private IPEndPoint _endPoint;
         private Server _server;
         private long _nextHeartBeat;
@@ -22,7 +22,7 @@ namespace Raft
         private long _rpcDue;
 
         public IPEndPoint ID { get { return _id; } }
-        public Configuration Config { get { return _config; } }
+        //public Configuration Config { get { return _config; } }
         //public IPEndPoint EndPoint { get { return _endPoint; } }
         public long NextHeartBeat { get { return _nextHeartBeat; } set { _nextHeartBeat = value; } }
         public uint MatchIndex { get { return _matchIndex; } set { _matchIndex = value; } }
@@ -31,11 +31,11 @@ namespace Raft
         public long RpcDue { get { return _rpcDue; } set { _rpcDue = long.MaxValue; } }
         public bool ReadyToSend { get { return _rpcDue <= _server.Tick; } }
 
-        public Client(Server server, Configuration config)
+        public Client(Server server, IPEndPoint id)
         {
-            _config = config;
+            //_config = config;
             //_id = _config.ID;
-            _id = new IPEndPoint(config.IP, config.Port);
+            _id = id; //new IPEndPoint(config.IP, config.Port);
             _server = server;
         }
 

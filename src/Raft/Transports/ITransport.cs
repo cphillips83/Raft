@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using Raft.Messages;
@@ -18,7 +19,7 @@ namespace Raft.Transports
 
         void Process(Server server);
 
-        void Start(Configuration config);
+        void Start(IPEndPoint config);
         void Shutdown();
     }
 }

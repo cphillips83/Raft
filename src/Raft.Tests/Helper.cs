@@ -44,7 +44,7 @@ namespace Raft.Tests
             var sid = ++id;
             var port = sid + 7000;
 
-            return new Server(new Configuration(IPAddress.Loopback, port));
+            return new Server(new IPEndPoint(IPAddress.Loopback, port));
         }
 
 
@@ -57,8 +57,8 @@ namespace Raft.Tests
 
             for (var i = 0; i < servers.Length; i++)
                 servers[i].Initialize(new MemoryLog(), transport,
-                        servers.Where(x => x.ID != servers[i].ID)
-                               .Select(x => x.Config).ToArray()
+                        servers.Where(x => !x.ID.Equals(servers[i].ID))
+                               .Select(x => x.ID).ToArray()
                     );
 
             return servers;

@@ -19,8 +19,8 @@ namespace Raft.Tests.Unit
             {
                 var transport = new MemoryTransport();
 
-                s1.Initialize(new MemoryLog(), transport, s2.Config);
-                s2.Initialize(new MemoryLog(), transport, s1.Config);
+                s1.Initialize(new MemoryLog(), transport, s2.ID);
+                s2.Initialize(new MemoryLog(), transport, s1.ID);
 
                 s1.PersistedStore.Term = 1;
                 s2.PersistedStore.Term = 1;
@@ -30,7 +30,7 @@ namespace Raft.Tests.Unit
                 s2.Advance();
                 s1.Advance();
 
-                s1.PersistedStore.Create(new byte[] { 5 });
+                s1.PersistedStore.Create(s1, new byte[] { 5 });
                 s1.Advance();
                 s2.Advance();
 
@@ -59,8 +59,8 @@ namespace Raft.Tests.Unit
             {
                 var transport = new MemoryTransport();
 
-                s1.Initialize(new MemoryLog(), transport, s2.Config);
-                s2.Initialize(new MemoryLog(), transport, s1.Config);
+                s1.Initialize(new MemoryLog(), transport, s2.ID);
+                s2.Initialize(new MemoryLog(), transport, s1.ID);
 
                 s1.PersistedStore.Term = 1;
                 s2.PersistedStore.Term = 1;
@@ -70,7 +70,7 @@ namespace Raft.Tests.Unit
                 s2.Advance();
                 s1.Advance();
 
-                s1.PersistedStore.Create(new byte[] { 5 });
+                s1.PersistedStore.Create(s1, new byte[] { 5 });
                 s1.Advance();
                 s2.Advance();
 

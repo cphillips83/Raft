@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using Raft.Messages;
@@ -18,7 +19,7 @@ namespace Raft.Transports
         public abstract void SendMessage(Client client, AddServerRequest request);
         public abstract void SendMessage(Client client, AddServerReply relpy);
 
-        public abstract void Start(Configuration config);
+        public abstract void Start(IPEndPoint ip);
         public abstract void Shutdown();
 
         public virtual void Process(Server server)

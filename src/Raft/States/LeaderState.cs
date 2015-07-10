@@ -41,6 +41,12 @@ namespace Raft.States
             _serversToAdd.Clear();
         }
 
+        public override void CommittedAddServer(IPEndPoint endPoint)
+        {
+            var client = _server.GetClient(endPoint);
+            client.SendAddServerReply(AddServerStatus.Ok, _server.ID);
+        }
+
         public override void Update()
         {
             _server.AdvanceCommits();
@@ -60,6 +66,7 @@ namespace Raft.States
                 if (client.NextHeartBeat <= _server.Tick ||
                     (client.NextIndex <= _server.PersistedStore.Length && client.ReadyToSend))
                 {
+                    Console.WriteLine("{0}: Catching up {1}", _server.ID, client.ID);
                     client.SendAppendEntriesRequest();
                 }
             }
@@ -92,7 +99,6 @@ namespace Raft.States
 
         protected override bool AppendEntriesReply(Client client, AppendEntriesReply reply)
         {
-            System.Diagnostics.Debugger.Break();
             if (StepDown(reply.Term))
                 return true;
 
@@ -113,17 +119,18 @@ namespace Raft.States
 
             if (joiningServer != null)
             {
-                if (joiningServer.NextRound <= _server.Tick)
+                if (joiningServer.NextRound <= _server.Tick || joiningServer.Client.MatchIndex == _server.CommitIndex)
                 {
                     joiningServer.Round--;
+
                     if (joiningServer.Client.MatchIndex != _server.CommitIndex)
                     {
                         //at the end of the rounds and still not caught up
                         //or we made no progress in a single round
                         if (joiningServer.Round <= 0 || joiningServer.RoundIndex == client.MatchIndex)
                         {
-                            client.SendAddServerReply(AddServerStatus.TimedOut, new IPEndPoint(_server.Config.IP, _server.Config.Port));
-                            TimeoutServerJoin(client);
+                            client.SendAddServerReply(AddServerStatus.TimedOut, new IPEndPoint(_server.ID.Address, _server.ID.Port));
+                            RemoveServerJoin(client);
                         }
                         else
                         {
@@ -133,10 +140,20 @@ namespace Raft.States
                     }
                     else
                     {
-                        //server is caught up to leader, add via log
-                        //here we have to flag that configuration is locked
-                        System.Diagnostics.Debugger.Break();
-                        //client.SendAddServerReply(AddServerStatus.Ok, new IPEndPoint(_server.Config.IP, _server.Config.Port));
+
+                        // we are ready, but another change is in progress
+                        if (!_server.PersistedStore.ConfigLocked)
+                        {
+                            // reset the rounds because we are waiting for the config file to be free
+                            // this should keep the server getting heart beats
+                            joiningServer.Round = 10;
+                        }
+                        else
+                        {
+                            //_server.AddClientFromLog(client.ID);
+                            _server.PersistedStore.AddServer(_server, client.ID);
+                            RemoveServerJoin(client);
+                        }
                     }
                 }
             }
@@ -151,9 +168,13 @@ namespace Raft.States
 
         private void QueueServerJoin(Client client)
         {
+            foreach (var c in _server.Clients)
+                if (c.ID.Equals(client.ID))
+                    return;
+
             foreach (var c in _serversToAdd)
                 if (c.Client.ID.Equals(client.ID))
-                    break;
+                    return;
 
             client.NextIndex = _server.PersistedStore.Length + 1;
             client.NextHeartBeat = 0;
@@ -167,14 +188,14 @@ namespace Raft.States
             });
         }
 
-        private void TimeoutServerJoin(Client client)
+        private void RemoveServerJoin(Client client)
         {
             for (var i = 0; i < _serversToAdd.Count; i++)
             {
                 if (_serversToAdd[i].Client.ID.Equals(client.ID))
                 {
                     _serversToAdd.RemoveAt(i);
-                    break;
+                    return;
                 }
             }
         }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using Lidgren.Network;
@@ -24,9 +25,9 @@ namespace Raft.Transports
 
         private NetPeer _rpc;
 
-        public override void Start(Configuration _config)
+        public override void Start(IPEndPoint _config)
         {
-            NetPeerConfiguration config = new NetPeerConfiguration(_config.IP.ToString() + ":" + _config.Port);
+            NetPeerConfiguration config = new NetPeerConfiguration(_config.Address.ToString() + ":" + _config.Port);
             config.SetMessageTypeEnabled(NetIncomingMessageType.UnconnectedData, true);
             config.Port = _config.Port;
 

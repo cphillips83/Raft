@@ -23,7 +23,6 @@ namespace Raft
         private uint _commitIndex = 0;
         private Random _random;
         //private Stopwatch _timer;
-        private Configuration _config;
         private Log _persistedStore;
         private ITransport _transport;
         private List<Client> _clients = new List<Client>();
@@ -36,7 +35,6 @@ namespace Raft
 
         public long Tick { get { return _tick; } }
         //public long RawTimeInMS { get { return _timer.ElapsedMilliseconds; } }
-        public Configuration Config { get { return _config; } }
 
         public ITransport Transport { get { return _transport; } }
         //public NetPeer IO { get { return _rpc; } }
@@ -67,10 +65,10 @@ namespace Raft
             }
         }
 
-        public Server(Configuration config)
+        public Server(IPEndPoint id)
         {
-            _config = config;
-            _id = new IPEndPoint(config.IP, config.Port);
+            //_config = config;
+            _id = id;
             _random = new Random((int)DateTime.UtcNow.Ticks ^ _id.GetHashCode());
             //_dataDir = dataDir;
             _currentState = new StoppedState(this);
@@ -79,10 +77,36 @@ namespace Raft
 
         public Client GetClient(IPEndPoint id)
         {
-            return _clients.FirstOrDefault(x => x.ID.Equals(id));
+            var client = _clients.FirstOrDefault(x => x.ID.Equals(id));
+            if (client == null)
+                client = new Client(this, id);
+
+            return client;
         }
 
-        public void Initialize(Log log, ITransport transport, params Configuration[] clients)
+        public void AddClientFromLog(IPEndPoint id)
+        {
+            System.Diagnostics.Debug.Assert(GetClient(id) == null);
+            _clients.Add(new Client(this, id));
+        }
+
+        public void RemoveClientFromLog(IPEndPoint id)
+        {
+            System.Diagnostics.Debug.Assert(GetClient(id) != null);
+            
+            for (var i = 0; i < _clients.Count; i++)
+            {
+                if(_clients[i].ID.Equals(id))
+                {
+                    _clients.RemoveAt(i);
+                    return;
+                }
+            }
+            
+            System.Diagnostics.Debug.Assert(false);
+        }
+
+        public void Initialize(Log log, ITransport transport, params IPEndPoint[] clients)
         {
             if (_persistedStore == null)
             {
@@ -115,7 +139,7 @@ namespace Raft
 
                 //host.Open();
                 _transport = transport;
-                transport.Start(_config);
+                transport.Start(_id);
 
             }
 

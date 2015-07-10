@@ -28,5 +28,7 @@ namespace Raft
     {
         RawData = 0,
         StateMachine = 1,
+        AddServer = 2,
+        RemoveServer = 3,
     }
 }
