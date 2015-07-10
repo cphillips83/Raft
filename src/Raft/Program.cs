@@ -51,7 +51,7 @@ namespace Raft
     {
         static void DoTest(int count)
         {
-            var transport = new MemoryTransport(10, 15);
+            var transport = new MemoryTransport(10, 15, 0);
             var master = new Server(new IPEndPoint(IPAddress.Loopback, 7001));
 
             master.Initialize(new MemoryLog(), transport);
@@ -61,6 +61,7 @@ namespace Raft
             var servers = new List<Server>();
             servers.Add(master);
 
+
             while (count-- > 0)
             {
                 var client = new Server(new IPEndPoint(IPAddress.Loopback, count + 7002));
@@ -69,11 +70,14 @@ namespace Raft
                 servers.Add(client);
             }
 
+            // a disruptive server
+            //transport.SetPacketDropRate(servers[servers.Count - 1].ID, 0.2f);
+
             while (true)
             {
                 foreach (var c in servers)
                     c.Advance();
-                //System.Threading.Thread.Sleep(0);
+                System.Threading.Thread.Sleep(10);
             }
 
         }

@@ -22,11 +22,14 @@ namespace Raft.Transports
 
             private Random _random;
             private int _minRpc, _maxRpc;
-            public ClientTransport(IPEndPoint ip, int minRpc, int maxRpc)
+            private float _packetDropRate;
+
+            public ClientTransport(IPEndPoint ip, int minRpc, int maxRpc, float packetDropRate)
             {
                 _random = new Random(ip.GetHashCode());
                 _minRpc = minRpc;
                 _maxRpc = maxRpc;
+                _packetDropRate = packetDropRate;
             }
 
             private void addMessage(object message)
@@ -48,6 +51,14 @@ namespace Raft.Transports
                     if (nextMessage.Tick <= 0 && handleMessage(server, nextMessage.Message))
                         _clientMessages.RemoveAt(i--);
                 }
+            }
+
+            protected override bool handleMessage(Server server, object msg)
+            {
+                if ((float)_random.NextDouble() < _packetDropRate)
+                    return true;
+
+                return base.handleMessage(server, msg);
             }
 
             public override void SendMessage(Client client, VoteRequest request)
@@ -87,9 +98,15 @@ namespace Raft.Transports
             public override void Shutdown()
             {
             }
+
+            public void SetPacketDropRate(float packetDropRate)
+            {
+                _packetDropRate = packetDropRate;
+            }
         }
 
         private int _minRpc, _maxRpc;
+        private float _packetDropRate;
         private Dictionary<IPEndPoint, ClientTransport> _clients = new Dictionary<IPEndPoint, ClientTransport>();
 
         public MemoryTransport()
@@ -98,10 +115,17 @@ namespace Raft.Transports
             _maxRpc = 0;
         }
 
-        public MemoryTransport(int minRpc, int maxRpc)
+        public MemoryTransport(int minRpc, int maxRpc, float packetDropRate)
         {
             _minRpc = minRpc;
             _maxRpc = maxRpc;
+            _packetDropRate = packetDropRate;
+        }
+
+        public void SetPacketDropRate(IPEndPoint ip, float packetDropRate)
+        {
+            var client = GetClient(ip);
+            client.SetPacketDropRate(packetDropRate);
         }
 
         private ClientTransport GetClient(IPEndPoint client)
@@ -109,7 +133,7 @@ namespace Raft.Transports
             ClientTransport transport;
             if (!_clients.TryGetValue(client, out transport))
             {
-                transport = new ClientTransport(client, _minRpc, _maxRpc);
+                transport = new ClientTransport(client, _minRpc, _maxRpc, _packetDropRate);
                 _clients.Add(client, transport);
             }
 

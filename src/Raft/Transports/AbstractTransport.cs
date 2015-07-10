@@ -32,7 +32,7 @@ namespace Raft.Transports
             }
         }
 
-        protected bool handleMessage(Server server, object msg)
+        protected virtual bool handleMessage(Server server, object msg)
         {
             if (msg is VoteRequest)
                 return server.CurrentState.VoteRequest((VoteRequest)msg);

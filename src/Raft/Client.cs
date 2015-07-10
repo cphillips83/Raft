@@ -148,7 +148,7 @@ namespace Raft
         {
             if (_rpcDue > 0 && _rpcDue <= _server.Tick)
             {
-                Console.WriteLine("{0}: dropped rpc at {1} ", _server.ID, _server.Tick);
+                Console.WriteLine("{0}: dropped rpc for {1} at {2} ", _server.ID, _id, _server.Tick);
                 _rpcDue = 0;
             }
         }
