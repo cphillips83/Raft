@@ -51,7 +51,7 @@ namespace Raft
     {
         static void DoTest(int count)
         {
-            var transport = new MemoryTransport();
+            var transport = new MemoryTransport(10, 15);
             var master = new Server(new IPEndPoint(IPAddress.Loopback, 7001));
 
             master.Initialize(new MemoryLog(), transport);
@@ -73,7 +73,7 @@ namespace Raft
             {
                 foreach (var c in servers)
                     c.Advance();
-                System.Threading.Thread.Sleep(0);
+                //System.Threading.Thread.Sleep(0);
             }
 
         }

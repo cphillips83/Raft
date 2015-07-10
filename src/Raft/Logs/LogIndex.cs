@@ -21,6 +21,11 @@ namespace Raft.Logs
 
         [FieldOffset(12)]
         public uint Size;
+
+        public override string ToString()
+        {
+            return string.Format("{{ Term: {0}, Type: {1}, Offset: {2}, Size : {3} }}", Term, Type, Offset, Size);
+        }
     }
 
 }

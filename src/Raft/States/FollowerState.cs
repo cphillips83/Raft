@@ -33,7 +33,7 @@ namespace Raft.States
         protected void resetHeartbeat()
         {
             var timeout = _server.PersistedStore.ELECTION_TIMEOUT;
-            var randomTimeout = _server.Random.Next(timeout, timeout + timeout) / 2;
+            var randomTimeout = _server.Random.Next(timeout, timeout + timeout);
             _heatbeatTimeout = _server.Tick + randomTimeout;
         }
 

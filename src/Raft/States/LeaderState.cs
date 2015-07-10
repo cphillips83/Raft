@@ -194,7 +194,7 @@ namespace Raft.States
                 if (c.Client.ID.Equals(client.ID))
                     return;
 
-            client.NextIndex = _server.PersistedStore.Length;
+            client.NextIndex = _server.PersistedStore.Length + 1;
             client.NextHeartBeat = 0;
 
             _serversToAdd.Add(new ServerJoin()

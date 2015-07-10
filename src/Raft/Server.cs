@@ -225,10 +225,10 @@ namespace Raft
             if (newCommitIndex != _commitIndex)
             {
                     //Console.WriteLine("{0}: Advancing commit index from {1} to {2}", _id, _commitIndex, newCommitIndex);
-                    for (var i = _persistedStore.NextApplyIndex; i < newCommitIndex; i++)
+                    for (var i = _persistedStore.LastAppliedIndex; i < newCommitIndex; i++)
                     {
-                        Console.WriteLine("{0}: Applying commit index {1}", _id, i);
-                        _persistedStore.ApplyIndex(this, i);
+                        Console.WriteLine("{0}: Applying commit index {1}", _id, i + 1);
+                        _persistedStore.ApplyIndex(this, i + 1);
                     }
                     _commitIndex = newCommitIndex;
                 //for (var i = _commitIndex; i < newCommitIndex; i++)

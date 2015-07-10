@@ -21,7 +21,7 @@ namespace Raft.Logs
 
         // current term of the cluster
         private int _currentTerm = 1;
-        private uint _nextApplyIndex;
+        private uint _lastAppliedIndex;
         private bool _configLocked;
 
         // who we last voted for
@@ -39,7 +39,7 @@ namespace Raft.Logs
 
         public IEnumerable<IPEndPoint> Clients { get { return _clients; } }
 
-        public uint NextApplyIndex { get { return _nextApplyIndex; } }
+        public uint LastAppliedIndex { get { return _lastAppliedIndex; } }
 
         public int Term
         {
@@ -111,7 +111,7 @@ namespace Raft.Logs
             var voteForLen = br.ReadInt32();
             _votedFor = voteForLen > 0 ? new IPEndPoint(new IPAddress(br.ReadBytes(voteForLen)), br.ReadInt32()) : null;
 
-            _nextApplyIndex = br.ReadUInt32();
+            _lastAppliedIndex = br.ReadUInt32();
 
             // peers
             var peerCount = br.ReadInt32();
@@ -184,7 +184,7 @@ namespace Raft.Logs
             }
 
             // last applied index
-            _logIndexWriter.Write(_nextApplyIndex);
+            _logIndexWriter.Write(_lastAppliedIndex);
 
             // peers
             _logIndexWriter.Write(_clients.Count);
@@ -326,7 +326,10 @@ namespace Raft.Logs
                 },
                 Data = data
             };
-
+            
+            if(server != null)
+                Console.WriteLine("{0}: Created {1}", server.ID, entry.Index);
+            
             Push(server, entry);
             return entry;
         }
@@ -391,10 +394,10 @@ namespace Raft.Logs
 
         public void ApplyIndex(Server server, uint index)
         {
-            if (index != _nextApplyIndex)
+            if (index != _lastAppliedIndex + 1)
                 throw new Exception();
 
-            var applyIndex = _logIndices[_nextApplyIndex];
+            var applyIndex = _logIndices[_lastAppliedIndex];
             if(applyIndex.Type == LogIndexType.AddServer)
             {
                 System.Diagnostics.Debug.Assert(_configLocked);
@@ -412,7 +415,7 @@ namespace Raft.Logs
                 server.CurrentState.CommittedAddServer(id);
             }
 
-            _nextApplyIndex++;
+            _lastAppliedIndex++;
             saveSuperBlock();
         }
 

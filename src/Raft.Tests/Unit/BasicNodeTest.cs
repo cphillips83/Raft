@@ -33,7 +33,7 @@ namespace Raft.Tests.Unit
                 var transport = new MemoryTransport();
 
                 server.Initialize(new MemoryLog(), transport);
-                var ticks = server.PersistedStore.ELECTION_TIMEOUT;
+                var ticks = server.PersistedStore.ELECTION_TIMEOUT * 2;
                 while (ticks-- > 0 && server.CurrentState is FollowerState)
                     server.Advance();
 

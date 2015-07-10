@@ -12,34 +12,72 @@ namespace Raft.Transports
     {
         private class ClientTransport : AbstractTransport
         {
+            private class ClientMessage
+            {
+                public int Tick;
+                public object Message;
+            }
+
+            private List<ClientMessage> _clientMessages = new List<ClientMessage>();
+
+            private Random _random;
+            private int _minRpc, _maxRpc;
+            public ClientTransport(IPEndPoint ip, int minRpc, int maxRpc)
+            {
+                _random = new Random(ip.GetHashCode());
+                _minRpc = minRpc;
+                _maxRpc = maxRpc;
+            }
+
+            private void addMessage(object message)
+            {
+                _clientMessages.Add(new ClientMessage()
+                {
+                    Tick = _random.Next(_minRpc, _maxRpc),
+                    Message = message
+                });
+            }
+
+            public override void Process(Server server)
+            {
+                for (var i = 0; i < _clientMessages.Count; i++)
+                {
+                    var nextMessage = _clientMessages[i];
+                    nextMessage.Tick--;
+
+                    if (nextMessage.Tick <= 0 && handleMessage(server, nextMessage.Message))
+                        _clientMessages.RemoveAt(i--);
+                }
+            }
+
             public override void SendMessage(Client client, VoteRequest request)
             {
-                _incomingMessages.Enqueue(request);       
+                addMessage(request);
             }
 
             public override void SendMessage(Client client, VoteReply reply)
             {
-                _incomingMessages.Enqueue(reply);
+                addMessage(reply);
             }
 
             public override void SendMessage(Client client, AppendEntriesRequest request)
             {
-                _incomingMessages.Enqueue(request);
+                addMessage(request);
             }
 
             public override void SendMessage(Client client, AppendEntriesReply reply)
             {
-                _incomingMessages.Enqueue(reply);
+                addMessage(reply);
             }
 
             public override void SendMessage(Client client, AddServerRequest request)
             {
-                _incomingMessages.Enqueue(request);
+                addMessage(request);
             }
 
             public override void SendMessage(Client client, AddServerReply reply)
             {
-                _incomingMessages.Enqueue(reply);
+                addMessage(reply);
             }
 
             public override void Start(IPEndPoint config)
@@ -51,14 +89,27 @@ namespace Raft.Transports
             }
         }
 
+        private int _minRpc, _maxRpc;
         private Dictionary<IPEndPoint, ClientTransport> _clients = new Dictionary<IPEndPoint, ClientTransport>();
+
+        public MemoryTransport()
+        {
+            _minRpc = 0;
+            _maxRpc = 0;
+        }
+
+        public MemoryTransport(int minRpc, int maxRpc)
+        {
+            _minRpc = minRpc;
+            _maxRpc = maxRpc;
+        }
 
         private ClientTransport GetClient(IPEndPoint client)
         {
             ClientTransport transport;
             if (!_clients.TryGetValue(client, out transport))
             {
-                transport = new ClientTransport();
+                transport = new ClientTransport(client, _minRpc, _maxRpc);
                 _clients.Add(client, transport);
             }
 
@@ -109,12 +160,12 @@ namespace Raft.Transports
 
         public void Start(IPEndPoint config)
         {
-            
+
         }
 
         public void Shutdown()
         {
-            
+
         }
     }
 }

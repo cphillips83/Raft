@@ -15,15 +15,15 @@ namespace Raft.Tests.Unit
     [TestClass]
     public class AddServer
     {
+#if DEBUG
         static AddServer()
         {
-#if DEBUG
             if (System.Diagnostics.Debugger.IsAttached)
                 Console.SetOut(new DebugWriter());
 
 
-#endif
         }
+#endif
 
         [TestMethod]
         public void AddServer_ReplyNotLeaderIfNotLeader()
@@ -76,6 +76,11 @@ namespace Raft.Tests.Unit
 
                 // this sends out an add request
                 s2.ChangeState(new JoinState(s2, new Client(s2, s1.ID)));
+
+                // these are needed because the first append entries will fail
+                // and s2 will return where its nextIndex is
+                s1.Advance();
+                s2.Advance();
 
                 // reads add request and sends its self as the first entry
                 s1.Advance();
@@ -164,6 +169,11 @@ namespace Raft.Tests.Unit
 
                 // this sends out an add request
                 s2.ChangeState(new JoinState(s2, new Client(s2, s1.ID)));
+
+                // these are needed because the first append entries will fail
+                // and s2 will return where its nextIndex is
+                s1.Advance();
+                s2.Advance();
 
                 // reads add request and sends its self as the first entry
                 s1.Advance();

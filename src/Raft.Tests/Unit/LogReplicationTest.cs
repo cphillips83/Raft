@@ -11,6 +11,16 @@ namespace Raft.Tests.Unit
     [TestClass]
     public class LogReplicationTest
     {
+#if DEBUG
+        static LogReplicationTest()
+        {
+            if (System.Diagnostics.Debugger.IsAttached)
+                Console.SetOut(new DebugWriter());
+
+
+        }
+#endif
+
         [TestMethod]
         public void LogReplicated()
         {
@@ -31,13 +41,13 @@ namespace Raft.Tests.Unit
                 s1.Advance();
 
                 s1.PersistedStore.Create(s1, new byte[] { 5 });
-                s1.Advance();
+                s1.Advance(50);
                 s2.Advance();
 
                 LogIndex logIndex;
                 var index = s2.PersistedStore.GetLastIndex(out logIndex);
 
-                //log replication check
+                //log replication check 
                 Assert.AreNotEqual(0, index);
                 Assert.AreEqual(2, logIndex.Term);
                 Assert.AreEqual(LogIndexType.RawData, logIndex.Type);
@@ -47,7 +57,7 @@ namespace Raft.Tests.Unit
                 var data = s2.PersistedStore.GetData(logIndex);
                 Assert.AreEqual(1, data.Length);
                 Assert.AreEqual((byte)5, data[0]);
-               
+
             }
         }
 
