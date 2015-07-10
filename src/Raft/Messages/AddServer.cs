@@ -39,13 +39,12 @@ namespace Raft.Messages
 
     public struct AddServerRequest
     {
-        public string From;
-        public IPEndPoint EndPoint;
+        public IPEndPoint From;
     }
 
     public struct AddServerReply
     {
-        public string From;
+        public IPEndPoint From;
         public AddServerStatus Status;
         public IPEndPoint LeaderHint;
     }

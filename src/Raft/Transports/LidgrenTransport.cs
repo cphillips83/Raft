@@ -26,7 +26,7 @@ namespace Raft.Transports
 
         public override void Start(Configuration _config)
         {
-            NetPeerConfiguration config = new NetPeerConfiguration(_config.ID.ToString());
+            NetPeerConfiguration config = new NetPeerConfiguration(_config.IP.ToString() + ":" + _config.Port);
             config.SetMessageTypeEnabled(NetIncomingMessageType.UnconnectedData, true);
             config.Port = _config.Port;
 
@@ -56,7 +56,7 @@ namespace Raft.Transports
             msg.Write(request.Term);
             msg.Write(request.LastTerm);
             msg.Write(request.LogLength);
-            _rpc.SendUnconnectedMessage(msg, client.EndPoint);
+            _rpc.SendUnconnectedMessage(msg, client.ID);
             _rpc.FlushSendQueue();
         }
 
@@ -67,7 +67,7 @@ namespace Raft.Transports
             msg.Write(reply.From);
             msg.Write(reply.Term);
             msg.Write(reply.Granted);
-            _rpc.SendUnconnectedMessage(msg, client.EndPoint);
+            _rpc.SendUnconnectedMessage(msg, client.ID);
             _rpc.FlushSendQueue();
         }
 
@@ -97,7 +97,7 @@ namespace Raft.Transports
                     msg.Write(request.Entries[i].Data);
                 }
             }
-            _rpc.SendUnconnectedMessage(msg, client.EndPoint);
+            _rpc.SendUnconnectedMessage(msg, client.ID);
             _rpc.FlushSendQueue();
         }
 
@@ -109,7 +109,7 @@ namespace Raft.Transports
             msg.Write(reply.Term);
             msg.Write(reply.MatchIndex);
             msg.Write(reply.Success);
-            _rpc.SendUnconnectedMessage(msg, client.EndPoint);
+            _rpc.SendUnconnectedMessage(msg, client.ID);
             _rpc.FlushSendQueue();
         }
 
@@ -118,8 +118,7 @@ namespace Raft.Transports
             var msg = _rpc.CreateMessage();
             msg.Write((byte)MessageTypes.AddServerRequest);
             msg.Write(request.From);
-            msg.Write(request.EndPoint);
-            _rpc.SendUnconnectedMessage(msg, client.EndPoint);
+            _rpc.SendUnconnectedMessage(msg, client.ID);
             _rpc.FlushSendQueue();
         }
 
@@ -130,7 +129,7 @@ namespace Raft.Transports
             msg.Write(reply.From);
             msg.Write((uint)reply.Status);
             msg.Write(reply.LeaderHint);
-            _rpc.SendUnconnectedMessage(msg, client.EndPoint);
+            _rpc.SendUnconnectedMessage(msg, client.ID);
             _rpc.FlushSendQueue();
         }
 
@@ -147,7 +146,7 @@ namespace Raft.Transports
                             case MessageTypes.VoteRequest:
                                 {
                                     var incomingMessage = new VoteRequest();
-                                    incomingMessage.From = msg.ReadString();
+                                    incomingMessage.From = msg.ReadIPEndPoint();
                                     incomingMessage.Term = msg.ReadInt32();
                                     incomingMessage.LastTerm = msg.ReadInt32();
                                     incomingMessage.LogLength = msg.ReadUInt32();
@@ -158,7 +157,7 @@ namespace Raft.Transports
                             case MessageTypes.VoteReply:
                                 {
                                     var incomingMessage = new VoteReply();
-                                    incomingMessage.From = msg.ReadString();
+                                    incomingMessage.From = msg.ReadIPEndPoint();
                                     incomingMessage.Term = msg.ReadInt32();
                                     incomingMessage.Granted = msg.ReadBoolean();
 
@@ -168,7 +167,7 @@ namespace Raft.Transports
                             case MessageTypes.AppendEntriesRequest:
                                 {
                                     var incomingMessage = new AppendEntriesRequest();
-                                    incomingMessage.From = msg.ReadString();
+                                    incomingMessage.From = msg.ReadIPEndPoint();
                                     incomingMessage.Term = msg.ReadInt32();
                                     incomingMessage.PrevTerm = msg.ReadInt32();
                                     incomingMessage.PrevIndex = msg.ReadUInt32();
@@ -203,7 +202,7 @@ namespace Raft.Transports
                             case MessageTypes.AppendEntriesReply:
                                 {
                                     var incomingMessage = new AppendEntriesReply();
-                                    incomingMessage.From = msg.ReadString();
+                                    incomingMessage.From = msg.ReadIPEndPoint();
                                     incomingMessage.Term = msg.ReadInt32();
                                     incomingMessage.MatchIndex = msg.ReadUInt32();
                                     incomingMessage.Success = msg.ReadBoolean();
@@ -214,15 +213,14 @@ namespace Raft.Transports
                             case MessageTypes.AddServerRequest:
                                 {
                                     var incomingMessage = new AddServerRequest();
-                                    incomingMessage.From = msg.ReadString();
-                                    incomingMessage.EndPoint = msg.ReadIPEndPoint();
+                                    incomingMessage.From = msg.ReadIPEndPoint();
                                     _incomingMessages.Enqueue(incomingMessage);
                                 }
                                 break;
                             case MessageTypes.AddServerReply:
                                 {
                                     var incomingMessage = new AddServerReply();
-                                    incomingMessage.From = msg.ReadString();
+                                    incomingMessage.From = msg.ReadIPEndPoint();
                                     incomingMessage.Status = (AddServerStatus)msg.ReadUInt32();
                                     incomingMessage.LeaderHint = msg.ReadIPEndPoint();
                                     _incomingMessages.Enqueue(incomingMessage);

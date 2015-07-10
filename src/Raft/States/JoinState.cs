@@ -9,18 +9,38 @@ namespace Raft.States
 {
     public class JoinState : FollowerState
     {
-        public JoinState(Server server) : base(server) { }
+        private Client _bootstrap;
+
+        public JoinState(Server server, Client bootstrap)
+            : base(server)
+        {
+            _bootstrap = bootstrap;
+        }
+
+        public override void Enter()
+        {
+            base.Enter();
+            HeartbeatTimeout();
+        }
+
+        protected override void HeartbeatTimeout()
+        {
+            _bootstrap.SendAddServerRequest();
+        }
 
         protected override bool AddServerReply(Client client, AddServerReply reply)
         {
-            if(client == null)
+            if (client == null)
                 Console.WriteLine("{0}: Server {1} replied with not leader and doesn't know who is the leader", _server.ID, reply.From);
             else
             {
                 //try again, playing catch up or not leader
                 //client should be derived from leader hint
                 if (reply.Status == AddServerStatus.TimedOut || reply.Status == AddServerStatus.NotLeader)
-                    client.SendAddServerRequest();
+                {
+                    _bootstrap = client;
+                    resetHeartbeat();
+                }
                 else
                 {
                     //ok, we were added! switch to follower

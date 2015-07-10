@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using Raft.Messages;
@@ -50,9 +51,9 @@ namespace Raft.Transports
             }
         }
 
-        private Dictionary<string, ClientTransport> _clients = new Dictionary<string, ClientTransport>();
+        private Dictionary<IPEndPoint, ClientTransport> _clients = new Dictionary<IPEndPoint, ClientTransport>();
 
-        private ClientTransport GetClient(string client)
+        private ClientTransport GetClient(IPEndPoint client)
         {
             ClientTransport transport;
             if (!_clients.TryGetValue(client, out transport))

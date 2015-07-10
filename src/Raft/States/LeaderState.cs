@@ -37,7 +37,7 @@ namespace Raft.States
         {
             foreach (var requests in _serversToAdd)
                 requests.Client.SendAddServerReply(AddServerStatus.NotLeader, null);
-            
+
             _serversToAdd.Clear();
         }
 
@@ -92,10 +92,11 @@ namespace Raft.States
 
         protected override bool AppendEntriesReply(Client client, AppendEntriesReply reply)
         {
+            System.Diagnostics.Debugger.Break();
             if (StepDown(reply.Term))
                 return true;
 
-            var joiningServer = _serversToAdd.FirstOrDefault(x => x.Client.ID == client.ID);
+            var joiningServer = _serversToAdd.FirstOrDefault(x => x.Client.ID.Equals(client.ID));
             if (joiningServer != null)
                 client = joiningServer.Client;
 
@@ -134,6 +135,7 @@ namespace Raft.States
                     {
                         //server is caught up to leader, add via log
                         //here we have to flag that configuration is locked
+                        System.Diagnostics.Debugger.Break();
                         //client.SendAddServerReply(AddServerStatus.Ok, new IPEndPoint(_server.Config.IP, _server.Config.Port));
                     }
                 }
@@ -150,11 +152,15 @@ namespace Raft.States
         private void QueueServerJoin(Client client)
         {
             foreach (var c in _serversToAdd)
-                if (c.Client.ID == client.ID)
+                if (c.Client.ID.Equals(client.ID))
                     break;
 
-            _serversToAdd.Add(new ServerJoin() { 
-                Client = client, 
+            client.NextIndex = _server.PersistedStore.Length + 1;
+            client.NextHeartBeat = 0;
+
+            _serversToAdd.Add(new ServerJoin()
+            {
+                Client = client,
                 Round = 10,
                 NextRound = _server.Tick + _server.PersistedStore.ELECTION_TIMEOUT,
                 RoundIndex = 0
@@ -165,7 +171,7 @@ namespace Raft.States
         {
             for (var i = 0; i < _serversToAdd.Count; i++)
             {
-                if (_serversToAdd[i].Client.ID == client.ID)
+                if (_serversToAdd[i].Client.ID.Equals(client.ID))
                 {
                     _serversToAdd.RemoveAt(i);
                     break;

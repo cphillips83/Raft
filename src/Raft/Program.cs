@@ -42,7 +42,7 @@ namespace Raft
             var sid = ++id;
             var port = sid + 7000;
 
-            return new Server(new Configuration("s" + sid, IPAddress.Loopback, port));
+            return new Server(new Configuration(IPAddress.Loopback, port));
         }
 
     }
@@ -81,8 +81,8 @@ namespace Raft
 
         static void Main(string[] args)
         {
-            var s1 = new Server(new Configuration("delta", IPAddress.Loopback, 7741));
-            var s2 = new Server(new Configuration("bravo", IPAddress.Loopback, 7742));
+            var s1 = new Server(new Configuration(IPAddress.Loopback, 7741));
+            var s2 = new Server(new Configuration(IPAddress.Loopback, 7742));
 
             var transport = new MemoryTransport();
 

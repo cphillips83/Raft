@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -23,7 +24,7 @@ namespace Raft.Logs
         private uint _appliedIndex;
 
         // who we last voted for
-        private string _votedFor;
+        private IPEndPoint _votedFor;
 
         private Stream _indexStream, _logDataFile;
         private BinaryWriter _logIndexWriter;
@@ -48,7 +49,7 @@ namespace Raft.Logs
             }
         }
 
-        public string VotedFor
+        public IPEndPoint VotedFor
         {
             get { return _votedFor; }
             set
@@ -88,7 +89,8 @@ namespace Raft.Logs
             //read term and last vote
             _currentTerm = br.ReadInt32();
 
-            _votedFor = br.ReadBoolean() ? br.ReadString() : null;
+            var voteForLen = br.ReadInt32();
+            _votedFor = voteForLen > 0 ? new IPEndPoint(new IPAddress(br.ReadBytes(voteForLen)), br.ReadInt32()) : null;
 
             _appliedIndex = br.ReadUInt32();
 
@@ -96,12 +98,12 @@ namespace Raft.Logs
             var peerCount = br.ReadInt32();
             for (var i = 0; i < peerCount; i++)
             {
-                var id = br.ReadString();
+                //var id = br.ReadString();
                 var addrBytesLen = br.ReadInt32();
                 var addrBytes = br.ReadBytes(addrBytesLen);
                 var port = br.ReadInt32();
 
-                _clients.Add(new Configuration(id, new System.Net.IPAddress(addrBytes), port));
+                _clients.Add(new Configuration(new System.Net.IPAddress(addrBytes), port));
             }
 
             //seek to end of superblock for data
@@ -147,15 +149,16 @@ namespace Raft.Logs
             _logIndexWriter.Write(_currentTerm);
 
             // did we vote?
-            if (string.IsNullOrEmpty(_votedFor))
-                _logIndexWriter.Write(false);
+            if (_votedFor == null)
+                _logIndexWriter.Write(0);
             else
             {
                 _logIndexWriter.Write(true);
 
                 // who did we vote for
-                _logIndexWriter.Write(_votedFor);
-
+                var voteData = _votedFor.Address.GetAddressBytes();
+                _logIndexWriter.Write(voteData.Length);
+                _logIndexWriter.Write(voteData);
             }
 
             // last applied index
@@ -165,7 +168,7 @@ namespace Raft.Logs
             _logIndexWriter.Write(_clients.Count);
             for (var i = 0; i < _clients.Count; i++)
             {
-                _logIndexWriter.Write(_clients[i].ID);
+                //_logIndexWriter.Write(_clients[i].ID);
                 
                 var addrBytes = _clients[i].IP.GetAddressBytes();
                 _logIndexWriter.Write(addrBytes.Length);
@@ -216,7 +219,7 @@ namespace Raft.Logs
 
         }
 
-        public void UpdateState(int term, string votedFor)
+        public void UpdateState(int term, IPEndPoint votedFor)
         {
             _currentTerm = term;
             _votedFor = votedFor;

@@ -58,7 +58,7 @@ namespace Raft.States
 
         public bool AddServerRequest(AddServerRequest request)
         {
-            var client = new Client(_server, new Configuration(request.From, request.EndPoint.Address , request.EndPoint.Port));
+            var client = new Client(_server, new Configuration(request.From.Address , request.From.Port));
             return AddServerRequest(client, request);
         }
 
@@ -70,7 +70,7 @@ namespace Raft.States
             }
             else
             {
-                var client = new Client(_server, new Configuration(reply.From, reply.LeaderHint.Address, reply.LeaderHint.Port));
+                var client = new Client(_server, new Configuration(reply.LeaderHint.Address, reply.LeaderHint.Port));
                 return AddServerReply(client, reply);
             }
         }

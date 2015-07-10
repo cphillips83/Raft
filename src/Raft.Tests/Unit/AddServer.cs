@@ -15,8 +15,29 @@ namespace Raft.Tests.Unit
     [TestClass]
     public class AddServer
     {
+        static AddServer()
+        {
+#if DEBUG
+            if (System.Diagnostics.Debugger.IsAttached)
+                Console.SetOut(new DebugWriter());
+
+            System.Diagnostics.Debug.WriteLine("");
+            System.Diagnostics.Debug.WriteLine("");
+            System.Diagnostics.Debug.WriteLine("");
+            System.Diagnostics.Debug.WriteLine("");
+            System.Diagnostics.Debug.WriteLine("");
+            System.Diagnostics.Debug.WriteLine("");
+            System.Diagnostics.Debug.WriteLine("");
+            System.Diagnostics.Debug.WriteLine("");
+            System.Diagnostics.Debug.WriteLine("");
+            System.Diagnostics.Debug.WriteLine("");
+            System.Diagnostics.Debug.WriteLine("");
+            System.Diagnostics.Debug.WriteLine("");
+#endif
+        }
+
         [TestMethod]
-        public void ReplyNotLeaderIfNotLeader()
+        public void AddServer_ReplyNotLeaderIfNotLeader()
         {
             using (var s1 = Helper.CreateServer())
             using (var s2 = Helper.CreateServer())
@@ -34,8 +55,7 @@ namespace Raft.Tests.Unit
 
                 var request = new AddServerRequest()
                 {
-                    From = s2.ID,
-                    EndPoint = new IPEndPoint(s2.Config.IP, s2.Config.Port)
+                    From = s2.ID
                 };
 
                 s2.Transport.SendMessage(new Client(s2, s1.Config), request);
@@ -46,6 +66,67 @@ namespace Raft.Tests.Unit
 
                 Assert.AreEqual(typeof(AddServerReply), testState.LastMessage.GetType());
                 Assert.AreEqual(AddServerStatus.NotLeader, ((AddServerReply)testState.LastMessage).Status);
+            }
+        }
+
+        [TestMethod]
+        public void AddServer_ReplicateToLog()
+        {
+
+
+            using (var s1 = Helper.CreateServer())
+            using (var s2 = Helper.CreateServer())
+            {
+                var transport = new MemoryTransport();
+
+                s1.Initialize(new MemoryLog(), transport);
+
+                s1.PersistedStore.Term = 1;
+                s1.ChangeState(new LeaderState(s1)); // will push s1 to term 2
+
+                s1.Advance();
+                //s1.Advance();
+
+                s2.Initialize(new MemoryLog(), transport);
+
+                s2.ChangeState(new JoinState(s2, new Client(s2, s1.Config)));
+                s2.Advance();
+                s1.Advance();
+                s2.Advance();
+                s1.Advance();
+
+                //Assert.AreEqual(typeof(AddServerReply), testState.LastMessage.GetType());
+                //Assert.AreEqual(AddServerStatus.NotLeader, ((AddServerReply)testState.LastMessage).Status);
+            }
+        }
+
+        [TestMethod]
+        public void AddServer_CatchUp()
+        {
+            using (var s1 = Helper.CreateServer())
+            using (var s2 = Helper.CreateServer())
+            {
+                var transport = new MemoryTransport();
+
+                s1.Initialize(new MemoryLog(), transport);
+                
+                s1.PersistedStore.Term = 1;
+                s1.ChangeState(new LeaderState(s1)); // will push s1 to term 2
+
+                for (var i = 0; i < 100; i++)
+                    s1.PersistedStore.Create(new byte[] { (byte)i });
+
+                s1.Advance();
+                //s1.Advance();
+
+                s2.Initialize(new MemoryLog(), transport, s1.Config);
+
+                s2.ChangeState(new JoinState(s2, new Client(s2, s1.Config)));
+                s2.Advance();
+
+
+                //Assert.AreEqual(typeof(AddServerReply), testState.LastMessage.GetType());
+                //Assert.AreEqual(AddServerStatus.NotLeader, ((AddServerReply)testState.LastMessage).Status);
             }
         }
     }

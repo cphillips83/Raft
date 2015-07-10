@@ -18,7 +18,7 @@ namespace Raft.Tests.Unit
             test.Initialize();
 
             test.Term = 1;
-            test.VotedFor = "123";
+            test.VotedFor = new IPEndPoint(IPAddress.Loopback, 123);
 
             test.Term = 2;
             Assert.AreEqual(2, test.Term);

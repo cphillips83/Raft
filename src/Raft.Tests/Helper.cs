@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -9,6 +10,31 @@ using Raft.Transports;
 
 namespace Raft.Tests
 {
+    public class DebugWriter : TextWriter
+    {
+        //save static reference to stdOut
+        static TextWriter stdOut = Console.Out;
+
+        public override void WriteLine(string value)
+        {
+            System.Diagnostics.Debug.WriteLine(value);
+            stdOut.WriteLine(value);
+            base.WriteLine(value);
+        }
+
+        public override void Write(string value)
+        {
+            System.Diagnostics.Debug.Write(value);
+            stdOut.Write(value);
+            base.Write(value);
+        }
+
+        public override Encoding Encoding
+        {
+            get { return Encoding.Unicode; }
+        }
+    }
+
     public static class Helper
     {
         public static int id;
@@ -18,7 +44,7 @@ namespace Raft.Tests
             var sid = ++id;
             var port = sid + 7000;
 
-            return new Server(new Configuration(sid.ToString(), IPAddress.Loopback, port));
+            return new Server(new Configuration(IPAddress.Loopback, port));
         }
 
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
@@ -11,7 +12,7 @@ namespace Raft.Messages
 {
     public struct AppendEntriesRequest
     {
-        public string From;
+        public IPEndPoint From;
         public int Term;
         public int PrevTerm;
         public uint PrevIndex;
@@ -21,7 +22,7 @@ namespace Raft.Messages
 
     public struct AppendEntriesReply
     {
-        public string From;
+        public IPEndPoint From;
         public int Term;
         public uint MatchIndex;
         public bool Success;

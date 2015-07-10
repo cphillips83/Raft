@@ -11,7 +11,7 @@ namespace Raft.Messages
 {
     public struct VoteRequest
     {
-        public string From;
+        public IPEndPoint From;
         public int Term;
         public int LastTerm;
         public uint LogLength;
@@ -19,7 +19,7 @@ namespace Raft.Messages
 
     public struct VoteReply
     {
-        public string From;
+        public IPEndPoint From;
         public int Term;
         public bool Granted;
 

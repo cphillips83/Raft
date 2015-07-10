@@ -10,21 +10,25 @@ namespace Raft
 {
     public class Configuration
     {
-        private string _id;
+        //private string _id;
         private int _port;
         private IPAddress _ip;
+        private IPEndPoint _endPoint;
 
-        public string ID { get { return _id; } }
+        //public string ID { get { return _id; } }
 
         public IPAddress IP { get { return _ip; } }
 
         public int Port { get { return _port; } }
 
-        public Configuration(string serverID, IPAddress ip, int port)
+        //public IPEndPoint EndPoint { get { return _endPoint; } }
+
+        public Configuration(/*string serverID,*/ IPAddress ip, int port)
         {
-            _id = serverID;
+            //_id = serverID;
             _ip = ip;
             _port = port;
+            _endPoint = new IPEndPoint(ip, port);
         }
     }
 }

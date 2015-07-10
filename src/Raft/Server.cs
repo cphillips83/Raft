@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using Lidgren.Network;
@@ -18,7 +19,7 @@ namespace Raft
 
         //private NetPeer _rpc;
 
-        private string _id;
+        private IPEndPoint _id;
         private uint _commitIndex = 0;
         private Random _random;
         //private Stopwatch _timer;
@@ -30,7 +31,7 @@ namespace Raft
         private AbstractState _currentState;
         private long _tick = 0;
 
-        public string ID { get { return _id; } }
+        public IPEndPoint ID { get { return _id; } }
         public uint CommitIndex { get { return _commitIndex; } set { _commitIndex = value; } }
 
         public long Tick { get { return _tick; } }
@@ -69,16 +70,16 @@ namespace Raft
         public Server(Configuration config)
         {
             _config = config;
-            _id = config.ID;
+            _id = new IPEndPoint(config.IP, config.Port);
             _random = new Random((int)DateTime.UtcNow.Ticks ^ _id.GetHashCode());
             //_dataDir = dataDir;
             _currentState = new StoppedState(this);
         }
 
 
-        public Client GetClient(string id)
+        public Client GetClient(IPEndPoint id)
         {
-            return _clients.First(x => x.ID == id);
+            return _clients.FirstOrDefault(x => x.ID.Equals(id));
         }
 
         public void Initialize(Log log, ITransport transport, params Configuration[] clients)

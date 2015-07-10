@@ -9,6 +9,7 @@ namespace Raft.States
 {
     public class FollowerState : AbstractState
     {
+        private Client _leader;
         private long _heatbeatTimeout = long.MaxValue;
 
         public FollowerState(Server server) : base(server) { }
@@ -67,6 +68,7 @@ namespace Raft.States
             {
                 Console.WriteLine("{0}: Voted for {1}", _server.ID, client.ID);
                 _persistedState.VotedFor = client.ID;
+                _leader = null;
                 resetHeartbeat();
             }
 
@@ -87,6 +89,7 @@ namespace Raft.States
                 _persistedState.Term = request.Term;
 
             //Console.WriteLine("heatbeat");
+            _leader = client;
 
             var success = false;
             var matchIndex = 0u;
@@ -133,6 +136,17 @@ namespace Raft.States
                 _persistedState.Term = reply.Term;
 
             return true;
+        }
+
+        protected override bool AddServerRequest(Client client, AddServerRequest request)
+        {
+            if (_leader != null)
+            {
+                client.SendAddServerReply(AddServerStatus.NotLeader, _leader.ID);
+                return true;
+            }
+
+            return base.AddServerRequest(client, request);
         }
     }
 

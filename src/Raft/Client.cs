@@ -11,9 +11,9 @@ namespace Raft
 {
     public class Client 
     {
-        private string _id;
+        private IPEndPoint _id;
         private Configuration _config;
-        private IPEndPoint _endPoint;
+        //private IPEndPoint _endPoint;
         private Server _server;
         private long _nextHeartBeat;
         private bool _voteGranted;
@@ -21,9 +21,9 @@ namespace Raft
         private uint _nextIndex;
         private long _rpcDue;
 
-        public string ID { get { return _id; } }
+        public IPEndPoint ID { get { return _id; } }
         public Configuration Config { get { return _config; } }
-        public IPEndPoint EndPoint { get { return _endPoint; } }
+        //public IPEndPoint EndPoint { get { return _endPoint; } }
         public long NextHeartBeat { get { return _nextHeartBeat; } set { _nextHeartBeat = value; } }
         public uint MatchIndex { get { return _matchIndex; } set { _matchIndex = value; } }
         public uint NextIndex { get { return _nextIndex; } set { _nextIndex = value; } }
@@ -34,8 +34,8 @@ namespace Raft
         public Client(Server server, Configuration config)
         {
             _config = config;
-            _id = _config.ID;
-            _endPoint = new IPEndPoint(config.IP, config.Port);
+            //_id = _config.ID;
+            _id = new IPEndPoint(config.IP, config.Port);
             _server = server;
         }
 
@@ -113,16 +113,18 @@ namespace Raft
 
         public void SendAddServerRequest()
         {
+            Console.WriteLine("{0}: Sending add server request to {1}", _server.ID, this.ID);
             var message = new AddServerRequest()
             {
                 From = _server.ID,
-                EndPoint = new IPEndPoint(_server.Config.IP, _server.Config.Port)
+                //EndPoint = new IPEndPoint(_server.Config.IP, _server.Config.Port)
             };
             _server.Transport.SendMessage(this, message);
         }
 
         public void SendAddServerReply(AddServerStatus status, IPEndPoint leaderHint)
         {
+            Console.WriteLine("{0}: Sending add server reply to {1} with status {2}", _server.ID, ID, status);
             var message = new AddServerReply()
             {
                 From = _server.ID,
@@ -131,7 +133,6 @@ namespace Raft
             };
             _server.Transport.SendMessage(this, message);
         }
-
 
         public void Update()
         {
