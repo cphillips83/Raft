@@ -149,42 +149,11 @@ namespace Raft.Tests.Unit
                 s2.ChangeState(testState);
 
                 s1.Advance(100);
-                
+
                 s2.Advance();
 
                 Assert.AreEqual(typeof(AddServerReply), testState.LastMessage.GetType());
                 Assert.AreEqual(AddServerStatus.TimedOut, ((AddServerReply)testState.LastMessage).Status);
-
-
-                //// s2 now has s1 as an added entry and has applied the index
-                //s2.Advance();
-
-                //// s1 sees that s2 is up to date and adds log entry for s2 and locks config
-                //s1.Advance();
-
-                //// heart beat went out before the new log entry, needs to respond to it
-                //s2.Advance();
-
-                //// tells s2 about the new log entry
-                //s1.Advance(50);
-
-                //// s2 sees that is now part of the majority, needs to commit log
-                //// so that s1 can apply it
-                //s2.Advance();
-
-                //// s1 sees its commited on majority (2)
-                //s1.Advance(50);
-
-                //// s2 sees that s1 has committed its add entry
-                //// s2 switches to follower and is now part of the cluster
-                //s2.Advance();
-
-                //Assert.AreEqual(2, s1.Majority);
-                //Assert.AreEqual(2, s2.Majority);
-                //Assert.IsTrue(s1.ID.Equals(s2.GetClient(s1.ID).ID));
-                //Assert.IsTrue(s2.ID.Equals(s1.GetClient(s2.ID).ID));
-                //Assert.IsTrue(s1.ID.Equals(s2.PersistedStore.Clients.First()));
-                //Assert.IsTrue(s2.ID.Equals(s1.PersistedStore.Clients.First()));
             }
         }
     }
