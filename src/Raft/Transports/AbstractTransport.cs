@@ -18,6 +18,8 @@ namespace Raft.Transports
         public abstract void SendMessage(Client client, AppendEntriesReply reply);
         public abstract void SendMessage(Client client, AddServerRequest request);
         public abstract void SendMessage(Client client, AddServerReply relpy);
+        public abstract void SendMessage(Client client, RemoveServerRequest request);
+        public abstract void SendMessage(Client client, RemoveServerReply relpy);
 
         public abstract void Start(IPEndPoint ip);
         public abstract void Shutdown();
@@ -46,6 +48,10 @@ namespace Raft.Transports
                 return server.CurrentState.AddServerRequest((AddServerRequest)msg);
             else if (msg is AddServerReply)
                 return server.CurrentState.AddServerReply((AddServerReply)msg);
+            else if (msg is RemoveServerRequest)
+                return server.CurrentState.RemoveServerRequest((RemoveServerRequest)msg);
+            else if (msg is RemoveServerReply)
+                return server.CurrentState.RemoveServerReply((RemoveServerReply)msg);
 
             System.Diagnostics.Debug.Assert(false);
             return true;

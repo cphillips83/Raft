@@ -20,7 +20,9 @@ namespace Raft.Transports
             AppendEntriesReply,
             AppendEntriesRequest,
             AddServerRequest,
-            AddServerReply
+            AddServerReply,
+            RemoveServerRequest,
+            RemoveServerReply
         }
 
         private NetPeer _rpc;
@@ -134,6 +136,26 @@ namespace Raft.Transports
             _rpc.FlushSendQueue();
         }
 
+        public override void SendMessage(Client client, RemoveServerRequest request)
+        {
+            var msg = _rpc.CreateMessage();
+            msg.Write((byte)MessageTypes.RemoveServerRequest);
+            msg.Write(request.From);
+            _rpc.SendUnconnectedMessage(msg, client.ID);
+            _rpc.FlushSendQueue();
+        }
+
+        public override void SendMessage(Client client, RemoveServerReply reply)
+        {
+            var msg = _rpc.CreateMessage();
+            msg.Write((byte)MessageTypes.RemoveServerReply);
+            msg.Write(reply.From);
+            msg.Write((uint)reply.Status);
+            msg.Write(reply.LeaderHint);
+            _rpc.SendUnconnectedMessage(msg, client.ID);
+            _rpc.FlushSendQueue();
+        }
+
         public override void Process(Server server)
         {
             NetIncomingMessage msg;
@@ -223,6 +245,22 @@ namespace Raft.Transports
                                     var incomingMessage = new AddServerReply();
                                     incomingMessage.From = msg.ReadIPEndPoint();
                                     incomingMessage.Status = (AddServerStatus)msg.ReadUInt32();
+                                    incomingMessage.LeaderHint = msg.ReadIPEndPoint();
+                                    _incomingMessages.Enqueue(incomingMessage);
+                                }
+                                break;
+                            case MessageTypes.RemoveServerRequest:
+                                {
+                                    var incomingMessage = new RemoveServerRequest();
+                                    incomingMessage.From = msg.ReadIPEndPoint();
+                                    _incomingMessages.Enqueue(incomingMessage);
+                                }
+                                break;
+                            case MessageTypes.RemoveServerReply:
+                                {
+                                    var incomingMessage = new RemoveServerReply();
+                                    incomingMessage.From = msg.ReadIPEndPoint();
+                                    incomingMessage.Status = (RemoveServerStatus)msg.ReadUInt32();
                                     incomingMessage.LeaderHint = msg.ReadIPEndPoint();
                                     _incomingMessages.Enqueue(incomingMessage);
                                 }

@@ -16,6 +16,8 @@ namespace Raft.Transports
         void SendMessage(Client client, AppendEntriesReply reply);
         void SendMessage(Client client, AddServerRequest request);
         void SendMessage(Client client, AddServerReply reply);
+        void SendMessage(Client client, RemoveServerRequest request);
+        void SendMessage(Client client, RemoveServerReply reply);
 
         void Process(Server server);
 

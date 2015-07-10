@@ -80,6 +80,26 @@ namespace Raft.States
             }
         }
 
+        public bool RemoveServerRequest(RemoveServerRequest request)
+        {
+            var client = _server.GetClient(request.From);
+            return RemoveServerRequest(client, request);
+        }
+
+        public bool RemoveServerReply(RemoveServerReply reply)
+        {
+            if (reply.Status == RemoveServerStatus.NotLeader && reply.LeaderHint == null)
+            {
+                return RemoveServerReply(null, reply);
+            }
+            else
+            {
+                var client = new Client(_server, reply.LeaderHint);
+                return RemoveServerReply(client, reply);
+            }
+        }
+
+
         protected abstract bool VoteRequest(Client client, VoteRequest request);
         protected abstract bool VoteReply(Client client, VoteReply reply);
 
@@ -96,6 +116,18 @@ namespace Raft.States
         {
             return true;
         }
+
+        protected virtual bool RemoveServerRequest(Client client, RemoveServerRequest request)
+        {
+            client.SendRemoveServerReply(RemoveServerStatus.NotLeader, null);
+            return true;
+        }
+
+        protected virtual bool RemoveServerReply(Client client, RemoveServerReply reply)
+        {
+            return true;
+        }
+
     }
 
 }

@@ -144,6 +144,32 @@ namespace Raft
             _server.Transport.SendMessage(this, message);
         }
 
+        public void SendRemoveServerRequest()
+        {
+            Console.WriteLine("{0}: Sending remove server request to {1}", _server.ID, this.ID);
+            var message = new RemoveServerRequest()
+            {
+                From = _server.ID,
+                //EndPoint = new IPEndPoint(_server.Config.IP, _server.Config.Port)
+            };
+            _lastMessage = message;
+            _server.Transport.SendMessage(this, message);
+            _rpcDue = _server.Tick + _server.PersistedStore.RPC_TIMEOUT;
+        }
+
+        public void SendRemoveServerReply(RemoveServerStatus status, IPEndPoint leaderHint)
+        {
+            Console.WriteLine("{0}: Sending remove server reply to {1} with status {2}", _server.ID, ID, status);
+            var message = new RemoveServerReply()
+            {
+                From = _server.ID,
+                Status = status,
+                LeaderHint = leaderHint,
+            };
+            _lastMessage = message;
+            _server.Transport.SendMessage(this, message);
+        }
+
         public void Update()
         {
             if (_rpcDue > 0 && _rpcDue <= _server.Tick)

@@ -91,6 +91,16 @@ namespace Raft.Transports
                 addMessage(reply);
             }
 
+            public override void SendMessage(Client client, RemoveServerRequest request)
+            {
+                addMessage(request);
+            }
+
+            public override void SendMessage(Client client, RemoveServerReply reply)
+            {
+                addMessage(reply);
+            }
+
             public override void Start(IPEndPoint config)
             {
             }
@@ -171,6 +181,18 @@ namespace Raft.Transports
         }
 
         public void SendMessage(Client client, AddServerReply reply)
+        {
+            var transport = GetClient(client.ID);
+            transport.SendMessage(client, reply);
+        }
+
+        public void SendMessage(Client client, RemoveServerRequest request)
+        {
+            var transport = GetClient(client.ID);
+            transport.SendMessage(client, request);
+        }
+
+        public void SendMessage(Client client, RemoveServerReply reply)
         {
             var transport = GetClient(client.ID);
             transport.SendMessage(client, reply);
