@@ -20,6 +20,7 @@ namespace Raft
         private uint _matchIndex;
         private uint _nextIndex;
         private long _rpcDue;
+        private object _lastMessage;
 
         public IPEndPoint ID { get { return _id; } }
         //public Configuration Config { get { return _config; } }
@@ -52,6 +53,7 @@ namespace Raft
                 LogLength = _server.PersistedStore.Length
             };
 
+            _lastMessage = message;
             _server.Transport.SendMessage(this, message);
             _rpcDue = _server.Tick + _server.PersistedStore.RPC_TIMEOUT;
         }
@@ -64,6 +66,7 @@ namespace Raft
                 Term = _server.PersistedStore.Term,
                 Granted = granted
             };
+            _lastMessage = message;
             _server.Transport.SendMessage(this, message);
         }
 
@@ -93,6 +96,7 @@ namespace Raft
                 CommitIndex = Math.Min(_server.CommitIndex, lastIndex)
             };
 
+            _lastMessage = message;
             _server.Transport.SendMessage(this, message);
             _rpcDue = _server.Tick + _server.PersistedStore.RPC_TIMEOUT;
         }
@@ -108,6 +112,7 @@ namespace Raft
                 Success = success
             };
 
+            _lastMessage = message;
             _server.Transport.SendMessage(this, message);
         }
 
@@ -119,7 +124,9 @@ namespace Raft
                 From = _server.ID,
                 //EndPoint = new IPEndPoint(_server.Config.IP, _server.Config.Port)
             };
+            _lastMessage = message;
             _server.Transport.SendMessage(this, message);
+            _rpcDue = _server.Tick + _server.PersistedStore.RPC_TIMEOUT;
         }
 
         public void SendAddServerReply(AddServerStatus status, IPEndPoint leaderHint)
@@ -131,6 +138,7 @@ namespace Raft
                 Status = status,
                 LeaderHint = leaderHint,
             };
+            _lastMessage = message;
             _server.Transport.SendMessage(this, message);
         }
 
