@@ -49,38 +49,40 @@ namespace Raft
 
     class Program
     {
-        public static void NodeGrantsVoteWithLongerLogOlderTerm()
+        static void DoTest(int count)
         {
-            using (var s1 = Helper.CreateServer())
-            using (var s2 = Helper.CreateServer())
+            var transport = new MemoryTransport();
+            var master = new Server(new IPEndPoint(IPAddress.Loopback, 7001));
+
+            master.Initialize(new MemoryLog(), transport);
+            master.ChangeState(new LeaderState(master));
+            master.Advance();
+
+            var servers = new List<Server>();
+            servers.Add(master);
+
+            while (count-- > 0)
             {
-                var transport = new MemoryTransport();
-
-                s1.Initialize(new MemoryLog(), transport, false, s2.ID);
-                s2.Initialize(new MemoryLog(), transport, false, s1.ID);
-
-                s1.PersistedStore.Term = 1;
-                s2.PersistedStore.Term = 1;
-
-                s1.PersistedStore.Create(s1, new[] { (byte)s1.ID.GetHashCode() });
-                s1.PersistedStore.Term = 2;
-                s1.PersistedStore.Create(s1, new[] { (byte)s1.ID.GetHashCode() });
-
-                s2.PersistedStore.Create(s2, new[] { (byte)s1.ID.GetHashCode() });
-                s2.PersistedStore.Create(s2, new[] { (byte)s2.ID.GetHashCode() });
-
-                s1.ChangeState(new CandidateState(s1)); // will push s1 to term 2
-
-
-                s2.Advance();
-
-                s1.Advance();
-
+                var client = new Server(new IPEndPoint(IPAddress.Loopback, count + 7002));
+                client.Initialize(new MemoryLog(), transport, true);
+                client.ChangeState(new JoinState(client, new Client(client, master.ID)));
+                servers.Add(client);
             }
+
+            while (true)
+            {
+                foreach (var c in servers)
+                    c.Advance();
+                System.Threading.Thread.Sleep(0);
+            }
+
         }
 
         static void Main(string[] args)
         {
+            DoTest(3);
+            Console.Read();
+
             var s1 = new Server(new IPEndPoint(IPAddress.Loopback, 7741));
             var s2 = new Server(new IPEndPoint(IPAddress.Loopback, 7742));
 

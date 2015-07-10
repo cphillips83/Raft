@@ -116,7 +116,11 @@ namespace Raft.States
                             }
 
                             //Console.WriteLine("{0}: Writing log value {1}", _id, request.Entries[i].Offset);
-                            _persistedState.Push(_server, request.Entries[i]);
+                            if (!_persistedState.Push(_server, request.Entries[i]))
+                            {
+                                index--;
+                                break;
+                            }
                         }
                     }
 

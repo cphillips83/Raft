@@ -331,8 +331,15 @@ namespace Raft.Logs
             return entry;
         }
 
-        public void Push(Server server, LogEntry data)
+        public bool Push(Server server, LogEntry data)
         {
+            //we couldn't take this entry because we are still waiting for another
+            //to finish
+            if (_configLocked)
+            {
+                return false;
+            }
+
             // we must first write the data to the dat file
             // in case of crash in between log data and log entry
             // this will orphan the data and on startup will reclaim the space
@@ -372,11 +379,14 @@ namespace Raft.Logs
                 var id = GetIPEndPoint(data.Data);
                 if (!server.ID.Equals(id))
                     server.AddClientFromLog(id);
-                System.Diagnostics.Debug.Assert(_configLocked == false);
+
+                //System.Diagnostics.Debug.Assert(_configLocked == false);
                 Console.WriteLine("{0}: Adding server {1} and locking config", server.ID, id);
                 _configLocked = true;
                 saveSuperBlock();
             }
+
+            return true;
         }
 
         public void ApplyIndex(Server server, uint index)
