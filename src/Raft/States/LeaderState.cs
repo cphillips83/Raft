@@ -19,6 +19,7 @@ namespace Raft.States
         }
 
         private List<ServerJoin> _serversToAdd = new List<ServerJoin>();
+        private List<Client> _serversToRemove = new List<Client>();
 
         public LeaderState(Server server) : base(server) { }
 
@@ -50,6 +51,18 @@ namespace Raft.States
             }
         }
 
+        public override void CommittedRemoveServer(IPEndPoint endPoint)
+        {
+            var client = _server.GetClient(endPoint);
+            client.SendRemoveServerReply(RemoveServerStatus.Ok, _server.ID);
+
+            for (var i = 0; i < _serversToRemove.Count; i++)
+            {
+                if (_serversToRemove[i].ID.Equals(endPoint))
+                    _serversToRemove.RemoveAt(i--);
+            }
+        }
+
         public override void Update()
         {
             _server.AdvanceCommits();
@@ -61,6 +74,12 @@ namespace Raft.States
                 {
                     client.SendAppendEntriesRequest();
                 }
+            }
+
+            if (_serversToRemove.Count > 0 && !_server.PersistedStore.ConfigLocked)
+            {
+                _server.PersistedStore.RemoveServer(_server, _serversToRemove[0].ID);
+                // can't remove server yet
             }
 
             for (var i = 0; i < _serversToAdd.Count; i++)
@@ -151,7 +170,7 @@ namespace Raft.States
                         }
                         else
                         {
-                            Console.WriteLine("{0}: Round {1}/10 done for {2}", _server.ID, 10 - joiningServer.Round,  client.ID);
+                            Console.WriteLine("{0}: Round {1}/10 done for {2}", _server.ID, 10 - joiningServer.Round, client.ID);
                             joiningServer.RoundIndex = client.MatchIndex;
                             joiningServer.NextRound = _server.Tick + _server.PersistedStore.ELECTION_TIMEOUT;
                         }
@@ -181,6 +200,30 @@ namespace Raft.States
         protected override bool AddServerRequest(Client client, AddServerRequest request)
         {
             QueueServerJoin(client);
+            return true;
+        }
+
+        protected override bool RemoveServerRequest(Client client, RemoveServerRequest request)
+        {
+            //System.Diagnostics.Debug.Assert(_server.Clients.Count(x => x.ID.Equals(request.From)) == 1);
+            foreach (var c in _server.Clients)
+            {
+                if (c.ID.Equals(request.From))
+                {
+                    foreach (var cc in _serversToRemove)
+                        if (cc.ID.Equals(request.From))
+                            return true; // already queued for removal
+
+                    // add to queue
+                    _serversToRemove.Add(client);
+                    return true;
+                }
+            }
+
+            // client was in the server's list, this can happen if
+            // the server to be removed never got the OK, send again
+            client.SendRemoveServerReply(RemoveServerStatus.Ok, client.ID);
+
             return true;
         }
 

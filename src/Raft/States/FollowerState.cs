@@ -9,7 +9,7 @@ namespace Raft.States
 {
     public class FollowerState : AbstractState
     {
-        private Client _leader;
+        protected Client _leader;
         private long _heatbeatTimeout = long.MaxValue;
 
         public FollowerState(Server server) : base(server) { }

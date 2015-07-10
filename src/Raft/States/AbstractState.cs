@@ -37,6 +37,11 @@ namespace Raft.States
 
         }
 
+        public virtual void CommittedRemoveServer(IPEndPoint endPoint)
+        {
+
+        }
+
         public bool VoteRequest(VoteRequest request)
         {
             var client = _server.GetClient(request.From);

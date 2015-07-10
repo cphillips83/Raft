@@ -388,6 +388,17 @@ namespace Raft.Logs
                 _configLocked = true;
                 saveSuperBlock();
             }
+            else if (data.Index.Type == LogIndexType.RemoveServer)
+            {
+                var id = GetIPEndPoint(data.Data);
+                if (!server.ID.Equals(id))
+                    server.RemoveClientFromLog(id);
+
+                //System.Diagnostics.Debug.Assert(_configLocked == false);
+                Console.WriteLine("{0}: Removing server {1} and locking config", server.ID, id);
+                _configLocked = true;
+                saveSuperBlock();
+            }
 
             return true;
         }
@@ -414,6 +425,29 @@ namespace Raft.Logs
                 _configLocked = false;
                 server.CurrentState.CommittedAddServer(id);
             }
+            else if (applyIndex.Type == LogIndexType.RemoveServer)
+            {
+                System.Diagnostics.Debug.Assert(_configLocked);
+
+                var endPointData = GetData(applyIndex);
+                var id = GetIPEndPoint(endPointData);
+
+                Console.WriteLine("{0}: Committing remove server {1} and unlocking config", server.ID, id);
+                System.Diagnostics.Debug.Assert(_clients.Count(x => x.Equals(id)) == 1);
+
+                if (!server.ID.Equals(id))
+                {
+                    for (var i = 0; i < _clients.Count;i++ )
+                    {
+                        if (_clients[i].Equals(id))
+                            _clients.RemoveAt(i--);
+                    }
+                }
+
+                _configLocked = false;
+                server.CurrentState.CommittedRemoveServer(id);
+            }
+
 
             _lastAppliedIndex++;
             saveSuperBlock();
@@ -434,7 +468,17 @@ namespace Raft.Logs
                 _configLocked = false;
                 if (!server.ID.Equals(id))
                     server.RemoveClientFromLog(id);
-                Console.WriteLine("{0}x: Rolling back Adding server {1} and unlocking config", server.ID, id);
+                Console.WriteLine("{0}x: Rolling back add server {1} and unlocking config", server.ID, id);
+                saveSuperBlock();
+            }
+            else if (lastIndex.Type == LogIndexType.RemoveServer)
+            {
+                System.Diagnostics.Debug.Assert(_configLocked);
+                var id = GetIPEndPoint(GetData(lastIndex));
+                _configLocked = false;
+                if (!server.ID.Equals(id))
+                    server.AddClientFromLog(id);
+                Console.WriteLine("{0}x: Rolling back remove server {1} and unlocking config", server.ID, id);
                 saveSuperBlock();
             }
 
