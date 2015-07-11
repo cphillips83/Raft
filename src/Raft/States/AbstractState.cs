@@ -103,8 +103,7 @@ namespace Raft.States
                 return RemoveServerReply(client, reply);
             }
         }
-
-
+        
         protected abstract bool VoteRequest(Client client, VoteRequest request);
         protected abstract bool VoteReply(Client client, VoteReply reply);
 

@@ -8,8 +8,10 @@ using Raft.Messages;
 
 namespace Raft.Transports
 {
-    public abstract class AbstractTransport : ITransport
+    public abstract class Transport : ITransport
     {
+        public static readonly ITransport NULL = new NullTransport();
+
         protected Queue<object> _incomingMessages = new Queue<object>();
 
         public abstract void SendMessage(Client client, VoteRequest request);

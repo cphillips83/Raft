@@ -11,7 +11,7 @@ using Raft.States;
 
 namespace Raft.Transports
 {
-    public class LidgrenTransport : AbstractTransport 
+    public class LidgrenTransport : Transport 
     {
         private enum MessageTypes
         {

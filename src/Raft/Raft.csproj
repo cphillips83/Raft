@@ -60,7 +60,15 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Client.cs" />
-    <Compile Include="Commands\Init.cs" />
+    <Compile Include="Commands\ArgumentTypes\AbstractArgument.cs" />
+    <Compile Include="Commands\ArgumentTypes\AbstractArgumentPairs.cs" />
+    <Compile Include="Commands\ArgumentTypes\IArgument.cs" />
+    <Compile Include="Commands\ArgumentTypes\IntArgument.cs" />
+    <Compile Include="Commands\ArgumentTypes\IPArgument.cs" />
+    <Compile Include="Commands\ArgumentTypes\IPEndPointArgument.cs" />
+    <Compile Include="Commands\ArgumentTypes\StringArgument.cs" />
+    <Compile Include="Commands\BaseCommand.cs" />
+    <Compile Include="Commands\InitCommand.cs" />
     <Compile Include="Logs\FileLog.cs" />
     <Compile Include="Logs\Log.cs" />
     <Compile Include="Logs\LogEntry.cs" />
@@ -82,10 +90,11 @@
     <Compile Include="States\LeaderState.cs" />
     <Compile Include="States\TestState.cs" />
     <Compile Include="States\StoppedState.cs" />
-    <Compile Include="Transports\AbstractTransport.cs" />
+    <Compile Include="Transports\Transport.cs" />
     <Compile Include="Transports\LidgrenTransport.cs" />
     <Compile Include="Transports\ITransport.cs" />
     <Compile Include="Transports\MemoryTransport.cs" />
+    <Compile Include="Transports\NullTransport.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

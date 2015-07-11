@@ -10,7 +10,7 @@ namespace Raft.Transports
 {
     public class MemoryTransport : ITransport
     {
-        private class ClientTransport : AbstractTransport
+        private class ClientTransport : Transport
         {
             private class ClientMessage
             {
