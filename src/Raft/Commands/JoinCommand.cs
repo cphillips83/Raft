@@ -12,18 +12,20 @@ using Raft.Transports;
 
 namespace Raft.Commands
 {
-    public class InitCommand : BaseCommand
+    public class JoinCommand : BaseCommand
     {
         private IPEndPointArg _ip = IPEndPointArg.CreateID();
+        private IPEndPointArg _leader = IPEndPointArg.CreateLeaderID();
         private StringArgument _dataDir = new StringArgument("data=", "Data directory storage", true);
 
         private int _initialSize, _maxSize;
 
         protected override void buildCommands()
         {
-            this.IsCommand("init", "Initializes a new cluster with this being the first server in the cluster");
+            this.IsCommand("join", "Initializes a new cluster with this being the first server in the cluster");
 
             _commands.Add(_ip);
+            _commands.Add(_leader);
             _commands.Add(_dataDir);
             ////this.HasOption("","",new NDesk.Options.OptionAction<TKey,TValue>())
             //this.HasOption<int>("initialIndexSize", "", null);
@@ -35,18 +37,8 @@ namespace Raft.Commands
         {
             try
             {
-                if (System.IO.Directory.Exists(_dataDir.Value))
-                {
-                    if (System.IO.Directory.GetFiles(_dataDir.Value).Any())
-                    {
-                        Console.WriteLine("Data directory was not empty");
-                        return 1;
-                    }
-                }
-                else
-                {
+                if (!System.IO.Directory.Exists(_dataDir.Value))
                     System.IO.Directory.CreateDirectory(_dataDir.Value);
-                }
             }
             catch(Exception ex)
             {
@@ -54,16 +46,20 @@ namespace Raft.Commands
                 return 1;
             }
 
+
+            Console.WriteLine("Trying to join {0}", _leader.Value);
             using (var server = new Server(_ip.Value))
             {
-                server.Initialize(new FileLog(_dataDir.Value, true), Transport.NULL);
-                server.ChangeState(new LeaderState(server));
-                server.PersistedStore.AddServer(server, server.ID);
+                server.Initialize(new FileLog(_dataDir.Value, true), new LidgrenTransport());
+                server.ChangeState(new JoinState(server, new Client(server, _leader.Value)));
 
-                server.Advance();
+                while (!Console.KeyAvailable)
+                {
+                    server.Advance();
+                    System.Threading.Thread.Sleep(0);
+                }
             }
 
-            Console.WriteLine("Initialized '{0}'", _dataDir.Value);
 
             return 0;
         }

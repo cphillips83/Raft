@@ -9,12 +9,14 @@ namespace Raft.Logs
 {
     public class FileLog : Log
     {
+        private bool _init;
         private string _dataDir, _indexFilePath, _dataFilePath;
-        private FileStream _indexFile, _dataFile;
+        private FileStream _indexFileWriter, _dataFileWriter;
 
-        public FileLog(string dataDir)
+        public FileLog(string dataDir, bool init = false)
             : base()
         {
+            _init = init;
             _dataDir = dataDir;
             if (!System.IO.Directory.Exists(_dataDir))
                 System.IO.Directory.CreateDirectory(_dataDir);
@@ -23,20 +25,36 @@ namespace Raft.Logs
             _dataFilePath = System.IO.Path.Combine(dataDir, "data");
         }
 
-        protected override System.IO.Stream OpenIndexFile()
+        protected override System.IO.Stream OpenIndexFileWriter()
         {
-            System.Diagnostics.Debug.Assert(_indexFile == null);
+            System.Diagnostics.Debug.Assert(_indexFileWriter == null);
 
-            _indexFile = File.Open(_indexFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
-            return _indexFile;
+            //if (!_init && !System.IO.File.Exists(_indexFilePath))
+            //    throw new Exception(string.Format("Index file: '{0}' is missing.", _indexFilePath));
+
+            _indexFileWriter = File.Open(_indexFilePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Read);
+            return _indexFileWriter;
         }
 
-        protected override System.IO.Stream OpenDataFile()
+        protected override System.IO.Stream OpenDataFileWriter()
         {
-            System.Diagnostics.Debug.Assert(_dataFile == null);
+            System.Diagnostics.Debug.Assert(_dataFileWriter == null);
 
-            _dataFile = File.Open(_dataFilePath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
-            return _dataFile;
+            //if (!_init && !System.IO.File.Exists(_dataFilePath))
+            //    throw new Exception(string.Format("Data file: '{0}' is missing.", _dataFilePath));
+
+            _dataFileWriter = File.Open(_dataFilePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Read);
+            return _dataFileWriter;
+        }
+
+        protected override Stream OpenIndexFileReader()
+        {
+            return File.Open(_indexFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        }
+
+        protected override Stream OpenDataFileReader()
+        {
+            return File.Open(_dataFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         }
     }
 }

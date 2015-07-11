@@ -70,6 +70,7 @@ namespace Raft.Tests.Unit
                 s2.Initialize(new MemoryLog(), transport, true);
 
                 s1.ChangeState(new LeaderState(s1)); // will push s1 to term 2
+                s1.PersistedStore.AddServer(s1, s1.ID);
 
                 // applies its own entry and advances commit
                 s1.Advance();

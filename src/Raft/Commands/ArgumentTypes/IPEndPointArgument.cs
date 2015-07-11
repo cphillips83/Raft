@@ -40,6 +40,11 @@ namespace Raft.Commands.ArgumentTypes
         {
             return new IPEndPointArg("ip=", "End point (IP:PORT) for the server, can not be changed and is used as the ID", true);
         }
+
+        public static IPEndPointArg CreateLeaderID()
+        {
+            return new IPEndPointArg("leader=", "Leader end point (IP:PORT) for the server to join", true);
+        }
     }
 
 }

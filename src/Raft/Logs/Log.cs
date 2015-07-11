@@ -10,6 +10,33 @@ namespace Raft.Logs
 {
     public abstract class Log : IDisposable
     {
+        public string ToString(IPEndPoint ip)
+        {
+            var sb = new StringBuilder();
+            sb.AppendFormat("Config {0}\n", ip);
+            sb.AppendFormat("  Rpc Timeout: {0}\n", RPC_TIMEOUT);
+            sb.AppendFormat("  Election Timeout: {0}\n", ELECTION_TIMEOUT);
+            sb.AppendFormat("  Allocated Super Block: {0}\n", SUPER_BLOCK_SIZE);            
+            sb.AppendLine();
+
+            sb.AppendFormat("  Current Term: {0}\n", _currentTerm);
+            sb.AppendFormat("  Last Applied Index: {0}\n", _lastAppliedIndex);
+            sb.AppendFormat("  Config Locked: {0}\n", _configLocked);
+            sb.AppendFormat("  Voted For: {0}\n", _votedFor);            
+            sb.AppendLine();
+
+            sb.AppendFormat("  Log Indices: {0}\n", _logIndices.Length);
+            sb.AppendFormat("  Log Data Size: {0}\n", DataPosition);
+            sb.AppendLine();
+
+            sb.AppendFormat("  Nodes\n");
+            sb.AppendFormat("    {0}\n", ip);
+            foreach (var client in _clients)
+                sb.AppendFormat("    {0}\n", client);
+
+            return sb.ToString();
+        }
+
         public int RPC_TIMEOUT = 50;
         public int ELECTION_TIMEOUT = 100;
 
@@ -93,9 +120,13 @@ namespace Raft.Logs
         {
         }
 
-        protected abstract Stream OpenIndexFile();
+        protected abstract Stream OpenIndexFileWriter();
 
-        protected abstract Stream OpenDataFile();
+        protected abstract Stream OpenDataFileWriter();
+
+        protected abstract Stream OpenDataFileReader();
+
+        protected abstract Stream OpenIndexFileReader();
 
         private void readState(BinaryReader br)
         {
@@ -109,7 +140,14 @@ namespace Raft.Logs
             _configLocked = br.ReadBoolean();
 
             var voteForLen = br.ReadInt32();
-            _votedFor = voteForLen > 0 ? new IPEndPoint(new IPAddress(br.ReadBytes(voteForLen)), br.ReadInt32()) : null;
+            if (voteForLen > 0)
+            {
+                var ipData = br.ReadBytes(voteForLen);
+                var port = br.ReadInt32();
+                _votedFor = new IPEndPoint(new IPAddress(ipData), port);
+            }
+            else
+                _votedFor = null;
 
             _lastAppliedIndex = br.ReadUInt32();
 
@@ -147,6 +185,7 @@ namespace Raft.Logs
 
         private void createSuperBlock()
         {
+            Console.WriteLine("creating superblock");
             //write empty state so that base stream position is at the end of our data
             saveSuperBlock();
 
@@ -171,16 +210,18 @@ namespace Raft.Logs
             _logIndexWriter.Write(_configLocked);
 
             // did we vote?
+            //_logIndexWriter.Write(_votedFor != null);
+
             if (_votedFor == null)
                 _logIndexWriter.Write(0);
             else
             {
-                _logIndexWriter.Write(true);
-
                 // who did we vote for
                 var voteData = _votedFor.Address.GetAddressBytes();
                 _logIndexWriter.Write(voteData.Length);
                 _logIndexWriter.Write(voteData);
+                _logIndexWriter.Write(_votedFor.Port);
+
             }
 
             // last applied index
@@ -191,7 +232,7 @@ namespace Raft.Logs
             for (var i = 0; i < _clients.Count; i++)
             {
                 //_logIndexWriter.Write(_clients[i].ID);
-                
+
                 var addrBytes = _clients[i].Address.GetAddressBytes();
                 _logIndexWriter.Write(addrBytes.Length);
                 _logIndexWriter.Write(addrBytes);
@@ -228,11 +269,11 @@ namespace Raft.Logs
 
         public void Initialize()
         {
-            _indexStream = OpenIndexFile();
-            _logDataFile = OpenDataFile();
+            _indexStream = OpenIndexFileWriter();
+            _logDataFile = OpenDataFileWriter();
 
             if (_indexStream.Length > 0)
-                using (var br = new BinaryReader(_indexStream))
+                using (var br = new BinaryReader(OpenIndexFileReader()))
                     readState(br);
 
             _logIndexWriter = new BinaryWriter(_indexStream);
@@ -326,10 +367,10 @@ namespace Raft.Logs
                 },
                 Data = data
             };
-            
-            if(server != null)
+
+            if (server != null)
                 Console.WriteLine("{0}: Created {1}", server.ID, entry.Index);
-            
+
             Push(server, entry);
             return entry;
         }
@@ -405,11 +446,12 @@ namespace Raft.Logs
 
         public void ApplyIndex(Server server, uint index)
         {
+            Console.WriteLine("{0}: Applying commit index {1}", server.ID, index);
             if (index != _lastAppliedIndex + 1)
                 throw new Exception();
 
             var applyIndex = _logIndices[_lastAppliedIndex];
-            if(applyIndex.Type == LogIndexType.AddServer)
+            if (applyIndex.Type == LogIndexType.AddServer)
             {
                 System.Diagnostics.Debug.Assert(_configLocked);
 
@@ -419,7 +461,7 @@ namespace Raft.Logs
                 Console.WriteLine("{0}: Committing add server {1} and unlocking config", server.ID, id);
                 System.Diagnostics.Debug.Assert(_clients.Count(x => x.Equals(id)) == 0);
 
-                if(!server.ID.Equals(id))
+                if (!server.ID.Equals(id))
                     _clients.Add(id);
 
                 _configLocked = false;
@@ -437,7 +479,7 @@ namespace Raft.Logs
 
                 if (!server.ID.Equals(id))
                 {
-                    for (var i = 0; i < _clients.Count;i++ )
+                    for (var i = 0; i < _clients.Count; i++)
                     {
                         if (_clients[i].Equals(id))
                             _clients.RemoveAt(i--);
@@ -503,7 +545,7 @@ namespace Raft.Logs
 
                 return _logIndices[index];
             }
-        } 
+        }
 
         public bool GetIndex(uint key, out LogIndex index)
         {
@@ -554,8 +596,11 @@ namespace Raft.Logs
         {
             var data = new byte[index.Size];
 
-            _logDataFile.Seek(index.Offset, SeekOrigin.Begin);
-            _logDataFile.Read(data, 0, data.Length);
+            using (var fr = OpenDataFileReader())
+            {
+                fr.Seek(index.Offset, SeekOrigin.Begin);
+                fr.Read(data, 0, data.Length);
+            }
             return data;
         }
 
@@ -567,8 +612,11 @@ namespace Raft.Logs
             var index = _logIndices[key - 1];
             var data = new byte[index.Size];
 
-            _logDataFile.Seek(index.Offset, SeekOrigin.Begin);
-            _logDataFile.Read(data, 0, data.Length);
+            using (var fr = OpenDataFileReader())
+            {
+                fr.Seek(index.Offset, SeekOrigin.Begin);
+                fr.Read(data, 0, data.Length);
+            }
 
             return new LogEntry() { Index = index, Data = data };
         }
@@ -615,5 +663,7 @@ namespace Raft.Logs
             _logIndexWriter.Dispose();
             _logIndexWriter = null;
         }
+
+
     }
 }

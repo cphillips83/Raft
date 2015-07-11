@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Text;
 using System.Threading.Tasks;
-using ManyConsole;
 using Raft.Commands.ArgumentTypes;
 using Raft.Logs;
 using Raft.States;
@@ -12,7 +10,7 @@ using Raft.Transports;
 
 namespace Raft.Commands
 {
-    public class InitCommand : BaseCommand
+    public class FollowCommand : BaseCommand
     {
         private IPEndPointArg _ip = IPEndPointArg.CreateID();
         private StringArgument _dataDir = new StringArgument("data=", "Data directory storage", true);
@@ -21,7 +19,7 @@ namespace Raft.Commands
 
         protected override void buildCommands()
         {
-            this.IsCommand("init", "Initializes a new cluster with this being the first server in the cluster");
+            this.IsCommand("follow", "Take part in the server cluster as an initial follower");
 
             _commands.Add(_ip);
             _commands.Add(_dataDir);
@@ -35,20 +33,13 @@ namespace Raft.Commands
         {
             try
             {
-                if (System.IO.Directory.Exists(_dataDir.Value))
+                if (!System.IO.Directory.Exists(_dataDir.Value))
                 {
-                    if (System.IO.Directory.GetFiles(_dataDir.Value).Any())
-                    {
-                        Console.WriteLine("Data directory was not empty");
-                        return 1;
-                    }
-                }
-                else
-                {
-                    System.IO.Directory.CreateDirectory(_dataDir.Value);
+                    Console.WriteLine("Data directory not found, aborting");
+                    return 1;
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine("There was an issue with the data directory '{0}'", ex.Message);
                 return 1;
@@ -56,16 +47,20 @@ namespace Raft.Commands
 
             using (var server = new Server(_ip.Value))
             {
-                server.Initialize(new FileLog(_dataDir.Value, true), Transport.NULL);
-                server.ChangeState(new LeaderState(server));
-                server.PersistedStore.AddServer(server, server.ID);
+                server.Initialize(new FileLog(_dataDir.Value), new LidgrenTransport());
 
-                server.Advance();
+                Console.WriteLine("Running on {0}, press any key to quit...", server.ID);
+                
+                while (!Console.KeyAvailable)
+                {
+                    server.Advance();
+                    System.Threading.Thread.Sleep(0);
+                }
             }
 
-            Console.WriteLine("Initialized '{0}'", _dataDir.Value);
 
             return 0;
         }
     }
+
 }
