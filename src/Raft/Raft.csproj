@@ -68,6 +68,7 @@
     <Compile Include="Commands\ArgumentTypes\IPEndPointArgument.cs" />
     <Compile Include="Commands\ArgumentTypes\StringArgument.cs" />
     <Compile Include="Commands\BaseCommand.cs" />
+    <Compile Include="Commands\RemoveCommand.cs" />
     <Compile Include="Commands\JoinCommand.cs" />
     <Compile Include="Commands\InitCommand.cs" />
     <Compile Include="Commands\FollowCommand.cs" />

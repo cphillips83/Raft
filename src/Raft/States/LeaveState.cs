@@ -29,6 +29,7 @@ namespace Raft.States
             {
                 _leader.SendRemoveServerRequest();
             }
+            resetHeartbeat();
         }
 
         protected override bool RemoveServerReply(Client client, RemoveServerReply reply)
