@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -53,10 +54,17 @@ namespace Raft.Commands
                 server.Initialize(new FileLog(_dataDir.Value, true), new LidgrenTransport());
                 server.ChangeState(new JoinState(server, new Client(server, _leader.Value)));
 
+                var timer = Stopwatch.StartNew();
+                var lastTick = 0L;
                 while (!Console.KeyAvailable)
                 {
-                    server.Advance();
-                    System.Threading.Thread.Sleep(0);
+                    var currentTick = timer.ElapsedMilliseconds;
+                    while (lastTick < currentTick )
+                    {
+                        server.Advance();
+                        lastTick++;
+                    }
+                    System.Threading.Thread.Sleep(1);
                 }
             }
 

@@ -57,6 +57,7 @@ namespace Raft
 
             master.Initialize(new MemoryLog(), transport);
             master.ChangeState(new LeaderState(master));
+            master.PersistedStore.AddServer(master, master.ID);
             master.Advance();
 
             var servers = new List<Server>();
@@ -66,7 +67,7 @@ namespace Raft
             while (count-- > 0)
             {
                 var client = new Server(new IPEndPoint(IPAddress.Loopback, count + 7002));
-                client.Initialize(new MemoryLog(), transport, true);
+                client.Initialize(new MemoryLog(), transport);
                 client.ChangeState(new JoinState(client, new Client(client, master.ID)));
                 servers.Add(client);
             }

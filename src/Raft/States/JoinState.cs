@@ -26,6 +26,7 @@ namespace Raft.States
         protected override void HeartbeatTimeout()
         {
             _bootstrap.SendAddServerRequest();
+            resetHeartbeat();
         }
 
         protected override bool AddServerReply(Client client, AddServerReply reply)

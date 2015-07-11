@@ -240,6 +240,7 @@ namespace Raft.States
             client.NextIndex = _server.PersistedStore.Length + 1;
             client.NextHeartBeat = 0;
 
+            Console.WriteLine("{0}: Queuing server {1} for adding", _server.ID, client.ID);
             _serversToAdd.Add(new ServerJoin()
             {
                 Client = client,

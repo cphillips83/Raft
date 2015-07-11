@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -50,11 +51,18 @@ namespace Raft.Commands
                 server.Initialize(new FileLog(_dataDir.Value), new LidgrenTransport());
 
                 Console.WriteLine("Running on {0}, press any key to quit...", server.ID);
-                
+
+                var timer = Stopwatch.StartNew();
+                var lastTick = 0L;
                 while (!Console.KeyAvailable)
                 {
-                    server.Advance();
-                    System.Threading.Thread.Sleep(0);
+                    var currentTick = timer.ElapsedMilliseconds;
+                    while (lastTick < currentTick)
+                    {
+                        server.Advance();
+                        lastTick++;
+                    }
+                    System.Threading.Thread.Sleep(1);
                 }
             }
 
