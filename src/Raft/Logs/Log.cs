@@ -378,6 +378,8 @@ namespace Raft.Logs
             return entry;
         }
 
+        //public bool WriteChunk(Server server, byte[] )
+
         public bool Push(Server server, LogEntry data)
         {
             //we couldn't take this entry because we are still waiting for another

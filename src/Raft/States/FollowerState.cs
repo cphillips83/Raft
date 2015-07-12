@@ -121,12 +121,26 @@ namespace Raft.States
                                 index--;
                                 break;
                             }
+                            else
+                            {
+                                Console.WriteLine("{0}: Appending index: {1}, data length: {2}", _server.ID, index, request.Entries[i].Index.Size);
+                            }
                         }
                     }
 
                     matchIndex = index;
                     _server.CommitIndex2(Math.Max(_server.CommitIndex, request.CommitIndex));
                 }
+                else
+                {                    
+                    Console.WriteLine("{0}: Append unsuccessful", _server.ID);
+                    //matchIndex = _server.CommitIndex;
+                }
+            }
+            else
+            {
+                Console.WriteLine("{0}: Append failed, terms didn't match", _server.ID);
+                //matchIndex = _server.CommitIndex;
             }
 
             client.SendAppendEntriesReply(matchIndex, success);

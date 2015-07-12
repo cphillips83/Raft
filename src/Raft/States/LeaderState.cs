@@ -143,9 +143,12 @@ namespace Raft.States
             {
                 client.MatchIndex = Math.Max(client.MatchIndex, reply.MatchIndex);
                 client.NextIndex = reply.MatchIndex + 1;
+                if(client.MatchIndex != _server.CommitIndex)
+                    client.NextHeartBeat = 0; //keep streaming until caught up
             }
             else
             {
+                //client.NextIndex = Math.Max(1, reply.MatchIndex + 1);
                 client.NextIndex = Math.Max(1, client.NextIndex - 1);
                 client.NextHeartBeat = 0;
             }

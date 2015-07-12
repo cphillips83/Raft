@@ -20,6 +20,15 @@ using Raft.Transports;
 
 namespace Raft
 {
+    /*
+     * File System
+     *  WCF + Streaming Mode
+     *  WCF server should write the file to HDD
+     *  Server should reserve space and index for file
+     *  
+     * 
+     */
+
     static class Program
     {
         public static void ForAll<T>(this IEnumerable<T> array, Action<T> action)

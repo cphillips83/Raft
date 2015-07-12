@@ -131,6 +131,7 @@ namespace Raft.Transports
             msg.Write((byte)MessageTypes.AddServerReply);
             msg.Write(reply.From);
             msg.Write((uint)reply.Status);
+            //TODO leader can't be null
             msg.Write(reply.LeaderHint);
             _rpc.SendUnconnectedMessage(msg, client.ID);
             _rpc.FlushSendQueue();
