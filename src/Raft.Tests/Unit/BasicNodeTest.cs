@@ -49,8 +49,12 @@ namespace Raft.Tests.Unit
                 var transport = new MemoryTransport();
 
                 server.Initialize(new MemoryLog(), transport);
-                server.Advance(server.PersistedStore.ELECTION_TIMEOUT);
-                server.Advance(server.PersistedStore.ELECTION_TIMEOUT);
+                
+                var count = server.PersistedStore.ELECTION_TIMEOUT * 2;
+                while (count-- > 0)
+                {
+                    server.Advance();
+                }
 
                 Assert.AreEqual(typeof(LeaderState), server.CurrentState.GetType());
             }
