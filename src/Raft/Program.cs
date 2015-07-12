@@ -35,10 +35,10 @@ namespace Raft
                 var commands = new List<ConsoleCommand>();
 
                 //need data directory
-                commands.Add(new Commands.InitCommand());
+                commands.Add(new Commands.CreateCommand());
                 commands.Add(new Commands.FollowCommand());
                 commands.Add(new Commands.JoinCommand());
-                commands.Add(new Commands.RemoveCommand());
+                commands.Add(new Commands.LeaveCommand());
 
                 // then run them.
                 return ConsoleCommandDispatcher.DispatchCommand(commands as IEnumerable<ConsoleCommand>, args, Console.Out, true);

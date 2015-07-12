@@ -12,7 +12,7 @@ using Raft.Transports;
 
 namespace Raft.Commands
 {
-    public class InitCommand : BaseCommand
+    public class CreateCommand : BaseCommand
     {
         private IPEndPointArg _ip = IPEndPointArg.CreateID();
         private StringArgument _dataDir = new StringArgument("data=", "Data directory storage", true);
@@ -21,7 +21,7 @@ namespace Raft.Commands
 
         protected override void buildCommands()
         {
-            this.IsCommand("init", "Initializes a new cluster with this being the first server in the cluster");
+            this.IsCommand("create", "Creates a new cluster with this being the first server in the cluster");
 
             _commands.Add(_ip);
             _commands.Add(_dataDir);

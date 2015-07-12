@@ -13,16 +13,14 @@ using Raft.Transports;
 
 namespace Raft.Commands
 {
-    public class RemoveCommand : BaseCommand
+    public class LeaveCommand : BaseCommand
     {
         private IPEndPointArg _ip = IPEndPointArg.CreateID();
         private StringArgument _dataDir = new StringArgument("data=", "Data directory storage", true);
 
-        private int _initialSize, _maxSize;
-
         protected override void buildCommands()
         {
-            this.IsCommand("remove", "Removes themselves from the cluster");
+            this.IsCommand("leave", "Removes themselves from the cluster");
 
             _commands.Add(_ip);
             _commands.Add(_dataDir);
@@ -49,7 +47,7 @@ namespace Raft.Commands
             }
 
 
-            Console.WriteLine("Removing themselves {0}", _ip.Value);
+            Console.WriteLine("Leaving cluster {0}", _ip.Value);
             using (var server = new Server(_ip.Value))
             {
                 server.Initialize(new FileLog(_dataDir.Value, true), new LidgrenTransport());

@@ -48,6 +48,7 @@ namespace Raft.Logs
 
         // current term of the cluster
         private int _currentTerm = 1;
+        //private uint _maxDataFileSize = 0;
         private uint _lastAppliedIndex;
         private bool _configLocked;
 
@@ -115,6 +116,8 @@ namespace Raft.Logs
                 return index.Offset + index.Size;
             }
         }
+
+        //public uint MaxDataFileSize { get { return _maxDataFileSize; } }
 
         protected Log()
         {
