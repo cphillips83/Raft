@@ -79,36 +79,12 @@ namespace Raft.Tests.Unit
                 // this sends out an add request
                 s2.ChangeState(new JoinState(s2, new Client(s2, s1.ID)));
 
-                // these are needed because the first append entries will fail
-                // and s2 will return where its nextIndex is
-                s1.Advance();
-                s2.Advance();
-
-                // reads add request and sends its self as the first entry
-                s1.Advance();
-
-                // s2 now has s1 as an added entry and has applied the index
-                s2.Advance();
-
-                // s1 sees that s2 is up to date and adds log entry for s2 and locks config
-                s1.Advance();
-
-                // heart beat went out before the new log entry, needs to respond to it
-                s2.Advance();
-
-                // tells s2 about the new log entry
-                s1.Advance(50);
-
-                // s2 sees that is now part of the majority, needs to commit log
-                // so that s1 can apply it
-                s2.Advance();
-
-                // s1 sees its commited on majority (2)
-                s1.Advance(50);
-
-                // s2 sees that s1 has committed its add entry
-                // s2 switches to follower and is now part of the cluster
-                s2.Advance();
+                var count = 200;
+                while (count-- > 0)
+                {
+                    s1.Advance();
+                    s2.Advance();
+                }
 
                 Assert.AreEqual(2, s1.Majority);
                 Assert.AreEqual(2, s2.Majority);

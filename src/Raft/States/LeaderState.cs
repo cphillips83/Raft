@@ -29,8 +29,9 @@ namespace Raft.States
             Console.WriteLine("{0}: I am now leader of term {2} with {1} votes", _server.ID, votes, _server.PersistedStore.Term);
             foreach (var client in _server.Clients)
             {
-                client.NextIndex = _server.PersistedStore.Length + 1;
-                client.NextHeartBeat = 0;
+                client.ResetKnownLogs();
+                //client.NextIndex = _server.PersistedStore.Length + 1;
+                //client.NextHeartBeat = 0;
             }
         }
 
@@ -240,8 +241,9 @@ namespace Raft.States
                 if (c.Client.ID.Equals(client.ID))
                     return;
 
-            client.NextIndex = _server.PersistedStore.Length + 1;
-            client.NextHeartBeat = 0;
+            client.ResetKnownLogs();
+            //client.NextIndex = _server.PersistedStore.Length + 1;
+            //client.NextHeartBeat = 0;
 
             Console.WriteLine("{0}: Queuing server {1} for adding", _server.ID, client.ID);
             _serversToAdd.Add(new ServerJoin()

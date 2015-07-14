@@ -38,8 +38,8 @@ namespace Raft.Tests.Unit
             test.Create(null, new[] { (byte)6 });
 
             Assert.AreEqual(2u, test.Length);
-            Assert.AreEqual(1, test[0].Term);
-            Assert.AreEqual(2, test[1].Term);
+            Assert.AreEqual(1, test[1].Term);
+            Assert.AreEqual(2, test[2].Term);
         }
 
         [TestMethod]
@@ -79,7 +79,7 @@ namespace Raft.Tests.Unit
             test.Term = 1;
             test.Create(null, new[] { (byte)5 });
 
-            var index = test[0];
+            var index = test[1];
             var data = test.GetData(index);
             Assert.AreEqual((byte)5, data[0]);
         }

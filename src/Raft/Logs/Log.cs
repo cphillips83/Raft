@@ -16,13 +16,13 @@ namespace Raft.Logs
             sb.AppendFormat("Config {0}\n", ip);
             sb.AppendFormat("  Rpc Timeout: {0}\n", RPC_TIMEOUT);
             sb.AppendFormat("  Election Timeout: {0}\n", ELECTION_TIMEOUT);
-            sb.AppendFormat("  Allocated Super Block: {0}\n", SUPER_BLOCK_SIZE);            
+            sb.AppendFormat("  Allocated Super Block: {0}\n", SUPER_BLOCK_SIZE);
             sb.AppendLine();
 
             sb.AppendFormat("  Current Term: {0}\n", _currentTerm);
             sb.AppendFormat("  Last Applied Index: {0}\n", _lastAppliedIndex);
             sb.AppendFormat("  Config Locked: {0}\n", _configLocked);
-            sb.AppendFormat("  Voted For: {0}\n", _votedFor);            
+            sb.AppendFormat("  Voted For: {0}\n", _votedFor);
             sb.AppendLine();
 
             sb.AppendFormat("  Log Indices: {0}\n", _logIndices.Length);
@@ -44,7 +44,10 @@ namespace Raft.Logs
         public const int SUPER_BLOCK_SIZE = 1024;
         public const int LOG_DEFAULT_ARRAY_SIZE = 65536;
         public const int LOG_RECORD_SIZE = 16;
+        public const int MAX_LOG_ENTRY_SIZE = 1024 * 128; //128kb
         //public const int MAX_LOG_DATA_READS = 16;
+
+        private byte[] _writeSpad = new byte[MAX_LOG_ENTRY_SIZE];
 
         // current term of the cluster
         private int _currentTerm = 1;
@@ -359,16 +362,50 @@ namespace Raft.Logs
 
         public LogEntry Create(Server server, byte[] data)
         {
+            //this function breaks the entries in to MAX_LOG_ENTRY_SIZE as
+            //DataChunk types but preserves the first byte so that when
+            //it creates the DataBlob entry to spans the entire chunk range
+            //this helps AppendEntries send data in chunks instead of blobs
+            //once the LogEntry return from here is committed, the DataBlob is 
+            //safe and linear in entries via DataChunks
+
+            var start = DataPosition;
+            var remaining = data.Length;
+            
+            while (remaining > MAX_LOG_ENTRY_SIZE)
+            {
+                Array.Copy(data, data.Length - remaining, _writeSpad, 0, MAX_LOG_ENTRY_SIZE);
+                var chunkEntry = new LogEntry()
+                {
+                    Index = new LogIndex()
+                    {
+                        Term = _currentTerm,
+                        Offset = DataPosition,
+                        Size = MAX_LOG_ENTRY_SIZE,
+                        Type = LogIndexType.DataChunk
+                    },
+                    Data = _writeSpad
+                };
+
+                if (server != null)
+                    Console.WriteLine("{0}: Creating chunk {1}", server.ID, chunkEntry.Index);
+
+                Push(server, chunkEntry);
+                remaining -= MAX_LOG_ENTRY_SIZE;
+            }
+
+            Array.Copy(data, data.Length - remaining, _writeSpad, 0, remaining);
+
             var entry = new LogEntry()
             {
                 Index = new LogIndex()
                 {
                     Term = _currentTerm,
-                    Offset = DataPosition,
+                    Offset = start,
                     Size = (uint)data.Length,
-                    Type = 0
+                    Type = LogIndexType.DataBlob
                 },
-                Data = data
+                Data = _writeSpad
             };
 
             if (server != null)
@@ -541,14 +578,14 @@ namespace Raft.Logs
             saveSuperBlock();
         }
 
-        public LogIndex this[int index]
+        public LogIndex this[uint index]
         {
             get
             {
-                if (index < 0 || index >= _logLength)
+                if (index < 1 || index > _logLength)
                     return new LogIndex() { Type = 0, Offset = 0, Size = 0, Term = 0 };
 
-                return _logIndices[index];
+                return _logIndices[index - 1];
             }
         }
 

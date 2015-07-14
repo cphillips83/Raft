@@ -87,7 +87,10 @@ namespace Raft
         public void AddClientFromLog(IPEndPoint id)
         {
             System.Diagnostics.Debug.Assert(_clients.Count(x => x.ID.Equals(id)) == 0);
-            _clients.Add(new Client(this, id) { NextHeartBeat = 0, NextIndex = _persistedStore.Length });
+
+            var client = new Client(this, id);
+            client.ResetKnownLogs();
+            _clients.Add(client);
         }
 
         public void RemoveClientFromLog(IPEndPoint id)

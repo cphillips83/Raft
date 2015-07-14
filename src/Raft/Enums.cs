@@ -26,9 +26,10 @@ namespace Raft
 
     public enum LogIndexType : uint
     {
-        RawData = 0,
-        StateMachine = 1,
-        AddServer = 2,
-        RemoveServer = 3,
+        DataBlob = 0,
+        DataChunk = 1,
+        AddServer = 1000,
+        RemoveServer = 1001,
+        StateMachine = 3000,
     }
 }

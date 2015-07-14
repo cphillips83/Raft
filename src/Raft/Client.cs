@@ -179,6 +179,13 @@ namespace Raft
             }
         }
 
+        public void ResetKnownLogs()
+        {
+
+            NextHeartBeat = 0;
+            NextIndex = _server.PersistedStore.Length + 1;
+        }
+
         public void Reset()
         {
             _voteGranted = false;

@@ -11,6 +11,16 @@ namespace Raft.Tests.Unit
     [TestClass]
     public class BasicNodeTest
     {
+#if DEBUG
+        static BasicNodeTest()
+        {
+            if (System.Diagnostics.Debugger.IsAttached)
+                Console.SetOut(new DebugWriter());
+
+
+        }
+#endif
+
         [TestMethod]
         public void IsFollower()
         {
@@ -49,7 +59,7 @@ namespace Raft.Tests.Unit
                 var transport = new MemoryTransport();
 
                 server.Initialize(new MemoryLog(), transport);
-                
+
                 var count = server.PersistedStore.ELECTION_TIMEOUT * 2;
                 while (count-- > 0)
                 {
@@ -199,6 +209,55 @@ namespace Raft.Tests.Unit
 
                 Assert.AreEqual(s1.ID, s2.PersistedStore.VotedFor);
                 Assert.AreEqual(true, s1.Clients.First().VoteGranted);
+            }
+        }
+
+        [TestMethod]
+        public void TestChunkedLogs()
+        {
+            using (var s1 = Helper.CreateServer())
+            using (var s2 = Helper.CreateServer())
+            {
+                var transport = new MemoryTransport();
+
+                s1.Initialize(new MemoryLog(), transport, s2.ID);
+                s2.Initialize(new MemoryLog(), transport, s1.ID);
+
+                s1.ChangeState(new LeaderState(s1));
+
+                //establish leader
+                s1.Advance();
+                s2.Advance();
+
+                //create entry
+                var data = new byte[1024 * 1024];
+                for (var i = 0; i < data.Length; i++)
+                    data[i] = (byte)i;
+
+                s1.PersistedStore.Create(s1, data);
+
+                var count = 200;
+                while (count-- > 0)
+                {
+                    s1.Advance();
+                    s2.Advance();
+                }
+
+                Assert.AreEqual((uint)(data.Length / Log.MAX_LOG_ENTRY_SIZE), s1.CommitIndex);
+                Assert.AreEqual((uint)(data.Length / Log.MAX_LOG_ENTRY_SIZE), s2.CommitIndex);
+
+                Assert.AreEqual(0u, s1.PersistedStore[s1.PersistedStore.Length].Offset);
+                Assert.AreEqual((uint)data.Length, s1.PersistedStore[s1.PersistedStore.Length].Size);
+                Assert.AreEqual(0u, s2.PersistedStore[s2.PersistedStore.Length].Offset);
+                Assert.AreEqual((uint)data.Length, s2.PersistedStore[s2.PersistedStore.Length].Size);
+
+                for (var i = 0; i < (uint)(data.Length / Log.MAX_LOG_ENTRY_SIZE) - 1; i++)
+                {
+                    Assert.AreEqual((uint)(i * Log.MAX_LOG_ENTRY_SIZE), s1.PersistedStore[(uint)i + 1].Offset);
+                    Assert.AreEqual((uint)Log.MAX_LOG_ENTRY_SIZE, s1.PersistedStore[(uint)i + 1].Size);
+                    Assert.AreEqual((uint)(i * Log.MAX_LOG_ENTRY_SIZE), s2.PersistedStore[(uint)i + 1].Offset);
+                    Assert.AreEqual((uint)Log.MAX_LOG_ENTRY_SIZE, s2.PersistedStore[(uint)i + 1].Size);
+                }
             }
         }
 

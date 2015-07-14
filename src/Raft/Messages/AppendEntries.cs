@@ -18,10 +18,6 @@ namespace Raft.Messages
         public uint PrevIndex;
         public uint CommitIndex;
 
-        //its not as simple as sending log entries
-        //we need to send binary data that has meta
-        //infomartion for things link chunked data
-        //we can't send 100mb packets
         public LogEntry[] Entries;
     }
 

@@ -50,7 +50,7 @@ namespace Raft.Tests.Unit
                 //log replication check 
                 Assert.AreNotEqual(0, index);
                 Assert.AreEqual(2, logIndex.Term);
-                Assert.AreEqual(LogIndexType.RawData, logIndex.Type);
+                Assert.AreEqual(LogIndexType.DataBlob, logIndex.Type);
                 Assert.AreEqual(0u, logIndex.Offset);
                 Assert.AreEqual(1u, logIndex.Size);
 
