@@ -23,10 +23,6 @@ namespace Raft.Commands
 
             _commands.Add(_ip);
             _commands.Add(_dataDir);
-            ////this.HasOption("","",new NDesk.Options.OptionAction<TKey,TValue>())
-            //this.HasOption<int>("initialIndexSize", "", null);
-            //this.HasOption<int>("initialDataSize", "initial size of the data file", s => _initialSize = s);
-            //this.HasOption<int>("maxDataSize", "max storage size of the data file", s => _maxSize = s);
         }
 
         protected override int Process(string[] remainingArguments)
