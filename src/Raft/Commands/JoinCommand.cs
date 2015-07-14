@@ -19,7 +19,6 @@ namespace Raft.Commands
         private IPEndPointArg _leader = IPEndPointArg.CreateLeaderID();
         private StringArgument _dataDir = new StringArgument("data=", "Data directory storage", true);
 
-        private int _initialSize, _maxSize;
 
         protected override void buildCommands()
         {
