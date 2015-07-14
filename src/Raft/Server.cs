@@ -109,8 +109,6 @@ namespace Raft
             System.Diagnostics.Debug.Assert(false);
         }
 
-
-
         public void Initialize(Log log, ITransport transport, params IPEndPoint[] clients)
         {
             if (_persistedStore == null)
@@ -177,7 +175,7 @@ namespace Raft
 
             var n = matchIndexes[_clients.Count / 2];
             if (_persistedStore.GetTerm(n) == _persistedStore.Term)
-                CommitIndex2(Math.Max(CommitIndex, n));
+                AdvanceToCommit(Math.Max(CommitIndex, n));
         }
 
         public void Process()
@@ -223,7 +221,7 @@ namespace Raft
             _currentState = null;
         }
 
-        public bool CommitIndex2(uint newCommitIndex)
+        public bool AdvanceToCommit(uint newCommitIndex)
         {
             if (newCommitIndex != _commitIndex)
             {

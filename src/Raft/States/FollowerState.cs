@@ -129,7 +129,7 @@ namespace Raft.States
                     }
 
                     matchIndex = index;
-                    _server.CommitIndex2(Math.Max(_server.CommitIndex, request.CommitIndex));
+                    _server.AdvanceToCommit(Math.Max(_server.CommitIndex, request.CommitIndex));
                 }
                 else
                 {                    
