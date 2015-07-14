@@ -234,27 +234,7 @@ namespace Raft
                     _persistedStore.ApplyIndex(this, i + 1);
                 }
                 _commitIndex = newCommitIndex;
-                //for (var i = _commitIndex; i < newCommitIndex; i++)
-                //{
-                //    if (i == _stateMachine.LastCommitApplied)
-                //    {
-                //        LogIndex index;
-                //        if (!_persistedState.GetIndex(i + 1, out index))
-                //            return false;
-
-                //        if (index.Type == LogIndexType.StateMachine)
-                //        {
-                //            using (var br = new BinaryReader(new MemoryStream(_persistedState.GetData(index))))
-                //            {
-                //                var name = br.ReadString();
-                //                _stateMachine.Apply(name, i + 1);
-                //            }
-                //        }
-                //        _commitIndex++;
-                //    }
-                //    // make commit index 
-                //    _commitIndex++;
-                //}
+               
                 return true;
             }
 

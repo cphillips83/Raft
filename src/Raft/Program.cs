@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
@@ -29,6 +30,7 @@ namespace Raft
      * 
      */
 
+
     static class Program
     {
         public static void ForAll<T>(this IEnumerable<T> array, Action<T> action)
@@ -39,6 +41,20 @@ namespace Raft
 
         static int Main(string[] args)
         {
+            var sw = Stopwatch.StartNew();
+            using (var fs = new FileStream("C:\\delete.txt", FileMode.Create))
+            {
+                var data = new byte[1024 * 128];
+
+                for (var i = 0; i < 1024;i++)
+                    fs.Write(data, 0, data.Length);
+
+            }
+            sw.Stop();
+
+            Console.WriteLine(sw.Elapsed);
+            Console.Read();
+
             try
             {
                 var commands = new List<ConsoleCommand>();

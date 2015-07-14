@@ -59,6 +59,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Agent.cs" />
     <Compile Include="Client.cs" />
     <Compile Include="Commands\ArgumentTypes\AbstractArgument.cs" />
     <Compile Include="Commands\ArgumentTypes\AbstractArgumentPairs.cs" />
