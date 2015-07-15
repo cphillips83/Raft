@@ -11,7 +11,7 @@ using Raft.States;
 
 namespace Raft.Transports
 {
-    public class LidgrenTransport : Transport 
+    public class LidgrenTransport : Transport, IDisposable
     {
         private enum MessageTypes
         {
@@ -25,16 +25,24 @@ namespace Raft.Transports
             RemoveServerReply
         }
 
-        private NetPeer _rpc;
+        private NetServer _rpc;
+        private Dictionary<IPEndPoint, NetClient> _clients = new Dictionary<IPEndPoint, NetClient>();
 
         public override void Start(IPEndPoint _config)
         {
             NetPeerConfiguration config = new NetPeerConfiguration(_config.Address.ToString() + ":" + _config.Port);
-            config.SetMessageTypeEnabled(NetIncomingMessageType.UnconnectedData, true);
+            //config.SetMessageTypeEnabled(NetIncomingMessageType.UnconnectedData, true);
             //config
-            config.Port = _config.Port;
 
-            _rpc = new NetPeer(config);
+            config.ConnectionTimeout = 100;
+            config.SendBufferSize = 1024 * 128 * 2;
+            config.ReceiveBufferSize = 1024 * 128 * 2;
+            config.AutoExpandMTU = true;
+            config.EnableMessageType(NetIncomingMessageType.ConnectionApproval);
+            config.Port = _config.Port;
+            config.AutoFlushSendQueue = false;
+
+            _rpc = new NetServer(config);
             _rpc.Start();
             while (_rpc.Status != NetPeerStatus.Running)
                 System.Threading.Thread.Sleep(1);
@@ -44,12 +52,50 @@ namespace Raft.Transports
         {
             if (_rpc != null)
             {
+                foreach (var client in _clients.Values)
+                {
+                    client.Shutdown("stopping");
+                    while (client.Status != NetPeerStatus.NotRunning)
+                        System.Threading.Thread.Sleep(0);
+                }
+
                 _rpc.Shutdown(string.Empty);
                 while (_rpc.Status != NetPeerStatus.NotRunning)
                     System.Threading.Thread.Sleep(1);
             }
 
             _rpc = null;
+        }
+
+        private void SendMessage(Client client, NetOutgoingMessage msg)
+        {
+            NetClient netClient;
+            if (!_clients.TryGetValue(client.ID, out netClient))
+            {
+                var config = new NetPeerConfiguration(client.ID.ToString());
+                //config.AutoFlushSendQueue = false;
+                config.SendBufferSize = 1024 * 128 * 2;
+                config.ReceiveBufferSize = 1024 * 128 * 2;
+                config.AutoExpandMTU = true;
+                config.ConnectionTimeout = 100;
+                netClient = new NetClient(config);
+                netClient.Start();
+                _clients.Add(client.ID, netClient);
+            }
+
+            if (netClient.ConnectionStatus != NetConnectionStatus.Connected)
+            {
+                netClient.Connect(client.ID);
+                Console.WriteLine("Connecting to {0}", client.ID);
+            }
+
+            if (netClient.ConnectionStatus == NetConnectionStatus.Connected)
+            {
+                //_rpc.SendMessage(msg, netClient, NetDeliveryMethod.Unreliable);
+                netClient.SendMessage(msg, NetDeliveryMethod.ReliableUnordered);
+                //_rpc.SendUnconnectedMessage(msg, client.ID);
+            }
+            netClient.FlushSendQueue();
         }
 
         public override void SendMessage(Client client, VoteRequest request)
@@ -60,8 +106,7 @@ namespace Raft.Transports
             msg.Write(request.Term);
             msg.Write(request.LastTerm);
             msg.Write(request.LogLength);
-            _rpc.SendUnconnectedMessage(msg, client.ID);
-            _rpc.FlushSendQueue();
+            SendMessage(client, msg);
         }
 
         public override void SendMessage(Client client, VoteReply reply)
@@ -71,8 +116,7 @@ namespace Raft.Transports
             msg.Write(reply.From);
             msg.Write(reply.Term);
             msg.Write(reply.Granted);
-            _rpc.SendUnconnectedMessage(msg, client.ID);
-            _rpc.FlushSendQueue();
+            SendMessage(client, msg);
         }
 
         public override void SendMessage(Client client, AppendEntriesRequest request)
@@ -101,8 +145,7 @@ namespace Raft.Transports
                     msg.Write(request.Entries[i].Data);
                 }
             }
-            _rpc.SendUnconnectedMessage(msg, client.ID);
-            _rpc.FlushSendQueue();
+            SendMessage(client, msg);
         }
 
         public override void SendMessage(Client client, AppendEntriesReply reply)
@@ -113,8 +156,7 @@ namespace Raft.Transports
             msg.Write(reply.Term);
             msg.Write(reply.MatchIndex);
             msg.Write(reply.Success);
-            _rpc.SendUnconnectedMessage(msg, client.ID);
-            _rpc.FlushSendQueue();
+            SendMessage(client, msg);
         }
 
         public override void SendMessage(Client client, AddServerRequest request)
@@ -122,8 +164,7 @@ namespace Raft.Transports
             var msg = _rpc.CreateMessage();
             msg.Write((byte)MessageTypes.AddServerRequest);
             msg.Write(request.From);
-            _rpc.SendUnconnectedMessage(msg, client.ID);
-            _rpc.FlushSendQueue();
+            SendMessage(client, msg);
         }
 
         public override void SendMessage(Client client, AddServerReply reply)
@@ -134,8 +175,7 @@ namespace Raft.Transports
             msg.Write((uint)reply.Status);
             //TODO leader can't be null
             msg.Write(reply.LeaderHint);
-            _rpc.SendUnconnectedMessage(msg, client.ID);
-            _rpc.FlushSendQueue();
+            SendMessage(client, msg);
         }
 
         public override void SendMessage(Client client, RemoveServerRequest request)
@@ -143,8 +183,7 @@ namespace Raft.Transports
             var msg = _rpc.CreateMessage();
             msg.Write((byte)MessageTypes.RemoveServerRequest);
             msg.Write(request.From);
-            _rpc.SendUnconnectedMessage(msg, client.ID);
-            _rpc.FlushSendQueue();
+            SendMessage(client, msg);
         }
 
         public override void SendMessage(Client client, RemoveServerReply reply)
@@ -154,18 +193,29 @@ namespace Raft.Transports
             msg.Write(reply.From);
             msg.Write((uint)reply.Status);
             msg.Write(reply.LeaderHint);
-            _rpc.SendUnconnectedMessage(msg, client.ID);
-            _rpc.FlushSendQueue();
+            SendMessage(client, msg);
         }
 
-        public override void Process(Server server)
+        private void Process(Server server, NetPeer peer)
         {
             NetIncomingMessage msg;
-            while ((msg = _rpc.ReadMessage()) != null)
+            while ((msg = peer.ReadMessage()) != null)
             {
                 switch (msg.MessageType)
                 {
-                    case NetIncomingMessageType.UnconnectedData:
+                    case NetIncomingMessageType.ConnectionApproval:
+                        Console.WriteLine("{0}: Approving connection {1}", server.ID, msg.SenderConnection.RemoteEndPoint);
+                        msg.SenderConnection.Approve();
+                        break;
+                    //case NetIncomingMessageType.StatusChanged:
+                    //    {
+                    //        var status = (NetConnectionStatus)msg.ReadByte();
+                    //        if (status == NetConnectionStatus.Connected)
+                    //        {
+                    //            _rpc.
+                    //        }
+                    //    }
+                    case NetIncomingMessageType.Data:
                         switch ((MessageTypes)msg.ReadByte())
                         {
                             case MessageTypes.VoteRequest:
@@ -277,9 +327,22 @@ namespace Raft.Transports
                         Console.WriteLine(msg.ReadString());
                         break;
                 }
+                peer.Recycle(msg);
             }
+        }
 
-            base.Process(server); 
+        public override void Process(Server server)
+        {
+            Process(server, _rpc);
+            foreach (var client in _clients.Values)
+                Process(server, client);
+
+            base.Process(server);
+        }
+
+        public void Dispose()
+        {
+            Shutdown();
         }
     }
 }

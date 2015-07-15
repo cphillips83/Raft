@@ -134,7 +134,7 @@ namespace Raft.States
                 else
                 {                    
                     Console.WriteLine("{0}: Append unsuccessful", _server.ID);
-                    //matchIndex = _server.CommitIndex;
+                    matchIndex = _server.CommitIndex;
                 }
             }
             else

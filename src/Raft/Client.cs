@@ -81,7 +81,7 @@ namespace Raft
 
             var entries = _persistedState.GetEntries(prevIndex, lastIndex);
             if (entries != null && entries.Length > 0)
-                Console.WriteLine("{0}: Send AppendEnties[{1}-{2}] to {3}", _server.ID, prevIndex, lastIndex, ID);
+                Console.WriteLine("{0}: {4} - Send AppendEnties[{1}-{2}] to {3}", _server.ID, prevIndex, lastIndex, ID, _server.Tick);
             //else
             //    Console.WriteLine("{0}: Send heart beat to {1}", _server.ID, _id);
 

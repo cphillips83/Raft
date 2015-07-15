@@ -115,7 +115,7 @@ namespace Raft.Tests.Unit
 
                 var timer = Stopwatch.StartNew();
                 var lastTick = 0L;
-                while (lastTick < 500)
+                while (lastTick < 1000)
                 {
                      var currentTick = timer.ElapsedMilliseconds;
                      if (lastTick != currentTick)
@@ -206,10 +206,17 @@ namespace Raft.Tests.Unit
                 // s1 sees that s2 is up to date and adds log entry for s2 and locks config
                 s1.Advance();
 
-                s1.ChangeState(new CandidateState(s1));
-
                 s2.Advance();
                 s1.Advance();
+
+                s1.ChangeState(new CandidateState(s1));
+
+                //var count = 50;
+                //while (count-- > 0)
+                {
+                    s2.Advance();
+                    s1.Advance();
+                }
 
                 Assert.AreEqual(s1.ID, s2.PersistedStore.VotedFor);
                 Assert.AreEqual(true, s1.Clients.First().VoteGranted);

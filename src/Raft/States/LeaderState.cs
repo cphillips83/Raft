@@ -87,12 +87,56 @@ namespace Raft.States
             {
                 var join = _serversToAdd[i];
                 var client = join.Client;
+
+                if (join.NextRound <= _server.Tick)
+                {
+                    join.Round--;
+
+                    if (join.Client.MatchIndex != _server.CommitIndex)
+                    {
+                        //at the end of the rounds and still not caught up
+                        //or we made no progress in a single round
+                        if (join.Round <= 0 || join.RoundIndex == client.MatchIndex)
+                        {
+                            Console.WriteLine("{0}: Made no progress the last round, signalling timeout to {1}", _server.ID, client.ID);
+                            client.SendAddServerReply(AddServerStatus.TimedOut, new IPEndPoint(_server.ID.Address, _server.ID.Port));
+                            RemoveServerJoin(client);
+                            i--;
+                            continue;
+                        }
+                        else
+                        {
+                            Console.WriteLine("{0}: Round {1}/10 done for {2}", _server.ID, 10 - join.Round, client.ID);
+                            join.RoundIndex = client.MatchIndex;
+                            join.NextRound = _server.Tick + _server.PersistedStore.ELECTION_TIMEOUT;
+                        }
+                    }
+                    else
+                    {
+                        // we are ready, but another change is in progress
+                        if (_server.PersistedStore.ConfigLocked)
+                        {
+                            // reset the rounds because we are waiting for the config file to be free
+                            // this should keep the server getting heart beats
+                            join.Round = 10;
+                        }
+                        else
+                        {
+                            //_server.AddClientFromLog(client.ID);
+                            _server.PersistedStore.AddServer(_server, client.ID);
+                            RemoveServerJoin(client);
+                            i--;
+                            continue;
+                        }
+                    }
+                }
+
                 if (client.NextHeartBeat <= _server.Tick ||
                     (client.NextIndex <= _server.PersistedStore.Length && client.ReadyToSend))
                 {
                     if (client.RpcDue > 0 && client.RpcDue <= _server.Tick)
                     {
-                        Console.WriteLine("{0}: Signalling timeout to {1}", _server.ID, client.ID);
+                        Console.WriteLine("{0}: RPC due, signalling timeout to {1}", _server.ID, client.ID);
                         client.SendAddServerReply(AddServerStatus.TimedOut, new IPEndPoint(_server.ID.Address, _server.ID.Port));
                         RemoveServerJoin(client);
                         i--;
@@ -144,58 +188,34 @@ namespace Raft.States
             {
                 client.MatchIndex = Math.Max(client.MatchIndex, reply.MatchIndex);
                 client.NextIndex = reply.MatchIndex + 1;
-                if(client.MatchIndex != _server.CommitIndex)
+                if (client.MatchIndex != _server.CommitIndex)
                     client.NextHeartBeat = 0; //keep streaming until caught up
             }
             else
             {
+                //client.MatchIndex = Math.Max(client.MatchIndex, reply.MatchIndex);
                 client.NextIndex = Math.Max(1, reply.MatchIndex + 1);
                 //client.NextIndex = Math.Max(1, client.NextIndex - 1);
                 client.NextHeartBeat = 0;
             }
+            Console.WriteLine("{0}: AppendReply from {1}, took {2}", _server.ID, client.ID, _server.PersistedStore.RPC_TIMEOUT - (client.RpcDue - _server.Tick));
 
             client.RpcDue = 0;
 
-            if (joiningServer != null)
+            if (joiningServer != null && joiningServer.Client.MatchIndex == _server.CommitIndex)
             {
-                if (joiningServer.NextRound <= _server.Tick || joiningServer.Client.MatchIndex == _server.CommitIndex)
+                // we are ready, but another change is in progress
+                if (_server.PersistedStore.ConfigLocked)
                 {
-                    joiningServer.Round--;
-
-                    if (joiningServer.Client.MatchIndex != _server.CommitIndex)
-                    {
-                        //at the end of the rounds and still not caught up
-                        //or we made no progress in a single round
-                        if (joiningServer.Round <= 0 || joiningServer.RoundIndex == client.MatchIndex)
-                        {
-                            Console.WriteLine("{0}: Signalling timeout to {1}", _server.ID, client.ID);
-                            client.SendAddServerReply(AddServerStatus.TimedOut, new IPEndPoint(_server.ID.Address, _server.ID.Port));
-                            RemoveServerJoin(client);
-                        }
-                        else
-                        {
-                            Console.WriteLine("{0}: Round {1}/10 done for {2}", _server.ID, 10 - joiningServer.Round, client.ID);
-                            joiningServer.RoundIndex = client.MatchIndex;
-                            joiningServer.NextRound = _server.Tick + _server.PersistedStore.ELECTION_TIMEOUT;
-                        }
-                    }
-                    else
-                    {
-
-                        // we are ready, but another change is in progress
-                        if (_server.PersistedStore.ConfigLocked)
-                        {
-                            // reset the rounds because we are waiting for the config file to be free
-                            // this should keep the server getting heart beats
-                            joiningServer.Round = 10;
-                        }
-                        else
-                        {
-                            //_server.AddClientFromLog(client.ID);
-                            _server.PersistedStore.AddServer(_server, client.ID);
-                            RemoveServerJoin(client);
-                        }
-                    }
+                    // reset the rounds because we are waiting for the config file to be free
+                    // this should keep the server getting heart beats
+                    joiningServer.Round = 10;
+                }
+                else
+                {
+                    //_server.AddClientFromLog(client.ID);
+                    _server.PersistedStore.AddServer(_server, client.ID);
+                    RemoveServerJoin(client);
                 }
             }
             return true;
