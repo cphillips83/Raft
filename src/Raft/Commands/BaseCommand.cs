@@ -27,7 +27,7 @@ namespace Raft.Commands
         public override int Run(string[] remainingArguments)
         {
             foreach (var cmd in _commands)
-                if ((cmd.Required && !cmd.Valid) || (cmd.Supplied && !cmd.Valid))
+                if ((cmd.Required && !cmd.IsValid) || (cmd.Supplied && !cmd.IsValid))
                     return 1;
           
             return Process(remainingArguments);

@@ -13,7 +13,7 @@ namespace Raft.Commands.ArgumentTypes
         public string Description { get; set; }
         public bool Required { get; set; }
         public bool Supplied { get; set; }
-        public bool Valid { get; set; }
+        public bool IsValid { get; set; }
 
         public AbstractArgument(string command, string desc, bool required = false)
         {
@@ -25,7 +25,7 @@ namespace Raft.Commands.ArgumentTypes
         public void Parse(string s)
         {
             Supplied = true;
-            Valid = parse(s);
+            IsValid = parse(s);
         }
 
         protected abstract bool parse(string s);

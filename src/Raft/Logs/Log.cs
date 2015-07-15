@@ -360,7 +360,7 @@ namespace Raft.Logs
             return new IPEndPoint(ip, port);
         }
 
-        public LogEntry Create(Server server, byte[] data)
+        public uint Create(Server server, byte[] data)
         {
             //this function breaks the entries in to MAX_LOG_ENTRY_SIZE as
             //DataChunk types but preserves the first byte so that when
@@ -412,7 +412,7 @@ namespace Raft.Logs
                 Console.WriteLine("{0}: Created {1}", server.ID, entry.Index);
 
             Push(server, entry);
-            return entry;
+            return _logLength;
         }
 
         //public bool WriteChunk(Server server, byte[] )
@@ -644,6 +644,11 @@ namespace Raft.Logs
                 fr.Read(data, 0, data.Length);
             }
             return data;
+        }
+
+        public Stream GetDataStream()
+        {
+            return OpenDataFileReader();
         }
 
         public LogEntry? GetEntry(uint key)

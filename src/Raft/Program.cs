@@ -41,19 +41,19 @@ namespace Raft
 
         static int Main(string[] args)
         {
-            var sw = Stopwatch.StartNew();
-            using (var fs = new FileStream("C:\\delete.txt", FileMode.Create))
-            {
-                var data = new byte[1024 * 128];
+            //var sw = Stopwatch.StartNew();
+            //using (var fs = new FileStream("C:\\delete.txt", FileMode.Create))
+            //{
+            //    var data = new byte[1024 * 128];
 
-                for (var i = 0; i < 1024;i++)
-                    fs.Write(data, 0, data.Length);
+            //    for (var i = 0; i < 1024;i++)
+            //        fs.Write(data, 0, data.Length);
 
-            }
-            sw.Stop();
+            //}
+            //sw.Stop();
 
-            Console.WriteLine(sw.Elapsed);
-            Console.Read();
+            //Console.WriteLine(sw.Elapsed);
+            //Console.Read();
 
             try
             {
@@ -62,8 +62,11 @@ namespace Raft
                 //need data directory
                 commands.Add(new Commands.CreateCommand());
                 commands.Add(new Commands.FollowCommand());
+                commands.Add(new Commands.AgentCommand());
                 commands.Add(new Commands.JoinCommand());
                 commands.Add(new Commands.LeaveCommand());
+                commands.Add(new Commands.UploadCommand());
+                commands.Add(new Commands.DownloadCommand());
 
                 // then run them.
                 return ConsoleCommandDispatcher.DispatchCommand(commands as IEnumerable<ConsoleCommand>, args, Console.Out, true);

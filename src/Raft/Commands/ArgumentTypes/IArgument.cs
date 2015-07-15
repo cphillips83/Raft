@@ -11,7 +11,7 @@ namespace Raft.Commands.ArgumentTypes
     {
         bool Required { get; }
         bool Supplied { get; }
-        bool Valid { get; }
+        bool IsValid { get; }
         void Register(ConsoleCommand command);
     }
 

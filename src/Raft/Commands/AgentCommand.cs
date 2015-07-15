@@ -2,10 +2,8 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Net;
 using System.Text;
 using System.Threading.Tasks;
-using ManyConsole;
 using Raft.Commands.ArgumentTypes;
 using Raft.Logs;
 using Raft.States;
@@ -13,16 +11,19 @@ using Raft.Transports;
 
 namespace Raft.Commands
 {
-    public class LeaveCommand : BaseCommand
+    public class AgentCommand : BaseCommand
     {
         private IPEndPointArg _ip = IPEndPointArg.CreateID();
+        private IPEndPointArg _agentip = IPEndPointArg.CreateAgentIP();
         private StringArgument _dataDir = new StringArgument("data=", "Data directory storage", true);
+
 
         protected override void buildCommands()
         {
-            this.IsCommand("leave", "Removes themselves from the cluster");
+            this.IsCommand("agent", "Starts the service as a follower and loads the agent");
 
             _commands.Add(_ip);
+            _commands.Add(_agentip);
             _commands.Add(_dataDir);
         }
 
@@ -42,32 +43,19 @@ namespace Raft.Commands
                 return 1;
             }
 
-
-            Console.WriteLine("Leaving cluster {0}", _ip.Value);
             using (var server = new Server(_ip.Value))
             {
-                server.Initialize(new FileLog(_dataDir.Value, true), new LidgrenTransport());
-                server.ChangeState(new LeaveState(server));
+                server.Initialize(new FileLog(_dataDir.Value), new LidgrenTransport());
 
-                var timer = Stopwatch.StartNew();
-                var lastTick = 0L;
-                while (!Console.KeyAvailable)
-                {
-                    var currentTick = timer.ElapsedMilliseconds;
-                    while (lastTick < currentTick )
-                    {
-                        server.Advance();
-                        lastTick++;
-                    }
-                    System.Threading.Thread.Sleep(1);
-
-                    if(server.CurrentState is StoppedState)
-                        break;
-                }
+                Console.WriteLine("Running on {0}, press any key to quit...", server.ID);
+                
+                var agent = new Agent(server);
+                agent.Run(_agentip.Value);
             }
 
 
             return 0;
         }
     }
+
 }
