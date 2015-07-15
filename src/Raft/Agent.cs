@@ -24,10 +24,10 @@ namespace Raft
         void Tick();
     }
 
-    public struct UploadRequest : IDisposable
+    public class UploadRequest : IDisposable
     {
         public string FilePath;
-        public long ID;
+        public long Index;
         //public LogIndex Index;
         public ManualResetEvent Completed;
         public void Dispose()
@@ -50,16 +50,33 @@ namespace Raft
                 {
                     var data = new byte[fs.Length];
                     fs.Read(data, 0, data.Length);
-                    ID = server.PersistedStore.Length;
+                    Index = server.PersistedStore.Length;
                     server.PersistedStore.Create(server, data);
                 }
             }
             catch
             {
-                ID = -1;
+                Index = -1;
             }
             Completed.Set();
             Dispose();
+        }
+    }
+
+    public class DownloadRequest : IDisposable
+    {
+        public long Index;
+        public ManualResetEvent Completed;
+        public Stream ReadStream;
+
+        public void Process(Server server)
+        {
+            //server.PersistedStore.GetData
+        }
+
+        public void Dispose()
+        {
+
         }
     }
 
