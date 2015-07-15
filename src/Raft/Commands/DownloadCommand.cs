@@ -51,11 +51,11 @@ namespace Raft.Commands
             var proxy = ClientFactory.CreateClient<IDataService>(_agentip.Value);
             using (var fs = new FileStream(_file.Value, FileMode.CreateNew, FileAccess.Write))
             {
-                using (var stream = proxy.DownloadFile(_index.Value))
+                using (var remoteStream = proxy.DownloadFile(new FileIndex() { Index = _index.Value }))
                 {
                     int count = 0;
                     var data = new byte[65536];
-                    while ((count = stream.Read(data, 0, data.Length)) > 0)
+                    while ((count = remoteStream.Stream.Read(data, 0, data.Length)) > 0)
                     {
                         fs.Write(data, 0, count);
                     }

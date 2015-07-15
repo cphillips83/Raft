@@ -46,7 +46,7 @@ namespace Raft.Commands
 
 
             Console.WriteLine("Uploading file to cluster");
-            var index = 0u;
+            FileIndex index;
 
             var timer = Stopwatch.StartNew();
             var count = 0;
@@ -56,7 +56,7 @@ namespace Raft.Commands
                     var proxy = ClientFactory.CreateClient<IDataService>(_agentip.Value);
 
                     using (var fs = new FileStream(_file.Value, FileMode.Open, FileAccess.Read))
-                        index = proxy.UploadFile(fs);
+                        index = proxy.UploadFile(new RemoteStream() { Stream = fs });
 
                     Console.WriteLine("Uploaded, index: {0}", index);
                     ++count;
@@ -67,6 +67,13 @@ namespace Raft.Commands
 
             timer.Stop();
             Console.WriteLine("Took: {0}", timer.Elapsed);
+
+            //var proxy = ClientFactory.CreateClient<IDataService>(_agentip.Value);
+
+            //using (var fs = new FileStream(_file.Value, FileMode.Open, FileAccess.Read))
+            //    index = proxy.UploadFile(new RemoteStream() { Stream = fs });
+
+            //Console.WriteLine("Uploaded, index: {0}", index);
 
             return 0;
         }

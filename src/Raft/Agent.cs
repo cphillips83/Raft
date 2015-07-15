@@ -15,19 +15,46 @@ using Raft.Logs;
 
 namespace Raft
 {
+    [MessageContract]
+    public class RemoteStream : IDisposable
+    {
+        [MessageBodyMember(Order = 1)]
+        public Stream Stream { get; set; }
+
+        public void Dispose()
+        {
+            if(Stream != null)
+                Stream.Dispose();
+
+            Stream = null;
+        }
+    }
+
+    [MessageContract]
+    public class FileIndex
+    {
+         [MessageBodyMember(Order = 1)]
+         public uint Index { get; set; }
+
+         public override string ToString()
+         {
+             return Index.ToString();
+         }
+    }
+
     [ServiceContract(SessionMode = SessionMode.NotAllowed)]
     public interface IDataService
     {
         [OperationContract]
         [WebInvoke(UriTemplate = "upload")]
-        uint UploadFile(Stream stream);
+        FileIndex UploadFile(RemoteStream stream);
 
         [OperationContract]
         [WebInvoke(UriTemplate = "download")]
-        Stream DownloadFile(uint id);
+        RemoteStream DownloadFile(FileIndex index);
     }
 
-    public class UploadRequest : IDisposable
+    public class UploadQueue : IDisposable
     {
         public string FilePath;
         public uint Index;
@@ -71,9 +98,10 @@ namespace Raft
                         InstanceContextMode = InstanceContextMode.Single)]
     public class Agent : IDataService
     {
+        public const int MESSAGE_BUFFER_LENGTH = 1024 * 128;
         private bool _isRunning = false;
         private Server _server;
-        private Queue<UploadRequest> _uploads = new Queue<UploadRequest>();
+        private Queue<UploadQueue> _uploads = new Queue<UploadQueue>();
 
         public Agent(Server server)
         {
@@ -89,6 +117,7 @@ namespace Raft
             var binding = new BasicHttpBinding();
             binding.TransferMode = TransferMode.Streamed;
             binding.MaxReceivedMessageSize = 1024 * 1024 * 25;
+            binding.MaxBufferSize = MESSAGE_BUFFER_LENGTH;
 
             var custom = new CustomBinding(binding);
             //custom.Elements.Find<HttpTransportBindingElement>().KeepAliveEnabled = false;
@@ -121,7 +150,7 @@ namespace Raft
                 {
                     if (_uploads.Count > 0)
                     {
-                        UploadRequest request;
+                        UploadQueue request;
                         lock (_uploads)
                         {
                             request = _uploads.Peek();
@@ -133,7 +162,6 @@ namespace Raft
                                 {
                                     _uploads.Dequeue();
                                     request.Completed.Set();
-                                    request.Dispose();
                                     sleep = false;
                                 }
 
@@ -166,7 +194,7 @@ namespace Raft
 
         }
 
-        public uint UploadFile(Stream stream)
+        public FileIndex UploadFile(RemoteStream remoteStream)
         {
             //reply not leader with leader hint?
             //write data to temp file
@@ -182,10 +210,9 @@ namespace Raft
             var tempFile = System.IO.Path.GetTempFileName();
             using (var fs = new FileStream(tempFile, FileMode.Append, FileAccess.Write, FileShare.None))
             {
-                const int bufferLen = 65536;
-                var buffer = new byte[bufferLen];
+                var buffer = new byte[MESSAGE_BUFFER_LENGTH];
                 int count = 0;
-                while ((count = stream.Read(buffer, 0, bufferLen)) > 0)
+                while ((count = remoteStream.Stream.Read(buffer, 0, MESSAGE_BUFFER_LENGTH)) > 0)
                 {
                     fs.Write(buffer, 0, count);
                 }
@@ -193,7 +220,7 @@ namespace Raft
                 Console.WriteLine("{0}: Wrote {1} bytes to file '{2}'", _server.ID, fs.Length, tempFile);
             }
 
-            var upload = new UploadRequest()
+            var upload = new UploadQueue()
             {
                 Completed = new ManualResetEvent(false),
                 FilePath = tempFile
@@ -205,22 +232,23 @@ namespace Raft
             }
 
             upload.Completed.WaitOne();
-            return upload.Index;
+            upload.Dispose();
+            return new FileIndex() { Index = upload.Index };
         }
 
-        public Stream DownloadFile(uint index)
+        public RemoteStream DownloadFile(FileIndex index)
         {
             Console.WriteLine("{0}: Download request for {1}", _server.ID, index);
 
             //if commitindex > id, data is committed
             //safe to return a RemoteStream to offset + length
             //get a free filestream reader to return
-            var logIndex = _server.PersistedStore[index];
+            var logIndex = _server.PersistedStore[index.Index];
             if (logIndex.Term == 0)
-                return Stream.Null;
+                return new RemoteStream() { Stream = Stream.Null };
 
             var stream = _server.PersistedStore.GetDataStream();
-            return new RemoteStreamReader(stream, (int)logIndex.Offset, (int)logIndex.Size);
+            return new RemoteStream() { Stream = new RemoteStreamReader(stream, (int)logIndex.Offset, (int)logIndex.Size) };
         }
 
         public class RemoteStreamReader : Stream
@@ -318,7 +346,9 @@ namespace Raft
         {
             var uri = new Uri(string.Format("http://{0}/agent", ip));
             BasicHttpBinding binding = new BasicHttpBinding();
+            binding.TransferMode = TransferMode.Streamed;
             binding.MaxReceivedMessageSize = 1024 * 1024 * 25;
+            binding.MaxBufferSize = Agent.MESSAGE_BUFFER_LENGTH;
             //Get the address of the service from configuration or some other mechanism - Not shown here
             EndpointAddress address = new EndpointAddress(uri);
 
