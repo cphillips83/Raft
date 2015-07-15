@@ -149,8 +149,8 @@ namespace Raft.States
             }
             else
             {
-                //client.NextIndex = Math.Max(1, reply.MatchIndex + 1);
-                client.NextIndex = Math.Max(1, client.NextIndex - 1);
+                client.NextIndex = Math.Max(1, reply.MatchIndex + 1);
+                //client.NextIndex = Math.Max(1, client.NextIndex - 1);
                 client.NextHeartBeat = 0;
             }
 

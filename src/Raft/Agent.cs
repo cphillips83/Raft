@@ -114,17 +114,11 @@ namespace Raft
             Console.WriteLine("{0}: Agent started on {1}", _server.ID, uri);
 
 
-            var binding = new BasicHttpBinding();
-            binding.TransferMode = TransferMode.Streamed;
-            binding.MaxReceivedMessageSize = 1024 * 1024 * 25;
-            binding.MaxBufferSize = MESSAGE_BUFFER_LENGTH;
-
-            var custom = new CustomBinding(binding);
-            //custom.Elements.Find<HttpTransportBindingElement>().KeepAliveEnabled = false;
+            var binding = CreateDefaultBinding();
 
             var host = new ServiceHost(this, uri);
             //host
-            host.AddServiceEndpoint(typeof(IDataService), custom, uri);
+            host.AddServiceEndpoint(typeof(IDataService), binding, uri);
             host.Description.Behaviors.Add(new ServiceMetadataBehavior()
             {
                 HttpGetEnabled = true,
@@ -248,15 +242,28 @@ namespace Raft
                 return new RemoteStream() { Stream = Stream.Null };
 
             var stream = _server.PersistedStore.GetDataStream();
-            return new RemoteStream() { Stream = new RemoteStreamReader(stream, (int)logIndex.Offset, (int)logIndex.Size) };
+            return new RemoteStream() { Stream = new LogStreamReader(stream, (int)logIndex.Offset, (int)logIndex.Size) };
         }
 
-        public class RemoteStreamReader : Stream
+        public static BasicHttpBinding CreateDefaultBinding()
+        {
+            BasicHttpBinding binding = new BasicHttpBinding();
+            binding.TransferMode = TransferMode.Streamed;
+            binding.MaxReceivedMessageSize = 1024 * 1024 * 25;
+            binding.MaxBufferSize = Agent.MESSAGE_BUFFER_LENGTH;
+            binding.MessageEncoding = WSMessageEncoding.Mtom;
+            binding.CloseTimeout = TimeSpan.FromMinutes(1);
+            binding.OpenTimeout = TimeSpan.FromMinutes(1);
+            binding.ReceiveTimeout = TimeSpan.FromMinutes(1);
+            binding.SendTimeout = TimeSpan.FromMinutes(1);
+            return binding;
+        }
+        public class LogStreamReader : Stream
         {
             private int _remaining;
             private int _offset, _length;
             private Stream _internalStream;
-            public RemoteStreamReader(Stream internalStream, int offset, int length)
+            public LogStreamReader(Stream internalStream, int offset, int length)
             {
                 _offset = offset;
                 _length = length;
@@ -345,10 +352,8 @@ namespace Raft
         public static T CreateClient<T>(IPEndPoint ip)
         {
             var uri = new Uri(string.Format("http://{0}/agent", ip));
-            BasicHttpBinding binding = new BasicHttpBinding();
-            binding.TransferMode = TransferMode.Streamed;
-            binding.MaxReceivedMessageSize = 1024 * 1024 * 25;
-            binding.MaxBufferSize = Agent.MESSAGE_BUFFER_LENGTH;
+            var binding = Agent.CreateDefaultBinding();
+
             //Get the address of the service from configuration or some other mechanism - Not shown here
             EndpointAddress address = new EndpointAddress(uri);
 

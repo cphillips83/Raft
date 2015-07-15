@@ -31,6 +31,7 @@ namespace Raft.Transports
         {
             NetPeerConfiguration config = new NetPeerConfiguration(_config.Address.ToString() + ":" + _config.Port);
             config.SetMessageTypeEnabled(NetIncomingMessageType.UnconnectedData, true);
+            //config
             config.Port = _config.Port;
 
             _rpc = new NetPeer(config);
