@@ -13,8 +13,8 @@ namespace Raft.Messages
     public struct AppendEntriesRequest
     {
         public IPEndPoint From;
-        public int Term;
-        public int PrevTerm;
+        public uint Term;
+        public uint PrevTerm;
         public uint PrevIndex;
         public uint CommitIndex;
 
@@ -24,7 +24,7 @@ namespace Raft.Messages
     public struct AppendEntriesReply
     {
         public IPEndPoint From;
-        public int Term;
+        public uint Term;
         public uint MatchIndex;
         public bool Success;
     }

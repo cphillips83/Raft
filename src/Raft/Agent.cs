@@ -71,6 +71,7 @@ namespace Raft
 
         public void Process(Server server)
         {
+            //var 
             //server.PersistedStore.GetData
         }
 

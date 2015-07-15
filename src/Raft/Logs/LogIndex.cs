@@ -11,7 +11,7 @@ namespace Raft.Logs
     public struct LogIndex
     {
         [FieldOffset(0)]
-        public int Term;
+        public uint Term;
 
         [FieldOffset(4)]
         public LogIndexType Type;

@@ -48,8 +48,8 @@ namespace Raft.Tests.Unit
                 var index = s2.PersistedStore.GetLastIndex(out logIndex);
 
                 //log replication check 
-                Assert.AreNotEqual(0, index);
-                Assert.AreEqual(2, logIndex.Term);
+                Assert.AreNotEqual(0u, index);
+                Assert.AreEqual(2u, logIndex.Term);
                 Assert.AreEqual(LogIndexType.DataBlob, logIndex.Type);
                 Assert.AreEqual(0u, logIndex.Offset);
                 Assert.AreEqual(1u, logIndex.Size);

@@ -16,7 +16,7 @@ namespace Raft.States
             _server = server;
         }
 
-        public virtual bool StepDown(int term)
+        public virtual bool StepDown(uint term)
         {
             if (_server.PersistedStore.Term < term)
             {
@@ -37,10 +37,9 @@ namespace Raft.States
 
         }
 
-        public virtual void CommittedRemoveServer(IPEndPoint endPoint)
-        {
+        public virtual void CommittedRemoveServer(IPEndPoint endPoint) { 
 
-        }
+}
 
         public bool VoteRequest(VoteRequest request)
         {

@@ -50,7 +50,7 @@ namespace Raft.Logs
         private byte[] _writeSpad = new byte[MAX_LOG_ENTRY_SIZE];
 
         // current term of the cluster
-        private int _currentTerm = 1;
+        private uint _currentTerm = 1;
         //private uint _maxDataFileSize = 0;
         private uint _lastAppliedIndex;
         private bool _configLocked;
@@ -72,7 +72,7 @@ namespace Raft.Logs
 
         public uint LastAppliedIndex { get { return _lastAppliedIndex; } }
 
-        public int Term
+        public uint Term
         {
             get { return _currentTerm; }
             set
@@ -140,7 +140,7 @@ namespace Raft.Logs
             System.Diagnostics.Debug.Assert(((br.BaseStream.Length - SUPER_BLOCK_SIZE)) % LOG_RECORD_SIZE == 0);
 
             // read term and last vote
-            _currentTerm = br.ReadInt32();
+            _currentTerm = br.ReadUInt32();
 
             // read config lock
             _configLocked = br.ReadBoolean();
@@ -179,7 +179,7 @@ namespace Raft.Logs
             //read records in
             for (var i = 0; i < indices; i++)
             {
-                _logIndices[i].Term = br.ReadInt32();
+                _logIndices[i].Term = br.ReadUInt32();
                 _logIndices[i].Type = (LogIndexType)br.ReadUInt32();
                 _logIndices[i].Offset = br.ReadUInt32();
                 _logIndices[i].Size = br.ReadUInt32();
@@ -288,7 +288,7 @@ namespace Raft.Logs
 
         }
 
-        public void UpdateState(int term, IPEndPoint votedFor)
+        public void UpdateState(uint term, IPEndPoint votedFor)
         {
             _currentTerm = term;
             _votedFor = votedFor;
@@ -601,7 +601,7 @@ namespace Raft.Logs
             return true;
         }
 
-        public int GetTerm(uint key)
+        public uint GetTerm(uint key)
         {
             if (key < 1 || key > _logLength)
                 return 0;
@@ -609,7 +609,7 @@ namespace Raft.Logs
             return _logIndices[key - 1].Term;
         }
 
-        public int GetLastTerm()
+        public uint GetLastTerm()
         {
             return GetTerm(_logLength);
         }
@@ -619,7 +619,7 @@ namespace Raft.Logs
             if (_logLength == 0)
                 return 0;
 
-            return _logLength - 1;
+            return _logLength;
         }
 
         public uint GetLastIndex(out LogIndex index)
@@ -631,7 +631,7 @@ namespace Raft.Logs
             }
 
             index = _logIndices[_logLength - 1];
-            return _logLength - 1;
+            return _logLength;
         }
 
         public byte[] GetData(LogIndex index)
@@ -679,7 +679,7 @@ namespace Raft.Logs
             return entries;
         }
 
-        public bool LogIsBetter(uint logLength, int term)
+        public bool LogIsBetter(uint logLength, uint term)
         {
             var ourLastLogTerm = GetLastTerm();
             var logTermFurther = term > ourLastLogTerm;

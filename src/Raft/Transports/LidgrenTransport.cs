@@ -171,8 +171,8 @@ namespace Raft.Transports
                                 {
                                     var incomingMessage = new VoteRequest();
                                     incomingMessage.From = msg.ReadIPEndPoint();
-                                    incomingMessage.Term = msg.ReadInt32();
-                                    incomingMessage.LastTerm = msg.ReadInt32();
+                                    incomingMessage.Term = msg.ReadUInt32();
+                                    incomingMessage.LastTerm = msg.ReadUInt32();
                                     incomingMessage.LogLength = msg.ReadUInt32();
 
                                     _incomingMessages.Enqueue(incomingMessage);
@@ -182,7 +182,7 @@ namespace Raft.Transports
                                 {
                                     var incomingMessage = new VoteReply();
                                     incomingMessage.From = msg.ReadIPEndPoint();
-                                    incomingMessage.Term = msg.ReadInt32();
+                                    incomingMessage.Term = msg.ReadUInt32();
                                     incomingMessage.Granted = msg.ReadBoolean();
 
                                     _incomingMessages.Enqueue(incomingMessage);
@@ -192,8 +192,8 @@ namespace Raft.Transports
                                 {
                                     var incomingMessage = new AppendEntriesRequest();
                                     incomingMessage.From = msg.ReadIPEndPoint();
-                                    incomingMessage.Term = msg.ReadInt32();
-                                    incomingMessage.PrevTerm = msg.ReadInt32();
+                                    incomingMessage.Term = msg.ReadUInt32();
+                                    incomingMessage.PrevTerm = msg.ReadUInt32();
                                     incomingMessage.PrevIndex = msg.ReadUInt32();
                                     incomingMessage.CommitIndex = msg.ReadUInt32();
 
@@ -206,7 +206,7 @@ namespace Raft.Transports
                                             var entry = new LogEntry();
                                             var index = new LogIndex();
 
-                                            index.Term = msg.ReadInt32();
+                                            index.Term = msg.ReadUInt32();
                                             index.Type = (LogIndexType)msg.ReadUInt32();
                                             index.Offset = msg.ReadUInt32();
                                             index.Size = msg.ReadUInt32();
@@ -227,7 +227,7 @@ namespace Raft.Transports
                                 {
                                     var incomingMessage = new AppendEntriesReply();
                                     incomingMessage.From = msg.ReadIPEndPoint();
-                                    incomingMessage.Term = msg.ReadInt32();
+                                    incomingMessage.Term = msg.ReadUInt32();
                                     incomingMessage.MatchIndex = msg.ReadUInt32();
                                     incomingMessage.Success = msg.ReadBoolean();
 

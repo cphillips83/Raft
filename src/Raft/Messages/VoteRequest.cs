@@ -12,15 +12,15 @@ namespace Raft.Messages
     public struct VoteRequest
     {
         public IPEndPoint From;
-        public int Term;
-        public int LastTerm;
+        public uint Term;
+        public uint LastTerm;
         public uint LogLength;
     }
 
     public struct VoteReply
     {
         public IPEndPoint From;
-        public int Term;
+        public uint Term;
         public bool Granted;
 
         public override string ToString()

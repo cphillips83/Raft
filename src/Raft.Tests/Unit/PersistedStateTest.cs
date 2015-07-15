@@ -21,7 +21,7 @@ namespace Raft.Tests.Unit
             test.VotedFor = new IPEndPoint(IPAddress.Loopback, 123);
 
             test.Term = 2;
-            Assert.AreEqual(2, test.Term);
+            Assert.AreEqual(2u, test.Term);
             Assert.AreEqual(null, test.VotedFor);
         }
 
@@ -38,8 +38,8 @@ namespace Raft.Tests.Unit
             test.Create(null, new[] { (byte)6 });
 
             Assert.AreEqual(2u, test.Length);
-            Assert.AreEqual(1, test[1].Term);
-            Assert.AreEqual(2, test[2].Term);
+            Assert.AreEqual(1u, test[1].Term);
+            Assert.AreEqual(2u, test[2].Term);
         }
 
         [TestMethod]
@@ -51,8 +51,8 @@ namespace Raft.Tests.Unit
             test.Term = 1;
             test.Create(null, new[] { (byte)5 });
 
-            Assert.AreEqual(1, test.GetLastTerm());
-            Assert.AreEqual(0u, test.GetLastIndex());
+            Assert.AreEqual(1u, test.GetLastTerm());
+            Assert.AreEqual(1u, test.GetLastIndex());
         }
 
         [TestMethod]
