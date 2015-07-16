@@ -26,6 +26,8 @@ namespace Raft.Transports
         public abstract void Start(IPEndPoint ip);
         public abstract void Shutdown();
 
+        public virtual void ResetConnection(Client client) { }
+
         public virtual void Process(Server server)
         {
             while (_incomingMessages.Count > 0)

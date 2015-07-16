@@ -138,6 +138,48 @@ namespace Raft.Tests.Unit
         }
 
         [TestMethod]
+        public void AddServer_ReplicateToLogUdp()
+        {
+            using (var s1 = Helper.CreateServer())
+            using (var s2 = Helper.CreateServer())
+            {
+                s1.Initialize(new MemoryLog(), new UdpTransport());
+                s2.Initialize(new MemoryLog(), new UdpTransport());
+
+                s1.ChangeState(new LeaderState(s1)); // will push s1 to term 2
+                s1.PersistedStore.AddServer(s1, s1.ID);
+
+                // applies its own entry and advances commit
+                s1.Advance();
+
+                // this sends out an add request
+                s2.ChangeState(new JoinState(s2, new Client(s2, s1.ID)));
+
+                var timer = Stopwatch.StartNew();
+                var lastTick = 0L;
+                while (lastTick < 1000)
+                {
+                    var currentTick = timer.ElapsedMilliseconds;
+                    if (lastTick != currentTick)
+                    {
+                        s1.Advance();
+                        s2.Advance();
+                        lastTick = currentTick;
+                    }
+
+                    System.Threading.Thread.Sleep(1);
+                }
+
+                Assert.AreEqual(2, s1.Majority);
+                Assert.AreEqual(2, s2.Majority);
+                Assert.IsTrue(s1.ID.Equals(s2.GetClient(s1.ID).ID));
+                Assert.IsTrue(s2.ID.Equals(s1.GetClient(s2.ID).ID));
+                Assert.IsTrue(s1.ID.Equals(s2.PersistedStore.Clients.First()));
+                Assert.IsTrue(s2.ID.Equals(s1.PersistedStore.Clients.First()));
+            }
+        }
+
+        [TestMethod]
         public void AddServer_Timesout()
         {
             using (var s1 = Helper.CreateServer())

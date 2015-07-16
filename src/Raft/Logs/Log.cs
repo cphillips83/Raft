@@ -44,7 +44,15 @@ namespace Raft.Logs
         public const int SUPER_BLOCK_SIZE = 1024;
         public const int LOG_DEFAULT_ARRAY_SIZE = 65536;
         public const int LOG_RECORD_SIZE = 16;
-        public const int MAX_LOG_ENTRY_SIZE = 1024 * 128; //128kb
+        //public const int MAX_LOG_ENTRY_SIZE = 1024 * 128; //128kb
+        //public const int MAX_LOG_ENTRY_SIZE = 65535 // MAX UDP PACKET SIZE?
+        //                                        - 20 //overhead
+        //                                        - 8  //udp header
+        //                                        - 25 //From, term, PrevTerm, PrevIndex, CommitIndex, DataLength
+        //                                        - 16; //log index
+        
+        public const int MAX_LOG_ENTRY_SIZE = 65400; //135 buffer for udp 
+
         //public const int MAX_LOG_DATA_READS = 16;
 
         private byte[] _writeSpad = new byte[MAX_LOG_ENTRY_SIZE];

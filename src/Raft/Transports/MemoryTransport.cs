@@ -132,6 +132,8 @@ namespace Raft.Transports
             _packetDropRate = packetDropRate;
         }
 
+        public void ResetConnection(Client client) { }
+
         public void SetPacketDropRate(IPEndPoint ip, float packetDropRate)
         {
             var client = GetClient(ip);

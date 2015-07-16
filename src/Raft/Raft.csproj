@@ -104,6 +104,7 @@
     <Compile Include="Transports\ITransport.cs" />
     <Compile Include="Transports\MemoryTransport.cs" />
     <Compile Include="Transports\NullTransport.cs" />
+    <Compile Include="Transports\UdpTransport.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

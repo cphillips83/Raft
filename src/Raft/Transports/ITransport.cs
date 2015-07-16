@@ -10,6 +10,7 @@ namespace Raft.Transports
 {
     public interface ITransport
     {
+        void ResetConnection(Client client);
         void SendMessage(Client client, VoteRequest request);
         void SendMessage(Client client, VoteReply reply);
         void SendMessage(Client client, AppendEntriesRequest request);

@@ -8,6 +8,8 @@ namespace Raft.Transports
 {
     public class NullTransport : ITransport
     {
+        public void ResetConnection(Client client) { }
+
         public void SendMessage(Client client, Messages.VoteRequest request)
         {
         }

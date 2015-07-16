@@ -27,20 +27,22 @@ namespace Raft.Transports
 
         private NetServer _rpc;
         private Dictionary<IPEndPoint, NetClient> _clients = new Dictionary<IPEndPoint, NetClient>();
+        //private NetOutgoingMessage _delayedMessage;
 
         public override void Start(IPEndPoint _config)
         {
-            NetPeerConfiguration config = new NetPeerConfiguration(_config.Address.ToString() + ":" + _config.Port);
+            NetPeerConfiguration config = new NetPeerConfiguration(_config.ToString());
             //config.SetMessageTypeEnabled(NetIncomingMessageType.UnconnectedData, true);
             //config
+            //config.ConnectionTimeout = 100;
 
-            config.ConnectionTimeout = 100;
             config.SendBufferSize = 1024 * 128 * 2;
             config.ReceiveBufferSize = 1024 * 128 * 2;
             config.AutoExpandMTU = true;
             config.EnableMessageType(NetIncomingMessageType.ConnectionApproval);
             config.Port = _config.Port;
-            config.AutoFlushSendQueue = false;
+            config.LocalAddress = _config.Address;
+            //config.AutoFlushSendQueue = false;
 
             _rpc = new NetServer(config);
             _rpc.Start();
@@ -67,6 +69,16 @@ namespace Raft.Transports
             _rpc = null;
         }
 
+        public override void ResetConnection(Client client)
+        {
+            NetClient netClient;
+            if (_clients.TryGetValue(client.ID, out netClient))
+            {
+                if(netClient.ConnectionStatus == NetConnectionStatus.Connected)
+                    netClient.Disconnect("resetting connection");
+            }
+        }
+
         private void SendMessage(Client client, NetOutgoingMessage msg)
         {
             NetClient netClient;
@@ -83,7 +95,8 @@ namespace Raft.Transports
                 _clients.Add(client.ID, netClient);
             }
 
-            if (netClient.ConnectionStatus != NetConnectionStatus.Connected)
+            if (netClient.ConnectionStatus != NetConnectionStatus.InitiatedConnect &&
+                netClient.ConnectionStatus != NetConnectionStatus.Connected)
             {
                 netClient.Connect(client.ID);
                 Console.WriteLine("Connecting to {0}", client.ID);
@@ -95,6 +108,9 @@ namespace Raft.Transports
                 netClient.SendMessage(msg, NetDeliveryMethod.ReliableUnordered);
                 //_rpc.SendUnconnectedMessage(msg, client.ID);
             }
+            //else
+            //    _delayedMessage = msg;
+
             netClient.FlushSendQueue();
         }
 

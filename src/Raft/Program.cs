@@ -33,6 +33,31 @@ namespace Raft
 
     static class Program
     {
+        public static void Write(this BinaryWriter bw, IPEndPoint ip)
+        {
+            if (ip == null)
+                bw.Write((byte)0);
+            else
+            {
+                var data = ip.Address.GetAddressBytes();
+                bw.Write((byte)data.Length);
+                bw.Write(data);
+                bw.Write(ip.Port);
+            }
+        }
+
+        public static IPEndPoint ReadIPEndPoint(this BinaryReader br)
+        {
+            var len = br.ReadByte();
+            if (len == 0)
+                return null;
+
+            var bytes = br.ReadBytes(len);
+            var port = br.ReadInt32();
+            return new IPEndPoint(new IPAddress(bytes), port);
+        }
+
+
         public static void ForAll<T>(this IEnumerable<T> array, Action<T> action)
         {
             foreach (var item in array)

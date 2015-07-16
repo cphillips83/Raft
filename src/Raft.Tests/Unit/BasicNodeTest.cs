@@ -243,8 +243,9 @@ namespace Raft.Tests.Unit
                     s2.Advance();
                 }
 
-                Assert.AreEqual((uint)(data.Length / Log.MAX_LOG_ENTRY_SIZE), s1.CommitIndex);
-                Assert.AreEqual((uint)(data.Length / Log.MAX_LOG_ENTRY_SIZE), s2.CommitIndex);
+                var addition = (data.Length % Log.MAX_LOG_ENTRY_SIZE) == 0 ? 0u : 1u;
+                Assert.AreEqual((uint)(data.Length / Log.MAX_LOG_ENTRY_SIZE) + addition, s1.CommitIndex);
+                Assert.AreEqual((uint)(data.Length / Log.MAX_LOG_ENTRY_SIZE) + addition, s2.CommitIndex);
 
                 Assert.AreEqual(0u, s1.PersistedStore[s1.PersistedStore.Length].Offset);
                 Assert.AreEqual((uint)data.Length, s1.PersistedStore[s1.PersistedStore.Length].Size);
