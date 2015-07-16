@@ -179,8 +179,10 @@ namespace Raft
                     lastTick++;
                 }
 
-                if (sleep)
-                    System.Threading.Thread.Sleep(5);
+                //if (sleep && !_server.Clients.Any(x => x.WaitingForResponse))
+                //    System.Threading.Thread.Sleep(5);
+                //else
+                    System.Threading.Thread.Sleep(1);
 
             }
 

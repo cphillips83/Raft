@@ -164,6 +164,10 @@ namespace Raft.Logs
                 _logIndices[i].Type = (LogIndexType)br.ReadUInt32();
                 _logIndices[i].ChunkOffset = br.ReadUInt32();
                 _logIndices[i].ChunkSize = br.ReadUInt32();
+                _logIndices[i].Flag1 = br.ReadUInt32();
+                _logIndices[i].Flag2 = br.ReadUInt32();
+                _logIndices[i].Flag3 = br.ReadUInt32();
+                _logIndices[i].Flag4 = br.ReadUInt32();
             }
 
             //update log index
@@ -340,6 +344,26 @@ namespace Raft.Logs
 
             return new IPEndPoint(ip, port);
         }
+        public uint CreateNoop(Server server)
+        {
+            var entry = new LogEntry()
+            {
+                Index = new LogIndex()
+                {
+                    Term = _currentTerm,
+                    ChunkOffset = DataPosition,
+                    ChunkSize = 0,
+                    Type = LogIndexType.NOOP
+                },
+                Data = new byte[0]
+            };
+
+            if (server != null)
+                Console.WriteLine("{0}: Created  NOOP", server.ID);
+
+            Push(server, entry);
+            return _logLength;
+        }
 
         public uint CreateData(Server server, byte[] data)
         {
@@ -385,7 +409,7 @@ namespace Raft.Logs
                 {
                     Term = _currentTerm,
                     ChunkOffset = DataPosition,
-                    ChunkSize = (uint)data.Length,
+                    ChunkSize = (uint)remaining,
                     Type = LogIndexType.DataBlob,
                     Flag3 = start,
                     Flag4 = (uint)data.Length
@@ -441,6 +465,10 @@ namespace Raft.Logs
             _logIndexWriter.Write((uint)data.Index.Type);
             _logIndexWriter.Write(data.Index.ChunkOffset);
             _logIndexWriter.Write(data.Index.ChunkSize);
+            _logIndexWriter.Write(data.Index.Flag1);
+            _logIndexWriter.Write(data.Index.Flag2);
+            _logIndexWriter.Write(data.Index.Flag3);
+            _logIndexWriter.Write(data.Index.Flag4);
 
             _logIndexWriter.Flush();
 

@@ -31,6 +31,7 @@ namespace Raft
         public bool VoteGranted { get { return _voteGranted; } set { _voteGranted = value; } }
         public long RpcDue { get { return _rpcDue; } set { _rpcDue = long.MaxValue; } }
         public bool ReadyToSend { get { return _rpcDue <= _server.Tick; } }
+        public bool WaitingForResponse { get { return _rpcDue > 0 && _rpcDue < uint.MaxValue && _rpcDue > _server.Tick; } }
 
         public Client(Server server, IPEndPoint id)
         {

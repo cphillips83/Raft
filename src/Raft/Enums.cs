@@ -28,6 +28,7 @@ namespace Raft
     {
         DataBlob = 0,
         DataChunk = 1,
+        NOOP = 500,
         AddServer = 1000,
         RemoveServer = 1001,
         StateMachine = 3000,

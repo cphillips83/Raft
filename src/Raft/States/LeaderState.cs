@@ -33,6 +33,15 @@ namespace Raft.States
                 //client.NextIndex = _server.PersistedStore.Length + 1;
                 //client.NextHeartBeat = 0;
             }
+
+            var lastTerm =_server.PersistedStore.GetLastTerm();
+            if (lastTerm != _server.PersistedStore.Term && 
+                _server.CommitIndex < _server.PersistedStore.Length)
+            {
+                //the last index term is different than the current term so advancecommit won't work
+                //add a noop to push the log forward
+                _server.PersistedStore.CreateNoop(_server);
+            }
         }
 
         public override void Exit()
@@ -198,7 +207,7 @@ namespace Raft.States
                 //client.NextIndex = Math.Max(1, client.NextIndex - 1);
                 client.NextHeartBeat = 0;
             }
-            Console.WriteLine("{0}: AppendReply from {1}, took {2}", _server.ID, client.ID, _server.PersistedStore.RPC_TIMEOUT - (client.RpcDue - _server.Tick));
+            //Console.WriteLine("{0}: AppendReply from {1}, took {2}", _server.ID, client.ID, _server.PersistedStore.RPC_TIMEOUT - (client.RpcDue - _server.Tick));
 
             client.RpcDue = 0;
 
