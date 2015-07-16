@@ -7,6 +7,7 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using ManyConsole;
+using Raft.API;
 using Raft.Commands.ArgumentTypes;
 using Raft.Logs;
 using Raft.States;
@@ -48,7 +49,7 @@ namespace Raft.Commands
 
 
             Console.WriteLine("Downloading file from cluster");
-            var proxy = ClientFactory.CreateClient<IDataService>(_agentip.Value);
+            var proxy = Agent.CreateClient<IDataService>(_agentip.Value);
             using (var fs = new FileStream(_file.Value, FileMode.CreateNew, FileAccess.Write))
             {
                 using (var remoteStream = proxy.DownloadFile(new FileIndex() { Index = _index.Value }))

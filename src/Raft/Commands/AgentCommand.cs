@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Raft.API;
 using Raft.Commands.ArgumentTypes;
 using Raft.Logs;
 using Raft.States;

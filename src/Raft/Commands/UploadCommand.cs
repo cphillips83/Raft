@@ -7,6 +7,7 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using ManyConsole;
+using Raft.API;
 using Raft.Commands.ArgumentTypes;
 using Raft.Logs;
 using Raft.States;
@@ -53,7 +54,7 @@ namespace Raft.Commands
             for (var i = 0; i < 100; i++)
                 System.Threading.ThreadPool.QueueUserWorkItem(x =>
                 {
-                    var proxy = ClientFactory.CreateClient<IDataService>(_agentip.Value);
+                    var proxy = Agent.CreateClient<IDataService>(_agentip.Value);
 
                     using (var fs = new FileStream(_file.Value, FileMode.Open, FileAccess.Read))
                         index = proxy.UploadFile(new RemoteStream() { Stream = fs });

@@ -61,6 +61,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Agent.cs" />
+    <Compile Include="API\Agent.cs" />
+    <Compile Include="API\FileIndex.cs" />
+    <Compile Include="API\IAPIService.cs" />
+    <Compile Include="API\LogStreamReader.cs" />
+    <Compile Include="API\RemoteStream.cs" />
+    <Compile Include="API\UploadQueue.cs" />
     <Compile Include="Client.cs" />
     <Compile Include="Commands\ArgumentTypes\AbstractArgument.cs" />
     <Compile Include="Commands\ArgumentTypes\AbstractArgumentPairs.cs" />
