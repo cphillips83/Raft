@@ -10,32 +10,6 @@ namespace Raft.Logs
 {
     public abstract class Log : IDisposable
     {
-        public string ToString(IPEndPoint ip)
-        {
-            var sb = new StringBuilder();
-            sb.AppendFormat("Config {0}\n", ip);
-            sb.AppendFormat("  Rpc Timeout: {0}\n", RPC_TIMEOUT);
-            sb.AppendFormat("  Election Timeout: {0}\n", ELECTION_TIMEOUT);
-            sb.AppendFormat("  Allocated Super Block: {0}\n", SUPER_BLOCK_SIZE);
-            sb.AppendLine();
-
-            sb.AppendFormat("  Current Term: {0}\n", _currentTerm);
-            sb.AppendFormat("  Last Applied Index: {0}\n", _lastAppliedIndex);
-            sb.AppendFormat("  Config Locked: {0}\n", _configLocked);
-            sb.AppendFormat("  Voted For: {0}\n", _votedFor);
-            sb.AppendLine();
-
-            sb.AppendFormat("  Log Indices: {0}\n", _logIndices.Length);
-            sb.AppendFormat("  Log Data Size: {0}\n", DataPosition);
-            sb.AppendLine();
-
-            sb.AppendFormat("  Nodes\n");
-            sb.AppendFormat("    {0}\n", ip);
-            foreach (var client in _clients)
-                sb.AppendFormat("    {0}\n", client);
-
-            return sb.ToString();
-        }
 
         public int RPC_TIMEOUT = 50;
         public int ELECTION_TIMEOUT = 100;
@@ -718,6 +692,31 @@ namespace Raft.Logs
             _logIndexWriter = null;
         }
 
+        public string ToString(IPEndPoint ip)
+        {
+            var sb = new StringBuilder();
+            sb.AppendFormat("Config {0}\n", ip);
+            sb.AppendFormat("  Rpc Timeout: {0}\n", RPC_TIMEOUT);
+            sb.AppendFormat("  Election Timeout: {0}\n", ELECTION_TIMEOUT);
+            sb.AppendFormat("  Allocated Super Block: {0}\n", SUPER_BLOCK_SIZE);
+            sb.AppendLine();
 
+            sb.AppendFormat("  Current Term: {0}\n", _currentTerm);
+            sb.AppendFormat("  Last Applied Index: {0}\n", _lastAppliedIndex);
+            sb.AppendFormat("  Config Locked: {0}\n", _configLocked);
+            sb.AppendFormat("  Voted For: {0}\n", _votedFor);
+            sb.AppendLine();
+
+            sb.AppendFormat("  Log Indices: {0}\n", _logIndices.Length);
+            sb.AppendFormat("  Log Data Size: {0}\n", DataPosition);
+            sb.AppendLine();
+
+            sb.AppendFormat("  Nodes\n");
+            sb.AppendFormat("    {0}\n", ip);
+            foreach (var client in _clients)
+                sb.AppendFormat("    {0}\n", client);
+
+            return sb.ToString();
+        }
     }
 }
