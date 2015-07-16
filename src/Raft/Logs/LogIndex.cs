@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Raft.Logs
 {
-    [StructLayout(LayoutKind.Explicit, Size = 16, Pack = 0)]
+    [StructLayout(LayoutKind.Explicit, Size = 32, Pack = 0)]
     public struct LogIndex
     {
         public const int LOG_RECORD_SIZE = 32;
