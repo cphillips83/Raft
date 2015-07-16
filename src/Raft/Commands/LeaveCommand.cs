@@ -46,7 +46,7 @@ namespace Raft.Commands
             Console.WriteLine("Leaving cluster {0}", _ip.Value);
             using (var server = new Server(_ip.Value))
             {
-                server.Initialize(new FileLog(_dataDir.Value, true), new LidgrenTransport());
+                server.Initialize(new FileLog(_dataDir.Value, true), new UdpTransport());
                 server.ChangeState(new LeaveState(server));
 
                 var timer = Stopwatch.StartNew();

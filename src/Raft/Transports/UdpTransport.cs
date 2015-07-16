@@ -164,7 +164,12 @@ namespace Raft.Transports
 
         public override void Start(IPEndPoint ip)
         {
-            _rpc = new UdpClient(ip);
+            _rpc = new UdpClient(ip.Port);
+            uint IOC_IN = 0x80000000;
+            uint IOC_VENDOR = 0x18000000;
+            uint SIO_UDP_CONNRESET = IOC_IN | IOC_VENDOR | 12;
+            _rpc.Client.IOControl((int)SIO_UDP_CONNRESET, new byte[] { Convert.ToByte(false) }, null);
+           // _rpc.EnableBroadcast = true;
         }
 
         public override void Shutdown()
@@ -179,7 +184,7 @@ namespace Raft.Transports
         {
             if (_rpc.Available > 0)
             {
-                var remoteIP = new IPEndPoint(IPAddress.Any, 0);
+                var remoteIP = new IPEndPoint(IPAddress.Any, server.ID.Port);
                 var data = _rpc.Receive(ref remoteIP);
                 using (var msg = new BinaryReader(new MemoryStream(data)))
                 {

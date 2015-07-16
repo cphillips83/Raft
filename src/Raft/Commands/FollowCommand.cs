@@ -43,7 +43,7 @@ namespace Raft.Commands
 
             using (var server = new Server(_ip.Value))
             {
-                server.Initialize(new FileLog(_dataDir.Value), new LidgrenTransport());
+                server.Initialize(new FileLog(_dataDir.Value), new UdpTransport());
 
                 Console.WriteLine("Running on {0}, press any key to quit...", server.ID);
 
