@@ -106,14 +106,14 @@ namespace Raft.Tests.Unit
                 s1.PersistedStore.Term = 1;
                 s2.PersistedStore.Term = 1;
 
-                s1.PersistedStore.Create(s1, new byte[] { 0 });
+                s1.PersistedStore.CreateData(s1, new byte[] { 0 });
                 s1.PersistedStore.Term = 2;
-                s1.PersistedStore.Create(s1, new byte[] { 1 });
+                s1.PersistedStore.CreateData(s1, new byte[] { 1 });
 
-                s2.PersistedStore.Create(s2, new byte[] { 0 });
-                s2.PersistedStore.Create(s2, new byte[] { 1 });
-                s2.PersistedStore.Create(s2, new byte[] { 2 });
-                s2.PersistedStore.Create(s2, new byte[] { 3 });
+                s2.PersistedStore.CreateData(s2, new byte[] { 0 });
+                s2.PersistedStore.CreateData(s2, new byte[] { 1 });
+                s2.PersistedStore.CreateData(s2, new byte[] { 2 });
+                s2.PersistedStore.CreateData(s2, new byte[] { 3 });
 
                 s1.ChangeState(new CandidateState(s1)); // will push s1 to term 2
 
@@ -140,13 +140,13 @@ namespace Raft.Tests.Unit
                 s1.PersistedStore.Term = 1;
                 s2.PersistedStore.Term = 1;
 
-                s1.PersistedStore.Create(s1, new byte[] { 0 });
-                s1.PersistedStore.Create(s1, new byte[] { 1 });
+                s1.PersistedStore.CreateData(s1, new byte[] { 0 });
+                s1.PersistedStore.CreateData(s1, new byte[] { 1 });
 
-                s2.PersistedStore.Create(s2, new byte[] { 0 });
-                s2.PersistedStore.Create(s2, new byte[] { 1 });
-                s2.PersistedStore.Create(s2, new byte[] { 2 });
-                s2.PersistedStore.Create(s2, new byte[] { 3 });
+                s2.PersistedStore.CreateData(s2, new byte[] { 0 });
+                s2.PersistedStore.CreateData(s2, new byte[] { 1 });
+                s2.PersistedStore.CreateData(s2, new byte[] { 2 });
+                s2.PersistedStore.CreateData(s2, new byte[] { 3 });
 
                 s1.ChangeState(new CandidateState(s1)); // will push s1 to term 2
 
@@ -196,11 +196,11 @@ namespace Raft.Tests.Unit
                 s1.PersistedStore.Term = 1;
                 s2.PersistedStore.Term = 1;
 
-                s1.PersistedStore.Create(s1, new byte[] { 0 });
-                s1.PersistedStore.Create(s1, new byte[] { 1 });
+                s1.PersistedStore.CreateData(s1, new byte[] { 0 });
+                s1.PersistedStore.CreateData(s1, new byte[] { 1 });
 
-                s2.PersistedStore.Create(s2, new byte[] { 0 });
-                s2.PersistedStore.Create(s2, new byte[] { 1 });
+                s2.PersistedStore.CreateData(s2, new byte[] { 0 });
+                s2.PersistedStore.CreateData(s2, new byte[] { 1 });
 
                 s1.ChangeState(new CandidateState(s1)); // will push s1 to term 2
 
@@ -234,7 +234,7 @@ namespace Raft.Tests.Unit
                 for (var i = 0; i < data.Length; i++)
                     data[i] = (byte)i;
 
-                s1.PersistedStore.Create(s1, data);
+                s1.PersistedStore.CreateData(s1, data);
 
                 var count = 200;
                 while (count-- > 0)
@@ -247,18 +247,40 @@ namespace Raft.Tests.Unit
                 Assert.AreEqual((uint)(data.Length / Log.MAX_LOG_ENTRY_SIZE) + addition, s1.CommitIndex);
                 Assert.AreEqual((uint)(data.Length / Log.MAX_LOG_ENTRY_SIZE) + addition, s2.CommitIndex);
 
-                Assert.AreEqual(0u, s1.PersistedStore[s1.PersistedStore.Length].Offset);
-                Assert.AreEqual((uint)data.Length, s1.PersistedStore[s1.PersistedStore.Length].Size);
-                Assert.AreEqual(0u, s2.PersistedStore[s2.PersistedStore.Length].Offset);
-                Assert.AreEqual((uint)data.Length, s2.PersistedStore[s2.PersistedStore.Length].Size);
+                Assert.AreEqual(0u, s1.PersistedStore[s1.PersistedStore.Length].Flag3);
+                Assert.AreEqual((uint)data.Length, s1.PersistedStore[s1.PersistedStore.Length].Flag4);
+                Assert.AreEqual(0u, s2.PersistedStore[s2.PersistedStore.Length].Flag3);
+                Assert.AreEqual((uint)data.Length, s2.PersistedStore[s2.PersistedStore.Length].Flag4);
 
                 for (var i = 0; i < (uint)(data.Length / Log.MAX_LOG_ENTRY_SIZE) - 1; i++)
                 {
-                    Assert.AreEqual((uint)(i * Log.MAX_LOG_ENTRY_SIZE), s1.PersistedStore[(uint)i + 1].Offset);
-                    Assert.AreEqual((uint)Log.MAX_LOG_ENTRY_SIZE, s1.PersistedStore[(uint)i + 1].Size);
-                    Assert.AreEqual((uint)(i * Log.MAX_LOG_ENTRY_SIZE), s2.PersistedStore[(uint)i + 1].Offset);
-                    Assert.AreEqual((uint)Log.MAX_LOG_ENTRY_SIZE, s2.PersistedStore[(uint)i + 1].Size);
+                    Assert.AreEqual((uint)(i * Log.MAX_LOG_ENTRY_SIZE), s1.PersistedStore[(uint)i + 1].ChunkOffset);
+                    Assert.AreEqual((uint)Log.MAX_LOG_ENTRY_SIZE, s1.PersistedStore[(uint)i + 1].ChunkSize);
+                    Assert.AreEqual((uint)(i * Log.MAX_LOG_ENTRY_SIZE), s2.PersistedStore[(uint)i + 1].ChunkOffset);
+                    Assert.AreEqual((uint)Log.MAX_LOG_ENTRY_SIZE, s2.PersistedStore[(uint)i + 1].ChunkSize);
+                    Assert.AreEqual(0u, s1.PersistedStore[(uint)i + 1].Flag3);
+                    Assert.AreEqual(0u, s2.PersistedStore[(uint)i + 1].Flag3);
+                    Assert.AreEqual((uint)data.Length, s1.PersistedStore[(uint)i + 1].Flag4);
+                    Assert.AreEqual((uint)data.Length, s2.PersistedStore[(uint)i + 1].Flag4);
                 }
+
+                var logIndex = s2.PersistedStore[s2.PersistedStore.Length];
+                Assert.AreEqual(1u, logIndex.Term);
+
+                var storedData = new byte[logIndex.Flag4];
+                Assert.AreEqual(data.Length, storedData.Length);
+                
+                using (var stream = s2.PersistedStore.GetDataStream())
+                {
+                    stream.Seek(logIndex.Flag3, System.IO.SeekOrigin.Begin);
+                    stream.Read(storedData, 0, storedData.Length);
+                }
+
+                for (var i = 0; i < data.Length; i++)
+                {
+                    Assert.AreEqual(data[i], storedData[i]);
+                }
+
             }
         }
 

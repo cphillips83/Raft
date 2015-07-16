@@ -19,10 +19,10 @@ namespace Raft.Logs
         public LogIndexType Type;
 
         [FieldOffset(8)]
-        public uint Offset;
+        public uint ChunkOffset;
 
         [FieldOffset(12)]
-        public uint Size;
+        public uint ChunkSize;
 
         [FieldOffset(16)]
         public uint Flag1;
@@ -38,7 +38,7 @@ namespace Raft.Logs
 
         public override string ToString()
         {
-            return string.Format("{{ Term: {0}, Type: {1}, Offset: {2}, Size : {3}, Flag1 : {4}, Flag2 : {5}, Flag3 : {6}, Flag4 : {7} }}", Term, Type, Offset, Size, Flag1, Flag2, Flag3, Flag4);
+            return string.Format("{{ Term: {0}, Type: {1}, Offset: {2}, Size : {3}, Flag1 : {4}, Flag2 : {5}, Flag3 : {6}, Flag4 : {7} }}", Term, Type, ChunkOffset, ChunkSize, Flag1, Flag2, Flag3, Flag4);
         }
     }
 

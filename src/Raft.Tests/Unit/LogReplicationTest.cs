@@ -40,7 +40,7 @@ namespace Raft.Tests.Unit
                 s2.Advance();
                 s1.Advance();
 
-                s1.PersistedStore.Create(s1, new byte[] { 5 });
+                s1.PersistedStore.CreateData(s1, new byte[] { 5 });
                 s1.Advance(50);
                 s2.Advance();
 
@@ -51,8 +51,8 @@ namespace Raft.Tests.Unit
                 Assert.AreNotEqual(0u, index);
                 Assert.AreEqual(2u, logIndex.Term);
                 Assert.AreEqual(LogIndexType.DataBlob, logIndex.Type);
-                Assert.AreEqual(0u, logIndex.Offset);
-                Assert.AreEqual(1u, logIndex.Size);
+                Assert.AreEqual(0u, logIndex.ChunkOffset);
+                Assert.AreEqual(1u, logIndex.ChunkSize);
 
                 var data = s2.PersistedStore.GetData(logIndex);
                 Assert.AreEqual(1, data.Length);
@@ -80,7 +80,7 @@ namespace Raft.Tests.Unit
                 s2.Advance();
                 s1.Advance();
 
-                s1.PersistedStore.Create(s1, new byte[] { 5 });
+                s1.PersistedStore.CreateData(s1, new byte[] { 5 });
                 s1.Advance();
                 s2.Advance();
 

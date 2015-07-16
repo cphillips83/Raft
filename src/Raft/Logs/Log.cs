@@ -97,7 +97,7 @@ namespace Raft.Logs
                     return 0;
 
                 var index = _logIndices[_logLength - 1];
-                return index.Offset + index.Size;
+                return index.ChunkOffset + index.ChunkSize;
             }
         }
 
@@ -162,8 +162,8 @@ namespace Raft.Logs
             {
                 _logIndices[i].Term = br.ReadUInt32();
                 _logIndices[i].Type = (LogIndexType)br.ReadUInt32();
-                _logIndices[i].Offset = br.ReadUInt32();
-                _logIndices[i].Size = br.ReadUInt32();
+                _logIndices[i].ChunkOffset = br.ReadUInt32();
+                _logIndices[i].ChunkSize = br.ReadUInt32();
             }
 
             //update log index
@@ -291,8 +291,8 @@ namespace Raft.Logs
                 Index = new LogIndex()
                 {
                     Term = _currentTerm,
-                    Offset = DataPosition,
-                    Size = (uint)data.Length,
+                    ChunkOffset = DataPosition,
+                    ChunkSize = (uint)data.Length,
                     Type = LogIndexType.AddServer
                 },
                 Data = data
@@ -317,8 +317,8 @@ namespace Raft.Logs
                 Index = new LogIndex()
                 {
                     Term = _currentTerm,
-                    Offset = DataPosition,
-                    Size = (uint)data.Length,
+                    ChunkOffset = DataPosition,
+                    ChunkSize = (uint)data.Length,
                     Type = LogIndexType.RemoveServer
                 },
                 Data = data
@@ -341,7 +341,7 @@ namespace Raft.Logs
             return new IPEndPoint(ip, port);
         }
 
-        public uint Create(Server server, byte[] data)
+        public uint CreateData(Server server, byte[] data)
         {
             //this function breaks the entries in to MAX_LOG_ENTRY_SIZE as
             //DataChunk types but preserves the first byte so that when
@@ -361,9 +361,11 @@ namespace Raft.Logs
                     Index = new LogIndex()
                     {
                         Term = _currentTerm,
-                        Offset = DataPosition,
-                        Size = MAX_LOG_ENTRY_SIZE,
-                        Type = LogIndexType.DataChunk
+                        ChunkOffset = DataPosition,
+                        ChunkSize = MAX_LOG_ENTRY_SIZE,
+                        Type = LogIndexType.DataChunk,
+                        Flag3 = start,
+                        Flag4 = (uint)data.Length
                     },
                     Data = _writeSpad
                 };
@@ -382,9 +384,11 @@ namespace Raft.Logs
                 Index = new LogIndex()
                 {
                     Term = _currentTerm,
-                    Offset = start,
-                    Size = (uint)data.Length,
-                    Type = LogIndexType.DataBlob
+                    ChunkOffset = DataPosition,
+                    ChunkSize = (uint)data.Length,
+                    Type = LogIndexType.DataBlob,
+                    Flag3 = start,
+                    Flag4 = (uint)data.Length
                 },
                 Data = _writeSpad
             };
@@ -435,8 +439,8 @@ namespace Raft.Logs
             //write data
             _logIndexWriter.Write(data.Index.Term);
             _logIndexWriter.Write((uint)data.Index.Type);
-            _logIndexWriter.Write(data.Index.Offset);
-            _logIndexWriter.Write(data.Index.Size);
+            _logIndexWriter.Write(data.Index.ChunkOffset);
+            _logIndexWriter.Write(data.Index.ChunkSize);
 
             _logIndexWriter.Flush();
 
@@ -564,7 +568,7 @@ namespace Raft.Logs
             get
             {
                 if (index < 1 || index > _logLength)
-                    return new LogIndex() { Type = 0, Offset = 0, Size = 0, Term = 0 };
+                    return new LogIndex() { Type = 0, ChunkOffset = 0, ChunkSize = 0, Term = 0 };
 
                 return _logIndices[index - 1];
             }
@@ -574,7 +578,7 @@ namespace Raft.Logs
         {
             if (key < 1 || key > _logLength)
             {
-                index = new LogIndex() { Type = 0, Offset = 0, Size = 0, Term = 0 };
+                index = new LogIndex() { Type = 0, ChunkOffset = 0, ChunkSize = 0, Term = 0 };
                 return false;
             }
 
@@ -607,7 +611,7 @@ namespace Raft.Logs
         {
             if (_logLength == 0)
             {
-                index = new LogIndex() { Type = 0, Offset = 0, Size = 0, Term = 0 };
+                index = new LogIndex() { Type = 0, ChunkOffset = 0, ChunkSize = 0, Term = 0 };
                 return 0;
             }
 
@@ -617,11 +621,11 @@ namespace Raft.Logs
 
         public byte[] GetData(LogIndex index)
         {
-            var data = new byte[index.Size];
+            var data = new byte[index.ChunkSize];
 
             using (var fr = OpenDataFileReader())
             {
-                fr.Seek(index.Offset, SeekOrigin.Begin);
+                fr.Seek(index.ChunkOffset, SeekOrigin.Begin);
                 fr.Read(data, 0, data.Length);
             }
             return data;
@@ -638,11 +642,11 @@ namespace Raft.Logs
                 return null;
 
             var index = _logIndices[key - 1];
-            var data = new byte[index.Size];
+            var data = new byte[index.ChunkSize];
 
             using (var fr = OpenDataFileReader())
             {
-                fr.Seek(index.Offset, SeekOrigin.Begin);
+                fr.Seek(index.ChunkOffset, SeekOrigin.Begin);
                 fr.Read(data, 0, data.Length);
             }
 

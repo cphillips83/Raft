@@ -154,8 +154,8 @@ namespace Raft.Transports
                 {
                     msg.Write(request.Entries[i].Index.Term);
                     msg.Write((uint)request.Entries[i].Index.Type);
-                    msg.Write(request.Entries[i].Index.Offset);
-                    msg.Write(request.Entries[i].Index.Size);
+                    msg.Write(request.Entries[i].Index.ChunkOffset);
+                    msg.Write(request.Entries[i].Index.ChunkSize);
 
                     msg.Write(request.Entries[i].Data.Length);
                     msg.Write(request.Entries[i].Data);
@@ -275,8 +275,8 @@ namespace Raft.Transports
 
                                             index.Term = msg.ReadUInt32();
                                             index.Type = (LogIndexType)msg.ReadUInt32();
-                                            index.Offset = msg.ReadUInt32();
-                                            index.Size = msg.ReadUInt32();
+                                            index.ChunkOffset = msg.ReadUInt32();
+                                            index.ChunkSize = msg.ReadUInt32();
 
                                             entry.Index = index;
 

@@ -169,7 +169,7 @@ namespace Raft
                             {
                                 var data = new byte[fs.Length];
                                 fs.Read(data, 0, data.Length);
-                                request.Index = _server.PersistedStore.Create(_server, data);
+                                request.Index = _server.PersistedStore.CreateData(_server, data);
                             }
                             sleep = false;
                         }
@@ -242,7 +242,10 @@ namespace Raft
                 return new RemoteStream() { Stream = Stream.Null };
 
             var stream = _server.PersistedStore.GetDataStream();
-            return new RemoteStream() { Stream = new LogStreamReader(stream, (int)logIndex.Offset, (int)logIndex.Size) };
+            return new RemoteStream()
+            {
+                Stream = new LogStreamReader(stream, (int)logIndex.Flag3, (int)logIndex.Flag4)
+            };
         }
 
         public static BasicHttpBinding CreateDefaultBinding()
