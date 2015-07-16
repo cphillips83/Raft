@@ -11,8 +11,8 @@ namespace Raft.Logs
     public abstract class Log : IDisposable
     {
 
-        public int RPC_TIMEOUT = 50;
-        public int ELECTION_TIMEOUT = 100;
+        public int RPC_TIMEOUT = 75;
+        public int ELECTION_TIMEOUT = 150;
 
         //can not change once in production
         public const int SUPER_BLOCK_SIZE = 1024;
