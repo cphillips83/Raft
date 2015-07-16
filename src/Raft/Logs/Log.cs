@@ -43,7 +43,6 @@ namespace Raft.Logs
         //can not change once in production
         public const int SUPER_BLOCK_SIZE = 1024;
         public const int LOG_DEFAULT_ARRAY_SIZE = 65536;
-        public const int LOG_RECORD_SIZE = 16;
         //public const int MAX_LOG_ENTRY_SIZE = 1024 * 128; //128kb
         //public const int MAX_LOG_ENTRY_SIZE = 65535 // MAX UDP PACKET SIZE?
         //                                        - 20 //overhead
@@ -145,7 +144,7 @@ namespace Raft.Logs
         private void readState(BinaryReader br)
         {
             System.Diagnostics.Debug.Assert(br.BaseStream.Length >= SUPER_BLOCK_SIZE);
-            System.Diagnostics.Debug.Assert(((br.BaseStream.Length - SUPER_BLOCK_SIZE)) % LOG_RECORD_SIZE == 0);
+            System.Diagnostics.Debug.Assert(((br.BaseStream.Length - SUPER_BLOCK_SIZE)) % LogIndex.LOG_RECORD_SIZE == 0);
 
             // read term and last vote
             _currentTerm = br.ReadUInt32();
@@ -181,7 +180,7 @@ namespace Raft.Logs
             br.BaseStream.Seek(SUPER_BLOCK_SIZE, SeekOrigin.Begin);
 
             //get record count
-            var indices = (uint)((br.BaseStream.Length - SUPER_BLOCK_SIZE) / LOG_RECORD_SIZE);
+            var indices = (uint)((br.BaseStream.Length - SUPER_BLOCK_SIZE) / LogIndex.LOG_RECORD_SIZE);
             ensureLogIndices(indices);
 
             //read records in
@@ -440,7 +439,7 @@ namespace Raft.Logs
 
             // stream length is in UNSIGN but seek is SIGN?
             // seek before we commit the data so we are at the right position
-            _logIndexWriter.Seek((int)(SUPER_BLOCK_SIZE + _logLength * LOG_RECORD_SIZE), SeekOrigin.Begin);
+            _logIndexWriter.Seek((int)(SUPER_BLOCK_SIZE + _logLength * LogIndex.LOG_RECORD_SIZE), SeekOrigin.Begin);
 
             // make sure we have enough capacity
             ensureLogIndices(_logLength + 1);
