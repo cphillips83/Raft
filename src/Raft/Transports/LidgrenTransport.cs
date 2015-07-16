@@ -140,6 +140,7 @@ namespace Raft.Transports
             var msg = _rpc.CreateMessage();
             msg.Write((byte)MessageTypes.AppendEntriesRequest);
             msg.Write(request.From);
+            msg.Write(request.AgentIP);
             msg.Write(request.Term);
             msg.Write(request.PrevTerm);
             msg.Write(request.PrevIndex);
@@ -263,6 +264,7 @@ namespace Raft.Transports
                                 {
                                     var incomingMessage = new AppendEntriesRequest();
                                     incomingMessage.From = msg.ReadIPEndPoint();
+                                    incomingMessage.AgentIP = msg.ReadIPEndPoint();
                                     incomingMessage.Term = msg.ReadUInt32();
                                     incomingMessage.PrevTerm = msg.ReadUInt32();
                                     incomingMessage.PrevIndex = msg.ReadUInt32();

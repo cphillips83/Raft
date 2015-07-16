@@ -115,7 +115,7 @@ namespace Raft.States
                         }
                         else
                         {
-                            Console.WriteLine("{0}: Round {1}/10 done for {2}", _server.ID, 10 - join.Round, client.ID);
+                            //Console.WriteLine("{0}: Round {1}/10 done for {2}", _server.ID, 10 - join.Round, client.ID);
                             join.RoundIndex = client.MatchIndex;
                             join.NextRound = _server.Tick + _server.PersistedStore.ELECTION_TIMEOUT;
                         }
@@ -152,7 +152,7 @@ namespace Raft.States
                     }
                     else
                     {
-                        Console.WriteLine("{0}: Catching up {1}", _server.ID, client.ID);
+                        //Console.WriteLine("{0}: Catching up {1}", _server.ID, client.ID);
                         client.SendAppendEntriesRequest();
                     }
                 }

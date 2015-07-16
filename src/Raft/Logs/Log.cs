@@ -394,8 +394,8 @@ namespace Raft.Logs
                     Data = _writeSpad
                 };
 
-                if (server != null)
-                    Console.WriteLine("{0}: Creating chunk {1}", server.ID, chunkEntry.Index);
+                //if (server != null)
+                //    Console.WriteLine("{0}: Creating chunk {1}", server.ID, chunkEntry.Index);
 
                 Push(server, chunkEntry);
                 remaining -= MAX_LOG_ENTRY_SIZE;
@@ -417,8 +417,8 @@ namespace Raft.Logs
                 Data = _writeSpad
             };
 
-            if (server != null)
-                Console.WriteLine("{0}: Created {1}", server.ID, entry.Index);
+            //if (server != null)
+            //    Console.WriteLine("{0}: Created {1}", server.ID, entry.Index);
 
             Push(server, entry);
             return _logLength;
@@ -501,7 +501,7 @@ namespace Raft.Logs
 
         public void ApplyIndex(Server server, uint index)
         {
-            Console.WriteLine("{0}: Applying commit index {1}", server.ID, index);
+            //Console.WriteLine("{0}: Applying commit index {1}", server.ID, index);
             if (index != _lastAppliedIndex + 1)
                 throw new Exception();
 

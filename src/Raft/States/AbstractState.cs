@@ -130,7 +130,5 @@ namespace Raft.States
         {
             return true;
         }
-
     }
-
 }

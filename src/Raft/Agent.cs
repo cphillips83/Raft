@@ -12,6 +12,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Raft.Logs;
+using Raft.States;
 
 namespace Raft
 {
@@ -23,7 +24,7 @@ namespace Raft
 
         public void Dispose()
         {
-            if(Stream != null)
+            if (Stream != null)
                 Stream.Dispose();
 
             Stream = null;
@@ -33,13 +34,13 @@ namespace Raft
     [MessageContract]
     public class FileIndex
     {
-         [MessageBodyMember(Order = 1)]
-         public uint Index { get; set; }
+        [MessageBodyMember(Order = 1)]
+        public uint Index { get; set; }
 
-         public override string ToString()
-         {
-             return Index.ToString();
-         }
+        public override string ToString()
+        {
+            return Index.ToString();
+        }
     }
 
     [ServiceContract(SessionMode = SessionMode.NotAllowed)]
@@ -58,13 +59,14 @@ namespace Raft
     {
         public string FilePath;
         public uint Index;
+        public long Timeout;
         //public LogIndex Index;
         public ManualResetEvent Completed;
         public void Dispose()
         {
             try
             {
-                Console.WriteLine("Deleting file: {0}", FilePath);
+                //Console.WriteLine("Deleting file: {0}", FilePath);
                 //try to delete the temp file to keep disk usage low
                 System.IO.File.Delete(FilePath);
             }
@@ -113,6 +115,7 @@ namespace Raft
             var uri = new Uri(string.Format("http://{0}/agent", ip));
             Console.WriteLine("{0}: Agent started on {1}", _server.ID, uri);
 
+            _server.AgentIP = ip;
 
             var binding = CreateDefaultBinding();
 
@@ -149,8 +152,20 @@ namespace Raft
                         {
                             request = _uploads.Peek();
 
+                            var state = _server.CurrentState as FollowerState;
+                            var agentIP = (state != null && state.CurrentLeader != null && state.CurrentLeader.AgentIP != null) ? state.CurrentLeader.AgentIP : null;
+
+                            //timeout the upload or a follower
+                            if (request.Timeout <= _server.Tick || agentIP != null)
+                            {
+                                _uploads.Dequeue();
+                                request.Index = 0;
+                                request.Completed.Set();
+                                sleep = false;
+                                request = null;
+                            }
                             //waiting for the commit
-                            if (request.Index > 0)
+                            else if (request.Index > 0)
                             {
                                 if (_server.CommitIndex >= request.Index)
                                 {
@@ -163,7 +178,7 @@ namespace Raft
                             }
                         }
 
-                        if (request != null)
+                        if (request != null && _server.CurrentState is LeaderState)
                         {
                             using (var fs = new FileStream(request.FilePath, FileMode.Open, FileAccess.Read))
                             {
@@ -182,7 +197,7 @@ namespace Raft
                 //if (sleep && !_server.Clients.Any(x => x.WaitingForResponse))
                 //    System.Threading.Thread.Sleep(5);
                 //else
-                    System.Threading.Thread.Sleep(1);
+                System.Threading.Thread.Sleep(1);
 
             }
 
@@ -200,7 +215,7 @@ namespace Raft
             //wait for waithandle to complete
             //return fileid back to client
 
-            Console.WriteLine("{0}: Upload request", _server.ID);
+            //Console.WriteLine("{0}: Upload request", _server.ID);
             //store the file locally so we can process it faster and keep the server
             //running faster
             var tempFile = System.IO.Path.GetTempFileName();
@@ -213,13 +228,14 @@ namespace Raft
                     fs.Write(buffer, 0, count);
                 }
 
-                Console.WriteLine("{0}: Wrote {1} bytes to file '{2}'", _server.ID, fs.Length, tempFile);
+                //Console.WriteLine("{0}: Wrote {1} bytes to file '{2}'", _server.ID, fs.Length, tempFile);
             }
 
             var upload = new UploadQueue()
             {
                 Completed = new ManualResetEvent(false),
-                FilePath = tempFile
+                FilePath = tempFile,
+                Timeout = _server.Tick + 60000 //1 minute timeout
             };
 
             lock (_uploads)
@@ -228,6 +244,26 @@ namespace Raft
             }
 
             upload.Completed.WaitOne();
+
+            var state = _server.CurrentState as FollowerState;
+            if (upload.Index == 0 || state != null)
+            {
+                if (state.CurrentLeader != null && state.CurrentLeader.AgentIP != null)
+                {
+                    //forward the request
+                    Console.WriteLine("{0}: Forwarding to {1}", _server.ID, state.CurrentLeader.AgentIP);
+                    var proxy = ClientFactory.CreateClient<IDataService>(state.CurrentLeader.AgentIP);
+                    using (var fs = new FileStream(upload.FilePath, FileMode.Open, FileAccess.Read))
+                        return proxy.UploadFile(new RemoteStream() { Stream = fs });
+                }
+                else
+                {
+                    //we don't know who the leader is!
+                    Console.WriteLine("{0}: Upload failed! We don't know who the leader is", _server.ID);
+                    return new FileIndex() { Index = 0 };
+                }
+            }
+
             upload.Dispose();
             return new FileIndex() { Index = upload.Index };
         }

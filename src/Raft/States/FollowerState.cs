@@ -12,6 +12,8 @@ namespace Raft.States
         protected Client _leader;
         private long _heatbeatTimeout = long.MaxValue;
 
+        public Client CurrentLeader { get { return _leader; } }
+
         public FollowerState(Server server) : base(server) { }
 
         public override void Enter()
@@ -90,6 +92,7 @@ namespace Raft.States
 
             //Console.WriteLine("heatbeat");
             _leader = client;
+            _leader.AgentIP = request.AgentIP;
 
             var success = false;
             var matchIndex = 0u;

@@ -33,6 +33,8 @@ namespace Raft
         public IPEndPoint ID { get { return _id; } }
         public uint CommitIndex { get { return _commitIndex; } set { _commitIndex = value; } }
 
+        public IPEndPoint AgentIP { get; set; }
+
         public long Tick { get { return _tick; } }
         //public long RawTimeInMS { get { return _timer.ElapsedMilliseconds; } }
 
@@ -226,7 +228,9 @@ namespace Raft
             if (newCommitIndex != _commitIndex)
             {
                 for (var i = _commitIndex; i < newCommitIndex && i < _persistedStore.LastAppliedIndex; i++)
-                    Console.WriteLine("{0}: Fast-forwarding commit index {1}", _id, i);
+                {
+                    //Console.WriteLine("{0}: Fast-forwarding commit index {1}", _id, i);
+                }
 
                 //Console.WriteLine("{0}: Advancing commit index from {1} to {2}", _id, _commitIndex, newCommitIndex);
                 for (var i = _persistedStore.LastAppliedIndex; i < newCommitIndex; i++)

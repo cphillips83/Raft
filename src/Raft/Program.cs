@@ -90,6 +90,7 @@ namespace Raft
                 commands.Add(new Commands.AgentCommand());
                 commands.Add(new Commands.JoinCommand());
                 commands.Add(new Commands.LeaveCommand());
+                commands.Add(new Commands.IndexCommand());
                 commands.Add(new Commands.UploadCommand());
                 commands.Add(new Commands.DownloadCommand());
 

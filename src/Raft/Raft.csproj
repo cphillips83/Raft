@@ -73,6 +73,7 @@
     <Compile Include="Commands\BaseCommand.cs" />
     <Compile Include="Commands\AgentCommand.cs" />
     <Compile Include="Commands\DownloadCommand.cs" />
+    <Compile Include="Commands\IndexCommand.cs" />
     <Compile Include="Commands\UploadCommand.cs" />
     <Compile Include="Commands\LeaveCommand.cs" />
     <Compile Include="Commands\JoinCommand.cs" />

@@ -13,6 +13,7 @@ namespace Raft.Messages
     public struct AppendEntriesRequest
     {
         public IPEndPoint From;
+        public IPEndPoint AgentIP;
         public uint Term;
         public uint PrevTerm;
         public uint PrevIndex;

@@ -32,6 +32,7 @@ namespace Raft
         public long RpcDue { get { return _rpcDue; } set { _rpcDue = long.MaxValue; } }
         public bool ReadyToSend { get { return _rpcDue <= _server.Tick; } }
         public bool WaitingForResponse { get { return _rpcDue > 0 && _rpcDue < uint.MaxValue && _rpcDue > _server.Tick; } }
+        public IPEndPoint AgentIP { get; set; }
 
         public Client(Server server, IPEndPoint id)
         {
@@ -81,13 +82,13 @@ namespace Raft
                 lastIndex = prevIndex;
 
             var entries = _persistedState.GetEntries(prevIndex, lastIndex);
-            if (entries != null && entries.Length > 0)
-                Console.WriteLine("{0}: {4} - Send AppendEnties[{1}-{2}] to {3}", _server.ID, prevIndex, lastIndex, ID, _server.Tick);
+            //if (entries != null && entries.Length > 0)
+            //    Console.WriteLine("{0}: {4} - Send AppendEnties[{1}-{2}] to {3}", _server.ID, prevIndex, lastIndex, ID, _server.Tick);
             //else
             //    Console.WriteLine("{0}: Send heart beat to {1}", _server.ID, _id);
 
             _rpcDue = _server.Tick + _server.PersistedStore.RPC_TIMEOUT;
-            _nextHeartBeat = _server.Tick + (_server.PersistedStore.ELECTION_TIMEOUT / 2);
+            _nextHeartBeat = _server.Tick + (_server.PersistedStore.ELECTION_TIMEOUT / 4);
 
             var message = new AppendEntriesRequest()
             {
@@ -95,6 +96,7 @@ namespace Raft
                 Term = _persistedState.Term,
                 PrevIndex = prevIndex,
                 PrevTerm = _persistedState.GetTerm(prevIndex),
+                AgentIP = _server.AgentIP,
                 Entries = entries,
                 CommitIndex = Math.Min(_server.CommitIndex, lastIndex)
             };
