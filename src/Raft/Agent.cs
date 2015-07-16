@@ -251,7 +251,7 @@ namespace Raft
                 if (state.CurrentLeader != null && state.CurrentLeader.AgentIP != null)
                 {
                     //forward the request
-                    Console.WriteLine("{0}: Forwarding to {1}", _server.ID, state.CurrentLeader.AgentIP);
+                    Console.WriteLine("{0}: Forwarding upload to {1}", _server.ID, state.CurrentLeader.AgentIP);
                     var proxy = ClientFactory.CreateClient<IDataService>(state.CurrentLeader.AgentIP);
                     using (var fs = new FileStream(upload.FilePath, FileMode.Open, FileAccess.Read))
                         return proxy.UploadFile(new RemoteStream() { Stream = fs });
@@ -271,6 +271,33 @@ namespace Raft
         public RemoteStream DownloadFile(FileIndex index)
         {
             Console.WriteLine("{0}: Download request for {1}", _server.ID, index);
+
+            //we may not have it yet
+            if (index.Index > _server.CommitIndex)
+            {
+
+                //check if we are a follower, if so we want to forward to leader
+                var state = _server.CurrentState as FollowerState;
+                if (state != null)
+                {
+                    if (state.CurrentLeader != null && state.CurrentLeader.AgentIP != null)
+                    {
+                        //forward the request
+                        Console.WriteLine("{0}: Forwarding download to {1}", _server.ID, state.CurrentLeader.AgentIP);
+                        var proxy = ClientFactory.CreateClient<IDataService>(state.CurrentLeader.AgentIP);
+                        return proxy.DownloadFile(index);
+                    }
+                    else
+                    {
+                        //we don't know who the leader is!
+                        Console.WriteLine("{0}: Download failed! We don't know who the leader is", _server.ID);
+                        return new RemoteStream() { Stream = Stream.Null };
+                    }
+                }
+                Console.WriteLine("{0}: Download failed! We don't have this index {1}", _server.ID, index.Index);
+                return new RemoteStream() { Stream = Stream.Null };
+            }
+
 
             //if commitindex > id, data is committed
             //safe to return a RemoteStream to offset + length
