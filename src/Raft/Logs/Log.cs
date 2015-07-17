@@ -472,6 +472,8 @@ namespace Raft.Logs
 
             _logIndexWriter.Flush();
 
+            System.Diagnostics.Debug.Assert(_logIndexWriter.BaseStream.Length == DataPosition);
+
             //add server before commit
             if (data.Index.Type == LogIndexType.AddServer)
             {
