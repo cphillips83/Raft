@@ -225,6 +225,7 @@ namespace Raft
 
         public bool AdvanceToCommit(uint newCommitIndex)
         {
+            newCommitIndex = Math.Min(newCommitIndex, _persistedStore.Length);
             if (newCommitIndex != _commitIndex)
             {
                 for (var i = _commitIndex; i < newCommitIndex && i < _persistedStore.LastAppliedIndex; i++)
@@ -233,7 +234,7 @@ namespace Raft
                 }
 
                 //Console.WriteLine("{0}: Advancing commit index from {1} to {2}", _id, _commitIndex, newCommitIndex);
-                for (var i = _persistedStore.LastAppliedIndex; i < newCommitIndex; i++)
+                for (var i = _persistedStore.LastAppliedIndex; i < newCommitIndex ; i++)
                 {
                     _persistedStore.ApplyIndex(this, i + 1);
                 }

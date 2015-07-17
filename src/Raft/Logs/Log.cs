@@ -459,6 +459,7 @@ namespace Raft.Logs
 
             //flush data
             _logDataFile.Flush();
+            System.Diagnostics.Debug.Assert(_logDataFile.Length == DataPosition);
 
             //write data
             _logIndexWriter.Write(data.Index.Term);
@@ -472,7 +473,6 @@ namespace Raft.Logs
 
             _logIndexWriter.Flush();
 
-            System.Diagnostics.Debug.Assert(_logIndexWriter.BaseStream.Length == DataPosition);
 
             //add server before commit
             if (data.Index.Type == LogIndexType.AddServer)
