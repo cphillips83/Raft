@@ -126,7 +126,7 @@ namespace Raft.States
                             }
                             else
                             {
-                                Console.WriteLine("{0}: Appending index: {1}, data length: {2}", _server.ID, index, request.Entries[i].Index.ChunkSize);
+                                //Console.WriteLine("{0}: Appending index: {1}, data length: {2}", _server.ID, index, request.Entries[i].Index.ChunkSize);
                             }
                         }
                     }

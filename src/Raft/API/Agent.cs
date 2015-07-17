@@ -236,7 +236,7 @@ namespace Raft.API
             binding.TransferMode = TransferMode.Streamed;
             binding.MaxReceivedMessageSize = 1024 * 1024 * 25;
             binding.MaxBufferSize = Agent.MESSAGE_BUFFER_LENGTH;
-            binding.MessageEncoding = WSMessageEncoding.Mtom;
+            //binding.MessageEncoding = WSMessageEncoding.Mtom;
             binding.CloseTimeout = TimeSpan.FromMinutes(1);
             binding.OpenTimeout = TimeSpan.FromMinutes(1);
             binding.ReceiveTimeout = TimeSpan.FromMinutes(1);

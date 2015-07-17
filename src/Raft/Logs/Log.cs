@@ -11,7 +11,7 @@ namespace Raft.Logs
     public abstract class Log : IDisposable
     {
 
-        public int RPC_TIMEOUT = 75;
+        public int RPC_TIMEOUT = 50;
         public int ELECTION_TIMEOUT = 150;
 
         //can not change once in production
@@ -497,7 +497,8 @@ namespace Raft.Logs
                 saveSuperBlock();
             }
 
-            System.Diagnostics.Debug.Assert(_logDataFile.Length == DataPosition);
+            //this can happen on log rollbacks
+            //System.Diagnostics.Debug.Assert(_logDataFile.Length == DataPosition);
 
             return true;
         }
