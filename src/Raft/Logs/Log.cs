@@ -448,7 +448,7 @@ namespace Raft.Logs
 
             //write to log data file
             _logDataFile.Seek(DataPosition, SeekOrigin.Begin);
-            _logDataFile.Write(data.Data, 0, data.Data.Length);
+            _logDataFile.Write(data.Data, 0, (int)data.Index.ChunkSize);
 
             //update log entries
             _logIndices[_logLength] = data.Index;
@@ -459,7 +459,6 @@ namespace Raft.Logs
 
             //flush data
             _logDataFile.Flush();
-            System.Diagnostics.Debug.Assert(_logDataFile.Length == DataPosition);
 
             //write data
             _logIndexWriter.Write(data.Index.Term);
@@ -497,6 +496,8 @@ namespace Raft.Logs
                 _configLocked = true;
                 saveSuperBlock();
             }
+
+            System.Diagnostics.Debug.Assert(_logDataFile.Length == DataPosition);
 
             return true;
         }
