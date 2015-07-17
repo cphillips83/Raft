@@ -83,7 +83,7 @@
     <Compile Include="Commands\UploadCommand.cs" />
     <Compile Include="Commands\LeaveCommand.cs" />
     <Compile Include="Commands\JoinCommand.cs" />
-    <Compile Include="Commands\InitCommand.cs" />
+    <Compile Include="Commands\CreateCommand.cs" />
     <Compile Include="Commands\FollowCommand.cs" />
     <Compile Include="Logs\FileLog.cs" />
     <Compile Include="Logs\Log.cs" />

@@ -36,7 +36,7 @@ namespace Raft.Commands
                 if (!System.IO.Directory.Exists(_dataDir.Value))
                     System.IO.Directory.CreateDirectory(_dataDir.Value);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine("There was an issue with the data directory '{0}'", ex.Message);
                 return 1;
@@ -51,10 +51,10 @@ namespace Raft.Commands
 
                 var timer = Stopwatch.StartNew();
                 var lastTick = 0L;
-                while (!Console.KeyAvailable)
+                while (!Console.KeyAvailable && server.CurrentState is JoinState)
                 {
                     var currentTick = timer.ElapsedMilliseconds;
-                    while (lastTick < currentTick )
+                    while (lastTick < currentTick)
                     {
                         server.Advance();
                         lastTick++;
