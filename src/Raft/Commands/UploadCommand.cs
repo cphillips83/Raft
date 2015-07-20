@@ -54,7 +54,7 @@ namespace Raft.Commands
             for (var i = 0; i < 100; i++)
                 System.Threading.ThreadPool.QueueUserWorkItem(x =>
                 {
-                    var proxy = Agent.CreateClient<IDataService>(_agentip.Value);
+                    var proxy = Agent.CreateClient<IAPIService>(_agentip.Value);
 
                     using (var fs = new FileStream(_file.Value, FileMode.Open, FileAccess.Read))
                         index = proxy.UploadFile(new RemoteStream() { Stream = fs });

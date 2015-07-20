@@ -15,7 +15,7 @@ namespace Raft.API
 {
     [ServiceBehavior(ConcurrencyMode = ConcurrencyMode.Multiple,
                         InstanceContextMode = InstanceContextMode.Single)]
-    public class Agent : IDataService
+    public class Agent : IAPIService
     {
         public const int MESSAGE_BUFFER_LENGTH = 1024 * 128;
         private bool _isRunning = false;
@@ -38,7 +38,7 @@ namespace Raft.API
 
             var host = new ServiceHost(this, uri);
             //host
-            host.AddServiceEndpoint(typeof(IDataService), binding, uri);
+            host.AddServiceEndpoint(typeof(IAPIService), binding, uri);
             host.Description.Behaviors.Add(new ServiceMetadataBehavior()
             {
                 HttpGetEnabled = true,
@@ -169,7 +169,7 @@ namespace Raft.API
                 {
                     //forward the request
                     Console.WriteLine("{0}: Forwarding upload to {1}", _server.ID, state.CurrentLeader.AgentIP);
-                    var proxy = CreateClient<IDataService>(state.CurrentLeader.AgentIP);
+                    var proxy = CreateClient<IAPIService>(state.CurrentLeader.AgentIP);
                     using (var fs = new FileStream(upload.FilePath, FileMode.Open, FileAccess.Read))
                         return proxy.UploadFile(new RemoteStream() { Stream = fs });
                 }
@@ -201,7 +201,7 @@ namespace Raft.API
                     {
                         //forward the request
                         Console.WriteLine("{0}: Forwarding download to {1}", _server.ID, state.CurrentLeader.AgentIP);
-                        var proxy = CreateClient<IDataService>(state.CurrentLeader.AgentIP);
+                        var proxy = CreateClient<IAPIService>(state.CurrentLeader.AgentIP);
                         return proxy.DownloadFile(index);
                     }
                     else

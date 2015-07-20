@@ -49,7 +49,7 @@ namespace Raft.Commands
 
 
             Console.WriteLine("Downloading file from cluster");
-            var proxy = Agent.CreateClient<IDataService>(_agentip.Value);
+            var proxy = Agent.CreateClient<IAPIService>(_agentip.Value);
             using (var fs = new FileStream(_file.Value, FileMode.CreateNew, FileAccess.Write))
             {
                 using (var remoteStream = proxy.DownloadFile(new FileIndex() { Index = _index.Value }))

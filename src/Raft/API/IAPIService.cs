@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace Raft.API
 {
     [ServiceContract(SessionMode = SessionMode.NotAllowed)]
-    public interface IDataService
+    public interface IAPIService
     {
         [OperationContract]
         //[WebInvoke(UriTemplate = "upload")]
