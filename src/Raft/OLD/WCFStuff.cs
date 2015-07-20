@@ -115,3 +115,193 @@ namespace Raft
     //    }
     //}
 }
+
+
+
+
+
+
+//using System;
+//using System.Collections.Generic;
+//using System.IO;
+//using System.Linq;
+//using System.Net;
+//using System.ServiceModel;
+//using System.ServiceModel.Description;
+//using System.ServiceModel.Web;
+//using System.Text;
+//using System.Threading.Tasks;
+
+//namespace ConsoleApplication5
+//{
+//    public class Post_fb9efac5_8b57_417e_9f71_35d48d421eb4
+//    {
+//        public class FileIndex
+//        {
+//            public string name;
+//        }
+
+//        [ServiceContract]
+//        public interface ITest
+//        {
+//            [OperationContract]
+//            [WebGet]
+//            Stream DownloadFile(string fileName);
+//            [OperationContract]
+//            [WebInvoke(UriTemplate = "/UploadFile/{fileName}", ResponseFormat = WebMessageFormat.Json)]
+//            FileIndex UploadFile(string fileName, Stream fileContents);
+//        }
+
+//        static long CountBytes(Stream stream)
+//        {
+//            byte[] buffer = new byte[100000];
+//            int bytesRead;
+//            long totalBytesRead = 0;
+//            do
+//            {
+//                bytesRead = stream.Read(buffer, 0, buffer.Length);
+//                totalBytesRead += bytesRead;
+//            } while (bytesRead > 0);
+//            return totalBytesRead;
+//        }
+
+//        class MyReadonlyStream : Stream
+//        {
+//            long length;
+//            long leftToRead;
+//            public MyReadonlyStream(long length)
+//            {
+//                this.length = length;
+//                this.leftToRead = length;
+//            }
+
+//            public override bool CanRead
+//            {
+//                get { return true; }
+//            }
+
+//            public override bool CanSeek
+//            {
+//                get { return false; }
+//            }
+
+//            public override bool CanWrite
+//            {
+//                get { return false; }
+//            }
+
+//            public override void Flush()
+//            {
+//            }
+
+//            public override long Length
+//            {
+//                get { return this.length; }
+//            }
+
+//            public override long Position
+//            {
+//                get { throw new NotSupportedException(); }
+//                set { throw new NotSupportedException(); }
+//            }
+
+//            public override int Read(byte[] buffer, int offset, int count)
+//            {
+//                int toReturn = (int)Math.Min(this.leftToRead, (long)count);
+//                this.leftToRead -= toReturn;
+//                return toReturn;
+//            }
+
+//            public override long Seek(long offset, SeekOrigin origin)
+//            {
+//                throw new NotSupportedException();
+//            }
+
+//            public override void SetLength(long value)
+//            {
+//                throw new NotSupportedException();
+//            }
+
+//            public override void Write(byte[] buffer, int offset, int count)
+//            {
+//                throw new NotSupportedException();
+//            }
+//        }
+
+//        public class Service : ITest
+//        {
+//            public Stream DownloadFile(string fileName)
+//            {
+//                WebOperationContext.Current.OutgoingResponse.Headers["Content-Disposition"] = "attachment; filename=" + fileName;
+//                return new MyReadonlyStream(200000000); //200MB
+//            }
+
+//            public FileIndex UploadFile(string fileName, Stream fileContents)
+//            {
+//                long totalBytesRead = CountBytes(fileContents);
+//                Console.WriteLine("Total bytes read for file {0}: {1}", fileName, totalBytesRead);
+//                return new FileIndex() { name = fileName};
+//            }
+//        }
+
+//        public static void Main()
+//        {
+//            string baseAddress = "http://" + Environment.MachineName + ":9000/Service";
+//            ServiceHost host = new ServiceHost(typeof(Service), new Uri(baseAddress));
+//            WebHttpBinding binding = new WebHttpBinding
+//            {
+//                TransferMode = TransferMode.Streamed,
+//                MaxReceivedMessageSize = int.MaxValue,
+//            };
+//            binding.ReaderQuotas.MaxArrayLength = int.MaxValue;
+//            host.AddServiceEndpoint(typeof(ITest), binding, "").Behaviors.Add(new WebHttpBehavior());
+//            host.Open();
+//            Console.WriteLine("Host opened on {0}", baseAddress);
+//            Console.Read();
+
+//            HttpWebRequest req = (HttpWebRequest)HttpWebRequest.Create(baseAddress + "/DownloadFile?fileName=test.txt");
+//            req.Method = "GET";
+//            HttpWebResponse resp;
+//            try
+//            {
+//                resp = (HttpWebResponse)req.GetResponse();
+//            }
+//            catch (WebException e)
+//            {
+//                resp = (HttpWebResponse)e.Response;
+//            }
+
+//            Console.WriteLine("HTTP/{0} {1} {2}", resp.ProtocolVersion, (int)resp.StatusCode, resp.StatusDescription);
+//            foreach (string header in resp.Headers.AllKeys)
+//            {
+//                Console.WriteLine("{0}: {1}", header, resp.Headers[header]);
+//            }
+
+//            Stream respStream = resp.GetResponseStream();
+//            long size = CountBytes(respStream);
+//            Console.WriteLine("Response size: {0}", size);
+
+//            req = (HttpWebRequest)HttpWebRequest.Create(baseAddress + "/UploadFile/test.txt");
+//            req.Method = "POST";
+//            req.SendChunked = true;
+//            req.AllowWriteStreamBuffering = false;
+//            req.ContentType = "application/octet-stream";
+//            Stream reqStream = req.GetRequestStream();
+//            byte[] buffer = new byte[10000000];
+//            long bytesWritten = 0;
+//            for (int i = 0; i < 50; i++)
+//            {
+//                reqStream.Write(buffer, 0, buffer.Length);
+//                bytesWritten += buffer.Length;
+//                if ((i % 10) == 0)
+//                {
+//                    Console.WriteLine("Wrote {0} bytes", bytesWritten);
+//                }
+//            }
+//            reqStream.Close();
+//            resp = (HttpWebResponse)req.GetResponse();
+//            Console.WriteLine(resp.StatusCode);
+//            Console.Read();
+//        }
+//    }
+//}
