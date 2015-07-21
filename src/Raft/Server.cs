@@ -223,15 +223,16 @@ namespace Raft
             _currentState = null;
         }
 
+        //static readonly NLog.LogManager.GetLogger("Server", typeof(Server));
         public bool AdvanceToCommit(uint newCommitIndex)
         {
+            // cap newCommitIndex to our logs length
             newCommitIndex = Math.Min(newCommitIndex, _persistedStore.Length);
+
             if (newCommitIndex != _commitIndex)
             {
-                for (var i = _commitIndex; i < newCommitIndex && i < _persistedStore.LastAppliedIndex; i++)
-                {
-                    //Console.WriteLine("{0}: Fast-forwarding commit index {1}", _id, i);
-                }
+                // make sure newCommitIndex isn't behind our already applied index
+                newCommitIndex = Math.Max(newCommitIndex, _persistedStore.LastAppliedIndex);
 
                 //Console.WriteLine("{0}: Advancing commit index from {1} to {2}", _id, _commitIndex, newCommitIndex);
                 for (var i = _persistedStore.LastAppliedIndex; i < newCommitIndex ; i++)
@@ -239,27 +240,6 @@ namespace Raft
                     _persistedStore.ApplyIndex(this, i + 1);
                 }
                 _commitIndex = newCommitIndex;
-                //for (var i = _commitIndex; i < newCommitIndex; i++)
-                //{
-                //    if (i == _stateMachine.LastCommitApplied)
-                //    {
-                //        LogIndex index;
-                //        if (!_persistedState.GetIndex(i + 1, out index))
-                //            return false;
-
-                //        if (index.Type == LogIndexType.StateMachine)
-                //        {
-                //            using (var br = new BinaryReader(new MemoryStream(_persistedState.GetData(index))))
-                //            {
-                //                var name = br.ReadString();
-                //                _stateMachine.Apply(name, i + 1);
-                //            }
-                //        }
-                //        _commitIndex++;
-                //    }
-                //    // make commit index 
-                //    _commitIndex++;
-                //}
                 return true;
             }
 
