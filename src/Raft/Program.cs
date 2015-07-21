@@ -12,7 +12,6 @@ using System.ServiceModel.Description;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Lidgren.Network;
 using ManyConsole;
 using Raft.Logs;
 using Raft.Messages;

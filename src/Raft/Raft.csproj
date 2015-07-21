@@ -38,10 +38,6 @@
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Lidgren.Network, Version=2011.3.12.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\deps\Lidgren.Network.dll</HintPath>
-    </Reference>
     <Reference Include="ManyConsole">
       <HintPath>packages\ManyConsole.0.4.2.17\lib\ManyConsole.dll</HintPath>
     </Reference>
@@ -87,7 +83,6 @@
     <Compile Include="States\TestState.cs" />
     <Compile Include="States\StoppedState.cs" />
     <Compile Include="Transports\Transport.cs" />
-    <Compile Include="Transports\LidgrenTransport.cs" />
     <Compile Include="Transports\ITransport.cs" />
     <Compile Include="Transports\MemoryTransport.cs" />
     <Compile Include="Transports\NullTransport.cs" />
