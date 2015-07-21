@@ -5,7 +5,7 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{BBD02A32-C2F7-4439-99B9-B3A920ADFE79}</ProjectGuid>
-    <OutputType>Exe</OutputType>
+    <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>Raft</RootNamespace>
     <AssemblyName>Raft</AssemblyName>
@@ -34,6 +34,9 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject />
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="Lidgren.Network, Version=2011.3.12.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
@@ -61,30 +64,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Agent.cs" />
-    <Compile Include="API\Agent.cs" />
-    <Compile Include="API\FileIndex.cs" />
-    <Compile Include="API\IAPIService.cs" />
-    <Compile Include="API\LogStreamReader.cs" />
-    <Compile Include="API\RemoteStream.cs" />
-    <Compile Include="API\UploadQueue.cs" />
     <Compile Include="Client.cs" />
-    <Compile Include="Commands\ArgumentTypes\AbstractArgument.cs" />
-    <Compile Include="Commands\ArgumentTypes\AbstractArgumentPairs.cs" />
-    <Compile Include="Commands\ArgumentTypes\IArgument.cs" />
-    <Compile Include="Commands\ArgumentTypes\UIntArgument.cs" />
-    <Compile Include="Commands\ArgumentTypes\IntArgument.cs" />
-    <Compile Include="Commands\ArgumentTypes\IPArgument.cs" />
-    <Compile Include="Commands\ArgumentTypes\IPEndPointArgument.cs" />
-    <Compile Include="Commands\ArgumentTypes\StringArgument.cs" />
-    <Compile Include="Commands\BaseCommand.cs" />
-    <Compile Include="Commands\AgentCommand.cs" />
-    <Compile Include="Commands\DownloadCommand.cs" />
-    <Compile Include="Commands\IndexCommand.cs" />
-    <Compile Include="Commands\UploadCommand.cs" />
-    <Compile Include="Commands\LeaveCommand.cs" />
-    <Compile Include="Commands\JoinCommand.cs" />
-    <Compile Include="Commands\CreateCommand.cs" />
-    <Compile Include="Commands\FollowCommand.cs" />
     <Compile Include="Logs\FileLog.cs" />
     <Compile Include="Logs\Log.cs" />
     <Compile Include="Logs\LogEntry.cs" />
