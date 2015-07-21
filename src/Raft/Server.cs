@@ -11,8 +11,7 @@ using Raft.Transports;
 
 namespace Raft
 {
-    //[ServiceBehavior(InstanceContextMode = InstanceContextMode.Single)]
-    public class Server : /*INodeProxy,*/ IDisposable
+    public class Server : IDisposable
     {
         private static object _syncLock = new object();
 
