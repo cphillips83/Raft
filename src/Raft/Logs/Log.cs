@@ -87,6 +87,9 @@ namespace Raft.Logs
                 saveSuperBlock();
             }
         }
+
+        public bool IsEmpty { get { return _logLength == 0; } }
+
         public uint Length { get { return _logLength; } }
 
         public uint DataPosition
@@ -520,7 +523,7 @@ namespace Raft.Logs
                 Console.WriteLine("{0}: Committing add server {1} and unlocking config", server.ID, id);
                 System.Diagnostics.Debug.Assert(_clients.Count(x => x.Equals(id)) == 0);
 
-                if (!server.ID.Equals(id))
+                //if (!server.ID.Equals(id))
                     _clients.Add(id);
 
                 _configLocked = false;
@@ -536,7 +539,7 @@ namespace Raft.Logs
                 Console.WriteLine("{0}: Committing remove server {1} and unlocking config", server.ID, id);
                 System.Diagnostics.Debug.Assert(_clients.Count(x => x.Equals(id)) == 1);
 
-                if (!server.ID.Equals(id))
+                //if (!server.ID.Equals(id))
                 {
                     for (var i = 0; i < _clients.Count; i++)
                     {

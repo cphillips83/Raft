@@ -17,6 +17,7 @@ namespace Raft
 
         //private NetPeer _rpc;
 
+        private bool _inited = false;
         private IPEndPoint _id;
         private uint _commitIndex = 0;
         private Random _random;
@@ -65,13 +66,15 @@ namespace Raft
             }
         }
 
-        public Server(IPEndPoint id)
+        public Server(IPEndPoint id, Log log, ITransport transport)
         {
             //_config = config;
             _id = id;
             _random = new Random((int)DateTime.UtcNow.Ticks ^ _id.GetHashCode());
             //_dataDir = dataDir;
             _currentState = new StoppedState(this);
+            _transport = transport;
+            _persistedStore = log;
         }
 
 
@@ -109,12 +112,13 @@ namespace Raft
             System.Diagnostics.Debug.Assert(false);
         }
 
-        public void Initialize(Log log, ITransport transport, params IPEndPoint[] clients)
+        public void Initialize(params IPEndPoint[] clients)
         {
-            if (_persistedStore == null)
+            if (!_inited)
             {
-                _persistedStore = log;
-                _persistedStore.Initialize();
+                _inited = true;
+                //_persistedStore = log;
+                //_persistedStore.Initialize();
 
                 if (clients != null && clients.Length > 0)
                     _persistedStore.UpdateClients(clients);
@@ -122,12 +126,15 @@ namespace Raft
                 //    _persistedStore.AddServer(this, _id);
 
                 foreach (var client in _persistedStore.Clients)
-                    _clients.Add(new Client(this, client));
+                {
+                    if(!client.Equals(_id))
+                        _clients.Add(new Client(this, client));
+                }
 
 
                 //_timer = Stopwatch.StartNew();
 
-                ChangeState(new FollowerState(this));
+                //ChangeState(new FollowerState(this));
 
                 //var binding = new BasicHttpBinding();
                 //var custom = new CustomBinding(binding);
@@ -144,8 +151,7 @@ namespace Raft
                 //});
 
                 //host.Open();
-                _transport = transport;
-                transport.Start(_id);
+                //transport.Start(_id);
 
                 _commitIndex = _persistedStore.LastAppliedIndex;
                 Console.Write(_persistedStore.ToString(_id));

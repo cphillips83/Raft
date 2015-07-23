@@ -9,14 +9,12 @@ namespace Raft.Logs
 {
     public class FileLog : Log
     {
-        private bool _init;
         private string _dataDir, _indexFilePath, _dataFilePath;
         private FileStream _indexFileWriter, _dataFileWriter;
 
-        public FileLog(string dataDir, bool init = false)
+        public FileLog(string dataDir)
             : base()
         {
-            _init = init;
             _dataDir = dataDir;
             if (!System.IO.Directory.Exists(_dataDir))
                 System.IO.Directory.CreateDirectory(_dataDir);
@@ -56,5 +54,8 @@ namespace Raft.Logs
         {
             return File.Open(_dataFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         }
+
+
+        //public static FileLog 
     }
 }
