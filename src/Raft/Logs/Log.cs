@@ -23,7 +23,7 @@ namespace Raft.Logs
         //                                        - 8  //udp header
         //                                        - 25 //From, term, PrevTerm, PrevIndex, CommitIndex, DataLength
         //                                        - 16; //log index
-        
+
         public const int MAX_LOG_ENTRY_SIZE = 65400; //135 buffer for udp 
 
         //public const int MAX_LOG_DATA_READS = 16;
@@ -91,6 +91,21 @@ namespace Raft.Logs
         public bool IsEmpty { get { return _logLength == 0; } }
 
         public uint Length { get { return _logLength; } }
+
+        public void ExpandDataTo(int gb)
+        {
+            var size = gb * 1024L * 1024L * 1024L;
+
+            //Console.WriteLine("Setting data file to {0}", size);
+            if (_logDataFile.Length < size)
+            {
+                Console.WriteLine("Expanding data file to {0}gb", gb);
+                _logDataFile.SetLength(size);
+            }
+            //Console.WriteLine("Data file length {0}", _logDataFile.Length);
+        }
+
+        //public long FreeSpace { get { return long.MaxValue; } }
 
         public uint DataPosition
         {
@@ -379,7 +394,7 @@ namespace Raft.Logs
 
             var start = DataPosition;
             var remaining = data.Length;
-            
+
             while (remaining > MAX_LOG_ENTRY_SIZE)
             {
                 Array.Copy(data, data.Length - remaining, _writeSpad, 0, MAX_LOG_ENTRY_SIZE);
@@ -524,7 +539,7 @@ namespace Raft.Logs
                 System.Diagnostics.Debug.Assert(_clients.Count(x => x.Equals(id)) == 0);
 
                 //if (!server.ID.Equals(id))
-                    _clients.Add(id);
+                _clients.Add(id);
 
                 _configLocked = false;
                 server.CurrentState.CommittedAddServer(id);
@@ -751,7 +766,6 @@ namespace Raft.Logs
             sb.AppendLine();
 
             sb.AppendFormat("  Nodes\n");
-            sb.AppendFormat("    {0}\n", ip);
             foreach (var client in _clients)
                 sb.AppendFormat("    {0}\n", client);
 

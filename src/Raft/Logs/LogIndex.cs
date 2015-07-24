@@ -7,6 +7,27 @@ using System.Threading.Tasks;
 
 namespace Raft.Logs
 {
+    public enum LogIndexType2 : byte
+    {
+        NOOP = 0,
+        DataChunk = 1,
+        DataBlob = 2,
+        AddServer = 3,
+        RemoveServer = 4
+
+    }
+
+    public struct LogIndex2
+    {
+        [FieldOffset(0)]
+        public uint Term;
+
+        [FieldOffset(4)]
+        public LogIndex2 Type;
+
+        public ushort ChunkIndex, ChunkSize;
+    }
+
     [StructLayout(LayoutKind.Explicit, Size = 32, Pack = 0)]
     public struct LogIndex
     {
