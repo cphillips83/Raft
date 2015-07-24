@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -7,6 +8,22 @@ using System.Threading.Tasks;
 
 namespace Raft.Logs
 {
+    //public interface ILogIndex
+    //{
+    //    uint Term { get; set; }
+        
+    //    ushort ChunkIndex { get; set; }
+    //    ushort ChunkSize { get; set; }
+        
+    //    uint DataOffset { get; set; }
+        
+    //    uint Flags { get; set; }
+
+    //    int LogSize { get; }
+    //    void Write(BinaryWriter writer);
+    //    void Read(BinaryReader reader);
+    //}
+
     //public enum LogIndexType2 : byte
     //{
     //    NOOP = 0,
@@ -25,8 +42,12 @@ namespace Raft.Logs
 
     //    [FieldOffset(4)]
     //    public LogIndexType2 Type;
-
+    
+    //    ChunkIndex * LogIndexSize + ChunkSize;
     //    public ushort ChunkIndex, ChunkSize;
+
+    //    public uint DataOffset;
+
     //}
 
     [StructLayout(LayoutKind.Explicit, Size = 32, Pack = 0)]
