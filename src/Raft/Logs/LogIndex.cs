@@ -23,7 +23,7 @@ namespace Raft.Logs
         public uint Term;
 
         [FieldOffset(4)]
-        public LogIndex2 Type;
+        public LogIndexType2 Type;
 
         public ushort ChunkIndex, ChunkSize;
     }
