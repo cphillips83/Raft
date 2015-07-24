@@ -24,13 +24,13 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void LogReplicated()
         {
-            using (var s1 = Helper.CreateServer())
-            using (var s2 = Helper.CreateServer())
+            var transport = new MemoryTransport();
+            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
             {
-                var transport = new MemoryTransport();
 
-                s1.Initialize(new MemoryLog(), transport, s2.ID);
-                s2.Initialize(new MemoryLog(), transport, s1.ID);
+                s1.Initialize(s2.ID);
+                s2.Initialize(s1.ID);
 
                 s1.PersistedStore.Term = 1;
                 s2.PersistedStore.Term = 1;
@@ -64,13 +64,13 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void LogCommitIndex()
         {
-            using (var s1 = Helper.CreateServer())
-            using (var s2 = Helper.CreateServer())
+            var transport = new MemoryTransport();
+            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
             {
-                var transport = new MemoryTransport();
 
-                s1.Initialize(new MemoryLog(), transport, s2.ID);
-                s2.Initialize(new MemoryLog(), transport, s1.ID);
+                s1.Initialize(s2.ID);
+                s2.Initialize(s1.ID);
 
                 s1.PersistedStore.Term = 1;
                 s2.PersistedStore.Term = 1;

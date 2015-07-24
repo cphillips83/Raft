@@ -24,11 +24,11 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void IsFollower()
         {
-            using (var server = Helper.CreateServer())
+            var transport = new MemoryTransport();
+            using (var server = Helper.CreateServer(new MemoryLog(), transport))
             {
-                var transport = new MemoryTransport();
 
-                server.Initialize(new MemoryLog(), transport);
+                server.Initialize();
                 server.Advance(1);
 
                 Assert.AreEqual(typeof(FollowerState), server.CurrentState.GetType());
@@ -38,11 +38,10 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void IsCandidate()
         {
-            using (var server = Helper.CreateServer())
+            var transport = new MemoryTransport();
+            using (var server = Helper.CreateServer(new MemoryLog(), transport))
             {
-                var transport = new MemoryTransport();
-
-                server.Initialize(new MemoryLog(), transport);
+                server.Initialize();
                 var ticks = server.PersistedStore.ELECTION_TIMEOUT * 2;
                 while (ticks-- > 0 && server.CurrentState is FollowerState)
                     server.Advance();
@@ -54,11 +53,10 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void IsLeader()
         {
-            using (var server = Helper.CreateServer())
+            var transport = new MemoryTransport();
+            using (var server = Helper.CreateServer(new MemoryLog(), transport))
             {
-                var transport = new MemoryTransport();
-
-                server.Initialize(new MemoryLog(), transport);
+                server.Initialize();
 
                 var count = server.PersistedStore.ELECTION_TIMEOUT * 2;
                 while (count-- > 0)
@@ -73,13 +71,13 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void NodeGrantsVote()
         {
-            using (var s1 = Helper.CreateServer())
-            using (var s2 = Helper.CreateServer())
+            var transport = new MemoryTransport();
+            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
             {
-                var transport = new MemoryTransport();
 
-                s1.Initialize(new MemoryLog(), transport, s2.ID);
-                s2.Initialize(new MemoryLog(), transport, s1.ID);
+                s1.Initialize( s2.ID);
+                s2.Initialize( s1.ID);
 
                 s1.ChangeState(new CandidateState(s1));
 
@@ -95,13 +93,13 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void NodeGrantsVoteWithLongerLogOlderTerm()
         {
-            using (var s1 = Helper.CreateServer())
-            using (var s2 = Helper.CreateServer())
+            var transport = new MemoryTransport();
+            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
             {
-                var transport = new MemoryTransport();
 
-                s1.Initialize(new MemoryLog(), transport, s2.ID);
-                s2.Initialize(new MemoryLog(), transport, s1.ID);
+                s1.Initialize(s2.ID);
+                s2.Initialize(s1.ID);
 
                 s1.PersistedStore.Term = 1;
                 s2.PersistedStore.Term = 1;
@@ -129,13 +127,13 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void NodeDoesntGrantVoteWithSameTermLongerLog()
         {
-            using (var s1 = Helper.CreateServer())
-            using (var s2 = Helper.CreateServer())
+            var transport = new MemoryTransport();
+            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
             {
-                var transport = new MemoryTransport();
 
-                s1.Initialize(new MemoryLog(), transport, s2.ID);
-                s2.Initialize(new MemoryLog(), transport, s1.ID);
+                s1.Initialize(s2.ID);
+                s2.Initialize(s1.ID);
 
                 s1.PersistedStore.Term = 1;
                 s2.PersistedStore.Term = 1;
@@ -161,13 +159,13 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void NodeDoesntGrantVoteWithNewerTerm()
         {
-            using (var s1 = Helper.CreateServer())
-            using (var s2 = Helper.CreateServer())
+            var transport = new MemoryTransport();
+            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
             {
-                var transport = new MemoryTransport();
 
-                s1.Initialize(new MemoryLog(), transport, s2.ID);
-                s2.Initialize(new MemoryLog(), transport, s1.ID);
+                s1.Initialize(s2.ID);
+                s2.Initialize(s1.ID);
 
                 s1.PersistedStore.Term = 1;
                 s2.PersistedStore.Term = 3;
@@ -185,13 +183,13 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void NodeGrantsVoteWithSameLog()
         {
-            using (var s1 = Helper.CreateServer())
-            using (var s2 = Helper.CreateServer())
+            var transport = new MemoryTransport();
+            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
             {
-                var transport = new MemoryTransport();
 
-                s1.Initialize(new MemoryLog(), transport, s2.ID);
-                s2.Initialize(new MemoryLog(), transport, s1.ID);
+                s1.Initialize(s2.ID);
+                s2.Initialize(s1.ID);
 
                 s1.PersistedStore.Term = 1;
                 s2.PersistedStore.Term = 1;
@@ -215,13 +213,13 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void TestChunkedLogs()
         {
-            using (var s1 = Helper.CreateServer())
-            using (var s2 = Helper.CreateServer())
+            var transport = new MemoryTransport();
+            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
             {
-                var transport = new MemoryTransport();
 
-                s1.Initialize(new MemoryLog(), transport, s2.ID);
-                s2.Initialize(new MemoryLog(), transport, s1.ID);
+                s1.Initialize(s2.ID);
+                s2.Initialize(s1.ID);
 
                 s1.ChangeState(new LeaderState(s1));
 
@@ -269,7 +267,7 @@ namespace Raft.Tests.Unit
 
                 var storedData = new byte[logIndex.Flag4];
                 Assert.AreEqual(data.Length, storedData.Length);
-                
+
                 using (var stream = s2.PersistedStore.GetDataStream())
                 {
                     stream.Seek(logIndex.Flag3, System.IO.SeekOrigin.Begin);

@@ -28,13 +28,13 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void RemoveServer_OK()
         {
-            using (var s1 = Helper.CreateServer())
-            using (var s2 = Helper.CreateServer())
-            {
                 var transport = new MemoryTransport();
+            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
+            {
 
-                s1.Initialize(new MemoryLog(), transport, s2.ID);
-                s2.Initialize(new MemoryLog(), transport, s1.ID);
+                s1.Initialize( s2.ID);
+                s2.Initialize( s1.ID);
 
                 s1.ChangeState(new LeaderState(s1));
 

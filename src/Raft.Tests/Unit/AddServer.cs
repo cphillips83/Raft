@@ -29,13 +29,13 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void AddServer_ReplyNotLeaderIfNotLeader()
         {
-            using (var s1 = Helper.CreateServer())
-            using (var s2 = Helper.CreateServer())
+            var transport = new MemoryTransport();
+            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
             {
-                var transport = new MemoryTransport();
 
-                s1.Initialize(new MemoryLog(), transport);
-                s2.Initialize(new MemoryLog(), transport);
+                s1.Initialize();
+                s2.Initialize();
                 //s1.ChangeState(new CandidateState(s1)); // will push s1 to term 2
 
                 //s1.Advance();
@@ -62,13 +62,13 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void AddServer_ReplicateToLog()
         {
-            using (var s1 = Helper.CreateServer())
-            using (var s2 = Helper.CreateServer())
+            var transport = new MemoryTransport();
+            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
             {
-                var transport = new MemoryTransport();
 
-                s1.Initialize(new MemoryLog(), transport);
-                s2.Initialize(new MemoryLog(), transport);
+                s1.Initialize();
+                s2.Initialize();
 
                 s1.ChangeState(new LeaderState(s1)); // will push s1 to term 2
                 s1.PersistedStore.AddServer(s1, s1.ID);
@@ -90,8 +90,9 @@ namespace Raft.Tests.Unit
                 Assert.AreEqual(2, s2.Majority);
                 Assert.IsTrue(s1.ID.Equals(s2.GetClient(s1.ID).ID));
                 Assert.IsTrue(s2.ID.Equals(s1.GetClient(s2.ID).ID));
-                Assert.IsTrue(s1.ID.Equals(s2.PersistedStore.Clients.First()));
-                Assert.IsTrue(s2.ID.Equals(s1.PersistedStore.Clients.First()));
+
+                Assert.IsTrue(s1.PersistedStore.Clients.Any(x => x.Equals(s2.ID)));
+                Assert.IsTrue(s2.PersistedStore.Clients.Any(x => x.Equals(s1.ID)));
             }
         }
 
@@ -140,11 +141,11 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void AddServer_ReplicateToLogUdp()
         {
-            using (var s1 = Helper.CreateServer())
-            using (var s2 = Helper.CreateServer())
+            using (var s1 = Helper.CreateServer(new MemoryLog(), new UdpTransport()))
+            using (var s2 = Helper.CreateServer(new MemoryLog(), new UdpTransport()))
             {
-                s1.Initialize(new MemoryLog(), new UdpTransport());
-                s2.Initialize(new MemoryLog(), new UdpTransport());
+                s1.Initialize();
+                s2.Initialize();
 
                 s1.ChangeState(new LeaderState(s1)); // will push s1 to term 2
                 s1.PersistedStore.AddServer(s1, s1.ID);
@@ -174,21 +175,21 @@ namespace Raft.Tests.Unit
                 Assert.AreEqual(2, s2.Majority);
                 Assert.IsTrue(s1.ID.Equals(s2.GetClient(s1.ID).ID));
                 Assert.IsTrue(s2.ID.Equals(s1.GetClient(s2.ID).ID));
-                Assert.IsTrue(s1.ID.Equals(s2.PersistedStore.Clients.First()));
-                Assert.IsTrue(s2.ID.Equals(s1.PersistedStore.Clients.First()));
+                Assert.IsTrue(s1.PersistedStore.Clients.Any(x => x.Equals(s2.ID)));
+                Assert.IsTrue(s2.PersistedStore.Clients.Any(x => x.Equals(s1.ID)));
             }
         }
 
         [TestMethod]
         public void AddServer_Timesout()
         {
-            using (var s1 = Helper.CreateServer())
-            using (var s2 = Helper.CreateServer())
+            var transport = new MemoryTransport();
+            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
             {
-                var transport = new MemoryTransport();
 
-                s1.Initialize(new MemoryLog(), transport);
-                s2.Initialize(new MemoryLog(), transport);
+                s1.Initialize();
+                s2.Initialize();
 
                 s1.ChangeState(new LeaderState(s1)); // will push s1 to term 2
                 s1.PersistedStore.AddServer(s1, s1.ID);
@@ -217,13 +218,13 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void AddServer_StillGrantsVote()
         {
-            using (var s1 = Helper.CreateServer())
-            using (var s2 = Helper.CreateServer())
+            var transport = new MemoryTransport();
+            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
             {
-                var transport = new MemoryTransport();
 
-                s1.Initialize(new MemoryLog(), transport);
-                s2.Initialize(new MemoryLog(), transport);
+                s1.Initialize();
+                s2.Initialize();
 
                 s1.ChangeState(new LeaderState(s1)); // will push s1 to term 2
                 s1.PersistedStore.AddServer(s1, s1.ID);

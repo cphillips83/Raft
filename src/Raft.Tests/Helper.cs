@@ -6,6 +6,7 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using Raft.Logs;
+using Raft.States;
 using Raft.Transports;
 
 namespace Raft.Tests
@@ -57,12 +58,17 @@ namespace Raft.Tests
     {
         public static int id;
 
-        public static Server CreateServer()
+        public static Server CreateServer(Log log, ITransport transport)
         {
             var sid = ++id;
             var port = sid + 7000;
 
-            return new Server(new IPEndPoint(IPAddress.Loopback, port));
+            var server = new Server(new IPEndPoint(IPAddress.Loopback, port), log, transport);
+            transport.Start(server.ID);
+            log.Initialize();
+            server.ChangeState(new FollowerState(server));
+
+            return server;
         }
 
 
@@ -71,11 +77,10 @@ namespace Raft.Tests
             var servers = new Server[count];
             var transport = new MemoryTransport();
             for (var i = 0; i < servers.Length; i++)
-                servers[i] = Helper.CreateServer();
+                servers[i] = Helper.CreateServer(new MemoryLog(), transport);
 
             for (var i = 0; i < servers.Length; i++)
-                servers[i].Initialize(new MemoryLog(), transport,
-                        servers.Where(x => !x.ID.Equals(servers[i].ID))
+                servers[i].Initialize(servers.Where(x => !x.ID.Equals(servers[i].ID))
                                .Select(x => x.ID).ToArray()
                     );
 
