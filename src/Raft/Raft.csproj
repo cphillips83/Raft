@@ -59,7 +59,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Agent.cs" />
     <Compile Include="Client.cs" />
     <Compile Include="Logs\FileLog.cs" />
     <Compile Include="Logs\Log.cs" />

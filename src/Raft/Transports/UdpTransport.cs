@@ -169,7 +169,7 @@ namespace Raft.Transports
 
         public override void Start(IPEndPoint ip)
         {
-            _rpc = new UdpClient(ip.Port);
+            _rpc = new UdpClient(ip);
             uint IOC_IN = 0x80000000;
             uint IOC_VENDOR = 0x18000000;
             uint SIO_UDP_CONNRESET = IOC_IN | IOC_VENDOR | 12;
