@@ -26,7 +26,7 @@ namespace Raft.States
         public override void Enter()
         {
             var votes = _server.Voters.Count(x => x.VoteGranted) + 1;
-            Console.WriteLine("{0}: I am now leader of term {2} with {1} votes", _server.ID, votes, _server.PersistedStore.Term);
+            Console.WriteLine("{0}: I am now leader of term {2} with {1} votes", _server.Name, votes, _server.PersistedStore.Term);
             foreach (var client in _server.Clients)
             {
                 client.ResetKnownLogs();
@@ -107,7 +107,7 @@ namespace Raft.States
                         //or we made no progress in a single round
                         if (join.Round <= 0 || join.RoundIndex == client.MatchIndex)
                         {
-                            Console.WriteLine("{0}: Made no progress the last round, signalling timeout to {1}", _server.ID, client.ID);
+                            Console.WriteLine("{0}: Made no progress the last round, signalling timeout to {1}", _server.Name, client.ID);
                             client.SendAddServerReply(AddServerStatus.TimedOut, new IPEndPoint(_server.ID.Address, _server.ID.Port));
                             RemoveServerJoin(client);
                             i--;
@@ -145,7 +145,7 @@ namespace Raft.States
                 {
                     if (client.RpcDue > 0 && client.RpcDue <= _server.Tick)
                     {
-                        Console.WriteLine("{0}: RPC due, signalling timeout to {1}", _server.ID, client.ID);
+                        Console.WriteLine("{0}: RPC due, signalling timeout to {1}", _server.Name, client.ID);
                         client.SendAddServerReply(AddServerStatus.TimedOut, new IPEndPoint(_server.ID.Address, _server.ID.Port));
                         RemoveServerJoin(client);
                         i--;
@@ -274,7 +274,7 @@ namespace Raft.States
             //client.NextIndex = _server.PersistedStore.Length + 1;
             //client.NextHeartBeat = 0;
 
-            Console.WriteLine("{0}: Queuing server {1} for adding", _server.ID, client.ID);
+            Console.WriteLine("{0}: Queuing server {1} for adding", _server.Name, client.ID);
             _serversToAdd.Add(new ServerJoin()
             {
                 Client = client,

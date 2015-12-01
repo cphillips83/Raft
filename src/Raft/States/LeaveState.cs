@@ -35,13 +35,13 @@ namespace Raft.States
         protected override bool RemoveServerReply(Client client, RemoveServerReply reply)
         {
             if (client == null)
-                Console.WriteLine("{0}: Server {1} replied with not leader and doesn't know who is the leader", _server.ID, reply.From);
+                Console.WriteLine("{0}: Server {1} replied with not leader and doesn't know who is the leader", _server.Name, reply.From);
             else
             {
                 if (reply.Status == RemoveServerStatus.Ok)
                 {
                     client.RpcDue = 0;
-                    Console.WriteLine("{0}: Removed from cluster, stopping", _server.ID);
+                    Console.WriteLine("{0}: Removed from cluster, stopping", _server.Name);
                     _server.ChangeState(new StoppedState(_server));
                 }
             }

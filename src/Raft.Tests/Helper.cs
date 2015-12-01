@@ -63,7 +63,7 @@ namespace Raft.Tests
             var sid = ++id;
             var port = sid + 7000;
 
-            var server = new Server(new IPEndPoint(IPAddress.Loopback, port), log, transport);
+            var server = new Server(sid, new IPEndPoint(IPAddress.Loopback, port), log, transport);
             transport.Start(server.ID);
             log.Initialize();
             server.ChangeState(new FollowerState(server));

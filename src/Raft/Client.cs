@@ -123,7 +123,7 @@ namespace Raft
 
         public void SendAddServerRequest()
         {
-            Console.WriteLine("{0}: Sending add server request to {1}", _server.ID, this.ID);
+            Console.WriteLine("{0}: Sending add server request to {1}", _server.Name, this.ID);
             var message = new AddServerRequest()
             {
                 From = _server.ID,
@@ -136,7 +136,7 @@ namespace Raft
 
         public void SendAddServerReply(AddServerStatus status, IPEndPoint leaderHint)
         {
-            Console.WriteLine("{0}: Sending add server reply to {1} with status {2}", _server.ID, ID, status);
+            Console.WriteLine("{0}: Sending add server reply to {1} with status {2}", _server.Name, ID, status);
             var message = new AddServerReply()
             {
                 From = _server.ID,
@@ -149,7 +149,7 @@ namespace Raft
 
         public void SendRemoveServerRequest()
         {
-            Console.WriteLine("{0}: Sending remove server request to {1}", _server.ID, this.ID);
+            Console.WriteLine("{0}: Sending remove server request to {1}", _server.Name, this.ID);
             var message = new RemoveServerRequest()
             {
                 From = _server.ID,
@@ -162,7 +162,7 @@ namespace Raft
 
         public void SendRemoveServerReply(RemoveServerStatus status, IPEndPoint leaderHint)
         {
-            Console.WriteLine("{0}: Sending remove server reply to {1} with status {2}", _server.ID, ID, status);
+            Console.WriteLine("{0}: Sending remove server reply to {1} with status {2}", _server.Name, ID, status);
             var message = new RemoveServerReply()
             {
                 From = _server.ID,
@@ -177,7 +177,7 @@ namespace Raft
         {
             if (_rpcDue > 0 && _rpcDue <= _server.Tick)
             {
-                Console.WriteLine("{0}: dropped rpc for {1} at {2} ", _server.ID, _id, _server.Tick);
+                Console.WriteLine("{0}: dropped rpc for {1} at {2} ", _server.Name, _id, _server.Tick);
                 _server.Transport.ResetConnection(this);
                 _rpcDue = 0;
             }

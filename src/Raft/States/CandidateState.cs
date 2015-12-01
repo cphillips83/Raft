@@ -21,7 +21,7 @@ namespace Raft.States
 
             _server.PersistedStore.UpdateState(_server.PersistedStore.Term + 1, _server.ID);
 
-            Console.WriteLine("{0}: Starting new election for term {1}", _server.ID, _server.PersistedStore.Term);
+            Console.WriteLine("{0}: Starting new election for term {1}", _server.Name, _server.PersistedStore.Term);
 
             //only request from peers that are allowed to vote
             foreach (var client in _server.Voters)
@@ -36,7 +36,7 @@ namespace Raft.States
         {
             if (_electionTimeout <= _server.Tick)
             {
-                Console.WriteLine("{0}: Election timeout for term {1}", _server.ID, _server.PersistedStore.Term);
+                Console.WriteLine("{0}: Election timeout for term {1}", _server.Name, _server.PersistedStore.Term);
                 _server.ChangeState(new CandidateState(_server));
             }
             else
@@ -64,7 +64,7 @@ namespace Raft.States
 
             client.RpcDue = long.MaxValue;
             client.VoteGranted = reply.Granted;
-            Console.WriteLine("{0}: Peer {1} voted {2}", _server.ID, client.ID, reply.Granted);
+            Console.WriteLine("{0}: Peer {1} voted {2}", _server.Name, client.ID, reply.Granted);
             return true;
         }
 

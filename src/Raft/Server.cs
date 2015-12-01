@@ -29,7 +29,10 @@ namespace Raft
         private AbstractState _currentState;
         private long _tick = 0;
 
+        public string Name { get { return Volume.ToString("D4"); } }
+
         public IPEndPoint ID { get { return _id; } }
+
         public uint CommitIndex { get { return _commitIndex; } set { _commitIndex = value; } }
 
         public IPEndPoint AgentIP { get; set; }
@@ -47,6 +50,12 @@ namespace Raft
         public AbstractState CurrentState { get { return _currentState; } }
 
         public int Majority { get { return ((_clients.Count() + 1) / 2) + 1; } }
+
+        public long FreeSpaceInBytes { get { return _persistedStore.FreeSpaceInBytes;  } }
+
+        public float FreeSpace { get { return _persistedStore.FreeSpace; } }
+
+        public int Volume { get; protected set; }
 
         public IEnumerable<Client> Voters
         {
@@ -66,9 +75,10 @@ namespace Raft
             }
         }
 
-        public Server(IPEndPoint id, Log log, ITransport transport)
+        public Server(int volume, IPEndPoint id, Log log, ITransport transport)
         {
             //_config = config;
+            Volume = volume;
             _id = id;
             _random = new Random((int)DateTime.UtcNow.Ticks ^ _id.GetHashCode());
             //_dataDir = dataDir;

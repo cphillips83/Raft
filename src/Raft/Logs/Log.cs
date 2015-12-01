@@ -96,7 +96,9 @@ namespace Raft.Logs
             //Console.WriteLine("Data file length {0}", _logDataFile.Length);
         }
 
-        //public long FreeSpace { get { return long.MaxValue; } }
+        public long FreeSpaceInBytes { get { return _logDataFile.Length - DataPosition; } }
+
+        public float FreeSpace { get { return 1f - (DataPosition / (float)_logDataFile.Length); } }
 
         public uint DataPosition
         {
@@ -368,7 +370,7 @@ namespace Raft.Logs
             };
 
             if (server != null)
-                Console.WriteLine("{0}: Created  NOOP", server.ID);
+                Console.WriteLine("{0}: Created  NOOP", server.Name);
 
             Push(server, entry);
             return _logLength;
@@ -490,7 +492,7 @@ namespace Raft.Logs
                     server.AddClientFromLog(id);
 
                 //System.Diagnostics.Debug.Assert(_configLocked == false);
-                Console.WriteLine("{0}: Adding server {1} and locking config", server.ID, id);
+                Console.WriteLine("{0}: Adding server {1} and locking config", server.Name, id);
                 _configLocked = true;
                 saveSuperBlock();
             }
@@ -501,7 +503,7 @@ namespace Raft.Logs
                     server.RemoveClientFromLog(id);
 
                 //System.Diagnostics.Debug.Assert(_configLocked == false);
-                Console.WriteLine("{0}: Removing server {1} and locking config", server.ID, id);
+                Console.WriteLine("{0}: Removing server {1} and locking config", server.Name, id);
                 _configLocked = true;
                 saveSuperBlock();
             }
@@ -526,7 +528,7 @@ namespace Raft.Logs
                 var endPointData = GetData(applyIndex);
                 var id = GetIPEndPoint(endPointData);
 
-                Console.WriteLine("{0}: Committing add server {1} and unlocking config", server.ID, id);
+                Console.WriteLine("{0}: Committing add server {1} and unlocking config", server.Name, id);
                 System.Diagnostics.Debug.Assert(_clients.Count(x => x.Equals(id)) == 0);
 
                 //if (!server.ID.Equals(id))
@@ -542,7 +544,7 @@ namespace Raft.Logs
                 var endPointData = GetData(applyIndex);
                 var id = GetIPEndPoint(endPointData);
 
-                Console.WriteLine("{0}: Committing remove server {1} and unlocking config", server.ID, id);
+                Console.WriteLine("{0}: Committing remove server {1} and unlocking config", server.Name, id);
                 System.Diagnostics.Debug.Assert(_clients.Count(x => x.Equals(id)) == 1);
 
                 //if (!server.ID.Equals(id))
@@ -578,7 +580,7 @@ namespace Raft.Logs
                 _configLocked = false;
                 if (!server.ID.Equals(id))
                     server.RemoveClientFromLog(id);
-                Console.WriteLine("{0}x: Rolling back add server {1} and unlocking config", server.ID, id);
+                Console.WriteLine("{0}x: Rolling back add server {1} and unlocking config", server.Name, id);
                 saveSuperBlock();
             }
             else if (lastIndex.Type == LogIndexType.RemoveServer)
@@ -588,7 +590,7 @@ namespace Raft.Logs
                 _configLocked = false;
                 if (!server.ID.Equals(id))
                     server.AddClientFromLog(id);
-                Console.WriteLine("{0}x: Rolling back remove server {1} and unlocking config", server.ID, id);
+                Console.WriteLine("{0}x: Rolling back remove server {1} and unlocking config", server.Name, id);
                 saveSuperBlock();
             }
 
@@ -754,6 +756,7 @@ namespace Raft.Logs
 
             sb.AppendFormat("  Log Indices: {0}\n", _logIndices.Length);
             sb.AppendFormat("  Log Data Size: {0}\n", DataPosition);
+            sb.AppendFormat("  Free Space: {0}kb ({1}%)\n", FreeSpaceInBytes / 1024, (int)(FreeSpace * 100));
             sb.AppendLine();
 
             sb.AppendFormat("  Nodes\n");

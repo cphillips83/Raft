@@ -58,17 +58,17 @@ namespace Raft.States
             var granted = termCheck && canVote && !ourLogIsBetter;
 
             if (!termCheck)
-                Console.WriteLine("{0}: Can not vote for {1} because term {2}, expected {3}", _server.ID, client.ID, request.Term, _persistedState.Term);
+                Console.WriteLine("{0}: Can not vote for {1} because term {2}, expected {3}", _server.Name, client.ID, request.Term, _persistedState.Term);
 
             if (!canVote)
-                Console.WriteLine("{0}: Can not vote for {1} because I already voted for {2}", _server.ID, client.ID, _persistedState.VotedFor);
+                Console.WriteLine("{0}: Can not vote for {1} because I already voted for {2}", _server.Name, client.ID, _persistedState.VotedFor);
 
             if (ourLogIsBetter)
-                Console.WriteLine("{0}: Can not vote for {1} because my log is more update to date", _server.ID, client.ID);
+                Console.WriteLine("{0}: Can not vote for {1} because my log is more update to date", _server.Name, client.ID);
 
             if (granted)
             {
-                Console.WriteLine("{0}: Voted for {1}", _server.ID, client.ID);
+                Console.WriteLine("{0}: Voted for {1}", _server.Name, client.ID);
                 _persistedState.VotedFor = client.ID;
                 _leader = null;
                 resetHeartbeat();
@@ -114,7 +114,7 @@ namespace Raft.States
                         {
                             while (_persistedState.Length > index - 1)
                             {
-                                Console.WriteLine("{0}: Rolling back log {1}", _server.ID, _persistedState.Length - 1);
+                                Console.WriteLine("{0}: Rolling back log {1}", _server.Name, _persistedState.Length - 1);
                                 _persistedState.Pop(_server);
                             }
 
@@ -136,13 +136,13 @@ namespace Raft.States
                 }
                 else
                 {                    
-                    Console.WriteLine("{0}: Append unsuccessful", _server.ID);
+                    Console.WriteLine("{0}: Append unsuccessful", _server.Name);
                     matchIndex = _server.CommitIndex;
                 }
             }
             else
             {
-                Console.WriteLine("{0}: Append failed, terms didn't match", _server.ID);
+                Console.WriteLine("{0}: Append failed, terms didn't match", _server.Name);
                 //matchIndex = _server.CommitIndex;
             }
 
