@@ -37,9 +37,10 @@ namespace Raft.States
 
         }
 
-        public virtual void CommittedRemoveServer(IPEndPoint endPoint) { 
+        public virtual void CommittedRemoveServer(IPEndPoint endPoint)
+        {
 
-}
+        }
 
         public bool VoteRequest(VoteRequest request)
         {
@@ -51,6 +52,18 @@ namespace Raft.States
         {
             var client = _server.GetClient(reply.From);
             return VoteReply(client, reply);
+        }
+
+        public bool EntryRequest(EntryRequest request)
+        {
+            var client = _server.GetClient(request.From);
+            return EntryRequest(client, request);
+        }
+
+        public bool EntryRequestReply(EntryRequestReply reply)
+        {
+            var client = _server.GetClient(reply.From);
+            return EntryRequestReply(client, reply);
         }
 
         public bool AppendEntriesRequest(AppendEntriesRequest request)
@@ -102,12 +115,20 @@ namespace Raft.States
                 return RemoveServerReply(client, reply);
             }
         }
-        
+
         protected abstract bool VoteRequest(Client client, VoteRequest request);
         protected abstract bool VoteReply(Client client, VoteReply reply);
 
         protected abstract bool AppendEntriesRequest(Client client, AppendEntriesRequest request);
         protected abstract bool AppendEntriesReply(Client client, AppendEntriesReply reply);
+
+        protected virtual bool EntryRequest(Client client, EntryRequest request)
+        {
+            client.SendEntryRequestReply(request.Index);
+            return true;
+        }
+
+        protected virtual bool EntryRequestReply(Client client, EntryRequestReply reply) { return true; }
 
         protected virtual bool AddServerRequest(Client client, AddServerRequest request)
         {

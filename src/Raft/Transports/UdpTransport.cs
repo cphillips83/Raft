@@ -24,7 +24,9 @@ namespace Raft.Transports
             AddServerRequest,
             AddServerReply,
             RemoveServerRequest,
-            RemoveServerReply
+            RemoveServerReply,
+            EntryRequest,
+            EntryRequestReply,
         }
 
         private byte[] _spad = new byte[65535];
@@ -110,6 +112,48 @@ namespace Raft.Transports
                 msg.Write(reply.Term);
                 msg.Write(reply.MatchIndex);
                 msg.Write(reply.Success);
+                msg.Flush();
+
+                SendMessage(client, _spad, (int)msg.BaseStream.Position);
+            }
+        }
+
+        public override void SendMessage(Client client, EntryRequest request)
+        {
+            using (var msg = new BinaryWriter(new MemoryStream(_spad, true)))
+            {
+                msg.Write((byte)MessageTypes.EntryRequest);
+                msg.Write(request.From);
+                msg.Write(request.Index);
+
+                msg.Flush();
+
+                SendMessage(client, _spad, (int)msg.BaseStream.Position);
+            }
+        }
+
+        public override void SendMessage(Client client, EntryRequestReply reply)
+        {
+            using (var msg = new BinaryWriter(new MemoryStream(_spad, true)))
+            {
+                msg.Write((byte)MessageTypes.EntryRequestReply);
+                msg.Write(reply.From);
+
+                msg.Write(reply.Entry.HasValue);
+                if (reply.Entry.HasValue)
+                {
+                    msg.Write(reply.Entry.Value.Index.Term);
+                    msg.Write((uint)reply.Entry.Value.Index.Type);
+                    msg.Write(reply.Entry.Value.Index.ChunkOffset);
+                    msg.Write(reply.Entry.Value.Index.ChunkSize);
+                    msg.Write(reply.Entry.Value.Index.Flag1);
+                    msg.Write(reply.Entry.Value.Index.Flag2);
+                    msg.Write(reply.Entry.Value.Index.Flag3);
+                    msg.Write(reply.Entry.Value.Index.Flag4);
+
+                    msg.Write(reply.Entry.Value.Data.Length);
+                    msg.Write(reply.Entry.Value.Data);
+                }
                 msg.Flush();
 
                 SendMessage(client, _spad, (int)msg.BaseStream.Position);
@@ -264,6 +308,49 @@ namespace Raft.Transports
                                 incomingMessage.Term = msg.ReadUInt32();
                                 incomingMessage.MatchIndex = msg.ReadUInt32();
                                 incomingMessage.Success = msg.ReadBoolean();
+
+                                _incomingMessages.Enqueue(incomingMessage);
+                            }
+                            break;
+                        case MessageTypes.EntryRequestReply:
+                            {
+                                var incomingMessage = new EntryRequestReply();
+                                incomingMessage.From = msg.ReadIPEndPoint();
+
+                                if (msg.ReadBoolean())
+                                {
+                                    var entry = new LogEntry();
+                                    var index = new LogIndex();
+
+                                    index.Term = msg.ReadUInt32();
+                                    index.Type = (LogIndexType)msg.ReadUInt32();
+                                    index.ChunkOffset = msg.ReadUInt32();
+                                    index.ChunkSize = msg.ReadUInt32();
+                                    index.Flag1 = msg.ReadUInt32();
+                                    index.Flag2 = msg.ReadUInt32();
+                                    index.Flag3 = msg.ReadUInt32();
+                                    index.Flag4 = msg.ReadUInt32();
+
+                                    entry.Index = index;
+
+                                    var dataLength = msg.ReadInt32();
+                                    entry.Data = msg.ReadBytes(dataLength);
+
+                                    incomingMessage.Entry = entry;
+                                }
+                                else
+                                {
+                                    incomingMessage.Entry = null;
+                                }
+
+                                _incomingMessages.Enqueue(incomingMessage);
+                            }
+                            break;
+                        case MessageTypes.EntryRequest:
+                            {
+                                var incomingMessage = new EntryRequest();
+                                incomingMessage.From = msg.ReadIPEndPoint();
+                                incomingMessage.Index = msg.ReadUInt32();
 
                                 _incomingMessages.Enqueue(incomingMessage);
                             }

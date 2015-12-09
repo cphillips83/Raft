@@ -121,6 +121,34 @@ namespace Raft
             _server.Transport.SendMessage(this, message);
         }
 
+        public void SendEntryRequest(uint index)
+        {
+            var _persistedState = _server.PersistedStore;
+            var message = new EntryRequest()
+            {
+                From = _server.ID,
+                Index = index
+            };
+
+            _lastMessage = message;
+            _server.Transport.SendMessage(this, message);
+        }
+
+        public void SendEntryRequestReply(uint index)
+        {
+            var _persistedState = _server.PersistedStore;
+            var entry = _persistedState.GetEntry(index);
+
+            var message = new EntryRequestReply()
+            {
+                From = _server.ID,
+                Entry = entry
+            };
+
+            _lastMessage = message;
+            _server.Transport.SendMessage(this, message);
+        }
+
         public void SendAddServerRequest()
         {
             Console.WriteLine("{0}: Sending add server request to {1}", _server.Name, this.ID);

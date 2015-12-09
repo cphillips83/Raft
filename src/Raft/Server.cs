@@ -29,7 +29,7 @@ namespace Raft
         private AbstractState _currentState;
         private long _tick = 0;
 
-        public string Name { get { return Volume.ToString("D4"); } }
+        public string Name { get { return "LV-" + Volume.ToString("D4"); } }
 
         public IPEndPoint ID { get { return _id; } }
 
@@ -54,6 +54,8 @@ namespace Raft
         public long FreeSpaceInBytes { get { return _persistedStore.FreeSpaceInBytes;  } }
 
         public float FreeSpace { get { return _persistedStore.FreeSpace; } }
+
+        public long SpaceUsedInBytes { get { return _persistedStore.DataPosition; } }
 
         public int Volume { get; protected set; }
 

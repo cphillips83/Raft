@@ -60,6 +60,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Client.cs" />
+    <Compile Include="Crc32.cs" />
     <Compile Include="Logs\FileLog.cs" />
     <Compile Include="Logs\Log.cs" />
     <Compile Include="Logs\LogEntry.cs" />
@@ -69,6 +70,7 @@
     <Compile Include="Messages\RemoveServer.cs" />
     <Compile Include="Messages\AppendEntries.cs" />
     <Compile Include="Messages\AddServer.cs" />
+    <Compile Include="Messages\EntryRequest.cs" />
     <Compile Include="Messages\VoteRequest.cs" />
     <Compile Include="Server.cs" />
     <Compile Include="Program.cs" />
@@ -79,6 +81,7 @@
     <Compile Include="States\LeaveState.cs" />
     <Compile Include="States\JoinState.cs" />
     <Compile Include="States\LeaderState.cs" />
+    <Compile Include="States\VerifyState.cs" />
     <Compile Include="States\TestState.cs" />
     <Compile Include="States\StoppedState.cs" />
     <Compile Include="Transports\Transport.cs" />

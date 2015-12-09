@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Raft.Logs;
 using Raft.Messages;
 
 namespace Raft.States
@@ -119,14 +120,25 @@ namespace Raft.States
                             }
 
                             //Console.WriteLine("{0}: Writing log value {1}", _id, request.Entries[i].Offset);
-                            if (!_persistedState.Push(_server, request.Entries[i]))
+                            var pushed = _persistedState.Push(_server, request.Entries[i]);
+                            if (pushed)
+                            {
+                                var lastEntry = _persistedState.GetEntry(index).Value;
+                                if (!LogEntry.AreEqual(lastEntry, request.Entries[i]))
+                                {
+                                    Console.WriteLine("{0}: Log entry push didn't match", _server.Name);
+                                    Console.WriteLine("{0}: Expected: {1}", _server.Name, request.Entries[i]);
+                                    Console.WriteLine("{0}: Got:      {1}", _server.Name, lastEntry);
+
+                                    pushed = false;
+                                }
+                                //Console.WriteLine("{0}: Appending index: {1}, data length: {2}", _server.ID, index, request.Entries[i].Index.ChunkSize);                             
+                            }
+
+                            if(!pushed)
                             {
                                 index--;
                                 break;
-                            }
-                            else
-                            {
-                                //Console.WriteLine("{0}: Appending index: {1}, data length: {2}", _server.ID, index, request.Entries[i].Index.ChunkSize);
                             }
                         }
                     }
@@ -135,8 +147,8 @@ namespace Raft.States
                     _server.AdvanceToCommit(Math.Max(_server.CommitIndex, request.CommitIndex));
                 }
                 else
-                {                    
-                    Console.WriteLine("{0}: Append unsuccessful", _server.Name);
+                {
+                    Console.WriteLine("{0}: Append unsuccessful {{ request.PrevIndex[{1}] == 0 || (request.PrevIndex[{1}] <= _persistedState.Length[{2}] && _persistedState.GetTerm(request.PrevIndex[{1}])[{3}] == request.PrevTerm[{4}])) }}", _server.Name, request.PrevIndex, _persistedState.Length, _persistedState.GetTerm(request.PrevIndex), request.PrevTerm);
                     matchIndex = _server.CommitIndex;
                 }
             }

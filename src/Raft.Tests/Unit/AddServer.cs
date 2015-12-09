@@ -96,6 +96,65 @@ namespace Raft.Tests.Unit
             }
         }
 
+        [TestMethod]
+        public void AddServer_ReplicateToLogWithRollback()
+        {
+            var transport = new MemoryTransport();
+            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
+            {
+
+                s1.Initialize();
+                s2.Initialize();
+
+                s1.ChangeState(new LeaderState(s1)); // will push s1 to term 2
+                s1.PersistedStore.AddServer(s1, s1.ID);
+
+                // applies its own entry and advances commit
+                s1.Advance();
+                s1.PersistedStore.CreateData(s1, new byte[] { 1 });
+
+                // this sends out an add request
+                s2.ChangeState(new JoinState(s2, new Client(s2, s1.ID)));
+
+                var count = 50;
+                while (count-- > 0)
+                {
+                    s1.Advance();
+                    s2.Advance();
+                }
+
+                s1.PersistedStore.Term++;
+                s1.PersistedStore.CreateData(s1, new byte[] { 2 });
+                //s1.PersistedStore.CreateData(s1, new byte[65400 * 3]);
+                s2.PersistedStore.CreateData(s1, new byte[65400 * 3]);
+
+                count = 200;
+                while (count-- > 0)
+                {
+                    s1.Advance();
+                    s2.Advance();
+                }
+
+                Console.WriteLine("");
+                Console.WriteLine("");
+                Log.DumpLog(s1.PersistedStore);
+                Console.WriteLine("");
+                Console.WriteLine("");
+                Log.DumpLog(s2.PersistedStore);
+
+                Assert.AreEqual(2, s1.Majority);
+                Assert.AreEqual(2, s2.Majority);
+                Assert.IsTrue(s1.ID.Equals(s2.GetClient(s1.ID).ID));
+                Assert.IsTrue(s2.ID.Equals(s1.GetClient(s2.ID).ID));
+
+                Assert.IsTrue(s1.PersistedStore.Clients.Any(x => x.Equals(s2.ID)));
+                Assert.IsTrue(s2.PersistedStore.Clients.Any(x => x.Equals(s1.ID)));
+
+                Assert.IsTrue(Log.AreEqual(s1.PersistedStore, s2.PersistedStore));
+            }
+        }
+
         //[TestMethod]
         //public void AddServer_ReplicateToLogLidgren()
         //{

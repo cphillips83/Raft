@@ -11,8 +11,8 @@ namespace Raft.Logs
     public abstract class Log : IDisposable
     {
 
-        public int RPC_TIMEOUT = 50;
-        public int ELECTION_TIMEOUT = 150;
+        public int RPC_TIMEOUT = 50*10;
+        public int ELECTION_TIMEOUT = 150*10;
 
         //can not change once in production
         public const int SUPER_BLOCK_SIZE = 1024;
@@ -376,6 +376,67 @@ namespace Raft.Logs
             return _logLength;
         }
 
+        public uint CreateData(Server server, Stream stream)
+        {
+            //this function breaks the entries in to MAX_LOG_ENTRY_SIZE as
+            //DataChunk types but preserves the first byte so that when
+            //it creates the DataBlob entry to spans the entire chunk range
+            //this helps AppendEntries send data in chunks instead of blobs
+            //once the LogEntry return from here is committed, the DataBlob is 
+            //safe and linear in entries via DataChunks
+
+            var size = (uint)stream.Length;
+            var start = DataPosition;
+            var remaining = (int)stream.Length;
+            while (remaining > MAX_LOG_ENTRY_SIZE)
+            {
+                stream.Read(_writeSpad, 0, MAX_LOG_ENTRY_SIZE);
+                //Array.Copy(data, data.Length - remaining, _writeSpad, 0, MAX_LOG_ENTRY_SIZE);
+                var chunkEntry = new LogEntry()
+                {
+                    Index = new LogIndex()
+                    {
+                        Term = _currentTerm,
+                        ChunkOffset = DataPosition,
+                        ChunkSize = MAX_LOG_ENTRY_SIZE,
+                        Type = LogIndexType.DataChunk,
+                        Flag3 = start,
+                        Flag4 = size
+                    },
+                    Data = _writeSpad
+                };
+
+                //if (server != null)
+                //    Console.WriteLine("{0}: Creating chunk {1}", server.ID, chunkEntry.Index);
+
+                Push(server, chunkEntry);
+                remaining -= MAX_LOG_ENTRY_SIZE;
+            }
+
+            //Array.Copy(data, data.Length - remaining, _writeSpad, 0, remaining);
+            stream.Read(_writeSpad, 0, remaining);
+
+            var entry = new LogEntry()
+            {
+                Index = new LogIndex()
+                {
+                    Term = _currentTerm,
+                    ChunkOffset = DataPosition,
+                    ChunkSize = (uint)remaining,
+                    Type = LogIndexType.DataBlob,
+                    Flag3 = start,
+                    Flag4 = size
+                },
+                Data = _writeSpad
+            };
+
+            //if (server != null)
+            //    Console.WriteLine("{0}: Created {1}", server.ID, entry.Index);
+
+            Push(server, entry);
+            return _logLength;
+        }
+
         public uint CreateData(Server server, byte[] data)
         {
             //this function breaks the entries in to MAX_LOG_ENTRY_SIZE as
@@ -446,6 +507,18 @@ namespace Raft.Logs
                 return false;
             }
 
+            //if (data.Data == null && data.Index.ChunkSize > 0)
+            //{
+            //    Console.WriteLine("{0}: Data length is 0 and data chunksize is {1}", server.Name, data.Index.ChunkSize);
+            //    return false;
+            //}
+
+            //if (data.Data != null && data.Data.Length != data.Index.ChunkSize)
+            //{
+            //    Console.WriteLine("{0}: Data length is {1} and data chunksize is {2}", server.Name, data.Data.Length, data.Index.ChunkSize);
+            //    return false;
+            //}            
+
             // we must first write the data to the dat file
             // in case of crash in between log data and log entry
             // this will orphan the data and on startup will reclaim the space
@@ -464,10 +537,6 @@ namespace Raft.Logs
             //update log entries
             _logIndices[_logLength] = data.Index;
 
-            //inc log index
-            _logLength++;
-            //_logDataPosition += data.Index.Size;
-
             //flush data
             _logDataFile.Flush();
 
@@ -483,6 +552,8 @@ namespace Raft.Logs
 
             _logIndexWriter.Flush();
 
+            //inc log index
+            _logLength++;
 
             //add server before commit
             if (data.Index.Type == LogIndexType.AddServer)
@@ -594,7 +665,7 @@ namespace Raft.Logs
                 saveSuperBlock();
             }
 
-            _logLength--;
+            //_logLength--;
         }
 
         public void UpdateClients(IEnumerable<IPEndPoint> clients)
@@ -765,5 +836,37 @@ namespace Raft.Logs
 
             return sb.ToString();
         }
+
+        public static void DumpLog(Log log)
+        {
+            for (var i = 0u; i < log.Length; i++)
+            {
+                var entry = log.GetEntry(i + 1);
+                Console.WriteLine(entry);
+            }
+        }
+
+        public static bool AreEqual(Log left, Log right)
+        {
+            if (left.Length != right.Length)
+                return false;
+
+            for (var i = 0u; i < left.Length; i++)
+            {
+                var le = left.GetEntry(i + 1).Value;
+                var re = right.GetEntry(i + 1).Value;
+                if (!LogEntry.AreEqual(le, re))
+                {
+                    Console.WriteLine("Verify failed at index {0}", i);
+                    Console.WriteLine("Expected {0}", le);
+                    Console.WriteLine("Got      {0}", re);
+
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
     }
 }

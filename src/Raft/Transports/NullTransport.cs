@@ -26,6 +26,14 @@ namespace Raft.Transports
         {
         }
 
+        public void SendMessage(Client client, Messages.EntryRequest request)
+        {
+        }
+
+        public void SendMessage(Client client, Messages.EntryRequestReply reply)
+        {
+        }
+
         public void SendMessage(Client client, Messages.AddServerRequest request)
         {
         }

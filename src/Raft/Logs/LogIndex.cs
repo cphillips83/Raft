@@ -83,6 +83,18 @@ namespace Raft.Logs
         {
             return string.Format("{{ Term: {0}, Type: {1}, Offset: {2}, Size : {3}, Flag1 : {4}, Flag2 : {5}, Flag3 : {6}, Flag4 : {7} }}", Term, Type, ChunkOffset, ChunkSize, Flag1, Flag2, Flag3, Flag4);
         }
+
+        public static bool AreEqual(LogIndex left, LogIndex right)
+        {
+            return left.Term == right.Term &&
+                left.Type == right.Type &&
+                left.ChunkOffset == right.ChunkOffset &&
+                left.ChunkSize == right.ChunkSize &&
+                left.Flag1 == right.Flag1 &&
+                left.Flag2 == right.Flag2 &&
+                left.Flag3 == right.Flag3 &&
+                left.Flag4 == right.Flag4;
+        }
     }
 
 }

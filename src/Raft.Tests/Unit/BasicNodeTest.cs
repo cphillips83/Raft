@@ -76,8 +76,8 @@ namespace Raft.Tests.Unit
             using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
             {
 
-                s1.Initialize( s2.ID);
-                s2.Initialize( s1.ID);
+                s1.Initialize(s2.ID);
+                s2.Initialize(s1.ID);
 
                 s1.ChangeState(new CandidateState(s1));
 
@@ -279,6 +279,44 @@ namespace Raft.Tests.Unit
                     Assert.AreEqual(data[i], storedData[i]);
                 }
 
+            }
+        }
+
+        [TestMethod]
+        public void TestVerify()
+        {
+            var transport = new MemoryTransport();
+            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
+            {
+
+                s1.Initialize(s2.ID);
+                s2.Initialize(s1.ID);
+
+                s1.PersistedStore.Term = 1;
+                s2.PersistedStore.Term = 1;
+
+                s1.PersistedStore.CreateData(s1, new byte[] { 0 });
+                s1.PersistedStore.CreateData(s1, new byte[] { 1 });
+
+                s2.PersistedStore.CreateData(s2, new byte[] { 0 });
+                s2.PersistedStore.CreateData(s2, new byte[] { 1 });
+
+                s1.ChangeState(new LeaderState(s1));
+                s1.Advance();
+
+                var verifyState = new VerifyState(0, new Client(s2, s1.ID), s2);
+                s2.ChangeState(verifyState);
+                s2.Advance();
+
+                var index = 50;
+                while (index-- > 0)
+                {
+                    s1.Advance();
+                    s2.Advance();
+                }
+
+                Assert.AreEqual(true, verifyState.IsVerified);
             }
         }
 
