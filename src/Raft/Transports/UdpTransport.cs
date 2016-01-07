@@ -40,55 +40,55 @@ namespace Raft.Transports
             }
         }
 
-        public override void SendMessage(Client client, VoteRequest request)
-        {
-            SendMessage(client, (IMessage)request);
-        }
+        //public override void SendMessage(Client client, VoteRequest request)
+        //{
+        //    SendMessage(client, (IMessage)request);
+        //}
 
-        public override void SendMessage(Client client, VoteReply reply)
-        {
-            SendMessage(client, (IMessage)reply);
-        }
+        //public override void SendMessage(Client client, VoteReply reply)
+        //{
+        //    SendMessage(client, (IMessage)reply);
+        //}
 
-        public override void SendMessage(Client client, AppendEntriesRequest request)
-        {
-            SendMessage(client, (IMessage)request);
-        }
+        //public override void SendMessage(Client client, AppendEntriesRequest request)
+        //{
+        //    SendMessage(client, (IMessage)request);
+        //}
 
-        public override void SendMessage(Client client, AppendEntriesReply reply)
-        {
-            SendMessage(client, (IMessage)reply);
-        }
+        //public override void SendMessage(Client client, AppendEntriesReply reply)
+        //{
+        //    SendMessage(client, (IMessage)reply);
+        //}
 
-        public override void SendMessage(Client client, EntryRequest request)
-        {
-            SendMessage(client, (IMessage)request);
-        }
+        //public override void SendMessage(Client client, EntryRequest request)
+        //{
+        //    SendMessage(client, (IMessage)request);
+        //}
 
-        public override void SendMessage(Client client, EntryRequestReply reply)
-        {
-            SendMessage(client, (IMessage)reply);
-        }
+        //public override void SendMessage(Client client, EntryRequestReply reply)
+        //{
+        //    SendMessage(client, (IMessage)reply);
+        //}
 
-        public override void SendMessage(Client client, AddServerRequest request)
-        {
-            SendMessage(client, (IMessage)request);
-        }
+        //public override void SendMessage(Client client, AddServerRequest request)
+        //{
+        //    SendMessage(client, (IMessage)request);
+        //}
 
-        public override void SendMessage(Client client, AddServerReply reply)
-        {
-            SendMessage(client, (IMessage)reply);
-        }
+        //public override void SendMessage(Client client, AddServerReply reply)
+        //{
+        //    SendMessage(client, (IMessage)reply);
+        //}
 
-        public override void SendMessage(Client client, RemoveServerRequest request)
-        {
-            SendMessage(client, (IMessage)request);
-        }
+        //public override void SendMessage(Client client, RemoveServerRequest request)
+        //{
+        //    SendMessage(client, (IMessage)request);
+        //}
 
-        public override void SendMessage(Client client, RemoveServerReply reply)
-        {
-            SendMessage(client, (IMessage)reply);
-        }
+        //public override void SendMessage(Client client, RemoveServerReply reply)
+        //{
+        //    SendMessage(client, (IMessage)reply);
+        //}
 
         public override void Start(IPEndPoint ip)
         {

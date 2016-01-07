@@ -66,56 +66,56 @@ namespace Raft.Transports
                 addMessage(message);
             }
 
-            public override void SendMessage(Client client, VoteRequest request)
-            {
-                addMessage(request);
-            }
+            //public override void SendMessage(Client client, VoteRequest request)
+            //{
+            //    addMessage(request);
+            //}
 
-            public override void SendMessage(Client client, VoteReply reply)
-            {
-                addMessage(reply);
-            }
+            //public override void SendMessage(Client client, VoteReply reply)
+            //{
+            //    addMessage(reply);
+            //}
 
-            public override void SendMessage(Client client, AppendEntriesRequest request)
-            {
-                addMessage(request);
-            }
+            //public override void SendMessage(Client client, AppendEntriesRequest request)
+            //{
+            //    addMessage(request);
+            //}
 
-            public override void SendMessage(Client client, AppendEntriesReply reply)
-            {
-                addMessage(reply);
-            }
+            //public override void SendMessage(Client client, AppendEntriesReply reply)
+            //{
+            //    addMessage(reply);
+            //}
 
-            public override void SendMessage(Client client, EntryRequest request)
-            {
-                addMessage(request);
-            }
+            //public override void SendMessage(Client client, EntryRequest request)
+            //{
+            //    addMessage(request);
+            //}
 
-            public override void SendMessage(Client client, EntryRequestReply reply)
-            {
-                addMessage(reply);
-            }
+            //public override void SendMessage(Client client, EntryRequestReply reply)
+            //{
+            //    addMessage(reply);
+            //}
 
 
-            public override void SendMessage(Client client, AddServerRequest request)
-            {
-                addMessage(request);
-            }
+            //public override void SendMessage(Client client, AddServerRequest request)
+            //{
+            //    addMessage(request);
+            //}
 
-            public override void SendMessage(Client client, AddServerReply reply)
-            {
-                addMessage(reply);
-            }
+            //public override void SendMessage(Client client, AddServerReply reply)
+            //{
+            //    addMessage(reply);
+            //}
 
-            public override void SendMessage(Client client, RemoveServerRequest request)
-            {
-                addMessage(request);
-            }
+            //public override void SendMessage(Client client, RemoveServerRequest request)
+            //{
+            //    addMessage(request);
+            //}
 
-            public override void SendMessage(Client client, RemoveServerReply reply)
-            {
-                addMessage(reply);
-            }
+            //public override void SendMessage(Client client, RemoveServerReply reply)
+            //{
+            //    addMessage(reply);
+            //}
 
             public override void Start(IPEndPoint config)
             {
@@ -168,65 +168,71 @@ namespace Raft.Transports
             return transport;
         }
 
-        public void SendMessage(Client client, VoteRequest request)
+        public void SendMessage(Client client, IMessage message)
         {
             var transport = GetClient(client.ID);
-            transport.SendMessage(client, request);
+            transport.SendMessage(client, message);
         }
 
-        public void SendMessage(Client client, VoteReply reply)
-        {
-            var transport = GetClient(client.ID);
-            transport.SendMessage(client, reply);
-        }
+        //public void SendMessage(Client client, VoteRequest request)
+        //{
+        //    var transport = GetClient(client.ID);
+        //    transport.SendMessage(client, request);
+        //}
 
-        public void SendMessage(Client client, AppendEntriesRequest request)
-        {
-            var transport = GetClient(client.ID);
-            transport.SendMessage(client, request);
-        }
+        //public void SendMessage(Client client, VoteReply reply)
+        //{
+        //    var transport = GetClient(client.ID);
+        //    transport.SendMessage(client, reply);
+        //}
 
-        public void SendMessage(Client client, AppendEntriesReply reply)
-        {
-            var transport = GetClient(client.ID);
-            transport.SendMessage(client, reply);
-        }
+        //public void SendMessage(Client client, AppendEntriesRequest request)
+        //{
+        //    var transport = GetClient(client.ID);
+        //    transport.SendMessage(client, request);
+        //}
 
-        public void SendMessage(Client client, EntryRequest request)
-        {
-            var transport = GetClient(client.ID);
-            transport.SendMessage(client, request);
-        }
+        //public void SendMessage(Client client, AppendEntriesReply reply)
+        //{
+        //    var transport = GetClient(client.ID);
+        //    transport.SendMessage(client, reply);
+        //}
 
-        public void SendMessage(Client client, EntryRequestReply reply)
-        {
-            var transport = GetClient(client.ID);
-            transport.SendMessage(client, reply);
-        }
+        //public void SendMessage(Client client, EntryRequest request)
+        //{
+        //    var transport = GetClient(client.ID);
+        //    transport.SendMessage(client, request);
+        //}
 
-        public void SendMessage(Client client, AddServerRequest request)
-        {
-            var transport = GetClient(client.ID);
-            transport.SendMessage(client, request);
-        }
+        //public void SendMessage(Client client, EntryRequestReply reply)
+        //{
+        //    var transport = GetClient(client.ID);
+        //    transport.SendMessage(client, reply);
+        //}
 
-        public void SendMessage(Client client, AddServerReply reply)
-        {
-            var transport = GetClient(client.ID);
-            transport.SendMessage(client, reply);
-        }
+        //public void SendMessage(Client client, AddServerRequest request)
+        //{
+        //    var transport = GetClient(client.ID);
+        //    transport.SendMessage(client, request);
+        //}
 
-        public void SendMessage(Client client, RemoveServerRequest request)
-        {
-            var transport = GetClient(client.ID);
-            transport.SendMessage(client, request);
-        }
+        //public void SendMessage(Client client, AddServerReply reply)
+        //{
+        //    var transport = GetClient(client.ID);
+        //    transport.SendMessage(client, reply);
+        //}
 
-        public void SendMessage(Client client, RemoveServerReply reply)
-        {
-            var transport = GetClient(client.ID);
-            transport.SendMessage(client, reply);
-        }
+        //public void SendMessage(Client client, RemoveServerRequest request)
+        //{
+        //    var transport = GetClient(client.ID);
+        //    transport.SendMessage(client, request);
+        //}
+
+        //public void SendMessage(Client client, RemoveServerReply reply)
+        //{
+        //    var transport = GetClient(client.ID);
+        //    transport.SendMessage(client, reply);
+        //}
 
         public void Process(Server server)
         {

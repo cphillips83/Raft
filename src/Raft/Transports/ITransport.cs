@@ -11,16 +11,17 @@ namespace Raft.Transports
     public interface ITransport
     {
         void ResetConnection(Client client);
-        void SendMessage(Client client, VoteRequest request);
-        void SendMessage(Client client, VoteReply reply);
-        void SendMessage(Client client, AppendEntriesRequest request);
-        void SendMessage(Client client, AppendEntriesReply reply);
-        void SendMessage(Client client, EntryRequest request);
-        void SendMessage(Client client, EntryRequestReply reply);
-        void SendMessage(Client client, AddServerRequest request);
-        void SendMessage(Client client, AddServerReply reply);
-        void SendMessage(Client client, RemoveServerRequest request);
-        void SendMessage(Client client, RemoveServerReply reply);
+        void SendMessage(Client client, IMessage message);
+        //void SendMessage(Client client, VoteRequest request);
+        //void SendMessage(Client client, VoteReply reply);
+        //void SendMessage(Client client, AppendEntriesRequest request);
+        //void SendMessage(Client client, AppendEntriesReply reply);
+        //void SendMessage(Client client, EntryRequest request);
+        //void SendMessage(Client client, EntryRequestReply reply);
+        //void SendMessage(Client client, AddServerRequest request);
+        //void SendMessage(Client client, AddServerReply reply);
+        //void SendMessage(Client client, RemoveServerRequest request);
+        //void SendMessage(Client client, RemoveServerReply reply);
 
         void Process(Server server);
 
