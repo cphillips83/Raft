@@ -85,10 +85,12 @@
     <Compile Include="States\VerifyState.cs" />
     <Compile Include="States\TestState.cs" />
     <Compile Include="States\StoppedState.cs" />
+    <Compile Include="Transports\MessageTypes.cs" />
     <Compile Include="Transports\Transport.cs" />
     <Compile Include="Transports\ITransport.cs" />
     <Compile Include="Transports\MemoryTransport.cs" />
     <Compile Include="Transports\NullTransport.cs" />
+    <Compile Include="Transports\TcpTransport.cs" />
     <Compile Include="Transports\UdpTransport.cs" />
   </ItemGroup>
   <ItemGroup>

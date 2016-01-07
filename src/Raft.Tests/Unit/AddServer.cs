@@ -14,16 +14,13 @@ using Raft.Transports;
 namespace Raft.Tests.Unit
 {
     [TestClass]
-    public class MemoryAddServer : AddServer<MemoryTransportImpl>
-    {
-
-    }
+    public class MemoryAddServer : AddServer<MemoryTransportImpl> { }
 
     [TestClass]
-    public class UdpAddServer : AddServer<UdpTransportImpl>
-    {
+    public class UdpAddServer : AddServer<UdpTransportImpl> { }
 
-    }
+    [TestClass]
+    public class TcpAddServer : AddServer<TcpTransportImpl> { }
 
     [TestClass]
     public abstract class AddServer<T>

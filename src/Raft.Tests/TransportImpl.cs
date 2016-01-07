@@ -81,4 +81,37 @@ namespace Raft.Tests
         }
     }
 
+    public class TcpTransportImpl : TransportImpl
+    {
+        public static int id;
+
+        //private MemoryTransport transport = new MemoryTransport();
+        private List<Server> servers = new List<Server>();
+
+        public override Server CreateServer()
+        {
+            var sid = ++id;
+            var port = sid + 9000;
+            var log = new MemoryLog();
+            var transport = new TcpTransport();
+            var server = new Server(sid, new IPEndPoint(IPAddress.Loopback, port), log, transport);
+            transport.Start(server.ID);
+            log.Initialize();
+            server.ChangeState(new FollowerState(server));
+
+
+            servers.Add(server);
+
+            return server;
+        }
+
+        public override void Dispose()
+        {
+            foreach (var s in servers)
+                s.Dispose();
+
+            servers.Clear();
+        }
+    }
+
 }
