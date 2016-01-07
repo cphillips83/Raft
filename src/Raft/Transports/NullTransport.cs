@@ -13,46 +13,6 @@ namespace Raft.Transports
 
         public void SendMessage(Client client, IMessage message) { }
 
-        //public void SendMessage(Client client, Messages.VoteRequest request)
-        //{
-        //}
-
-        //public void SendMessage(Client client, Messages.VoteReply reply)
-        //{
-        //}
-
-        //public void SendMessage(Client client, Messages.AppendEntriesRequest request)
-        //{
-        //}
-
-        //public void SendMessage(Client client, Messages.AppendEntriesReply reply)
-        //{
-        //}
-
-        //public void SendMessage(Client client, Messages.EntryRequest request)
-        //{
-        //}
-
-        //public void SendMessage(Client client, Messages.EntryRequestReply reply)
-        //{
-        //}
-
-        //public void SendMessage(Client client, Messages.AddServerRequest request)
-        //{
-        //}
-
-        //public void SendMessage(Client client, Messages.AddServerReply reply)
-        //{
-        //}
-
-        //public void SendMessage(Client client, Messages.RemoveServerRequest request)
-        //{
-        //}
-
-        //public void SendMessage(Client client, Messages.RemoveServerReply reply)
-        //{
-        //}
-
         public void Process(Server server)
         {
         }

@@ -16,17 +16,6 @@ namespace Raft.Transports
 
         public abstract void SendMessage(Client client, IMessage message);
 
-        //public abstract void SendMessage(Client client, VoteRequest request);
-        //public abstract void SendMessage(Client client, VoteReply reply);
-        //public abstract void SendMessage(Client client, AppendEntriesRequest request);
-        //public abstract void SendMessage(Client client, AppendEntriesReply reply);
-        //public abstract void SendMessage(Client client, EntryRequest request);
-        //public abstract void SendMessage(Client client, EntryRequestReply reply);
-        //public abstract void SendMessage(Client client, AddServerRequest request);
-        //public abstract void SendMessage(Client client, AddServerReply relpy);
-        //public abstract void SendMessage(Client client, RemoveServerRequest request);
-        //public abstract void SendMessage(Client client, RemoveServerReply relpy);
-
         public abstract void Start(IPEndPoint ip);
         public abstract void Shutdown();
 
