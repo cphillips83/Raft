@@ -14,24 +14,35 @@ using Raft.Transports;
 namespace Raft.Tests.Unit
 {
     [TestClass]
-    public class AddServer
+    public class MemoryAddServer : AddServer<MemoryTransportImpl>
+    {
+
+    }
+
+    [TestClass]
+    public class UdpAddServer : AddServer<UdpTransportImpl>
+    {
+
+    }
+
+    [TestClass]
+    public abstract class AddServer<T>
+        where T : TransportImpl, new()
     {
 #if DEBUG
         static AddServer()
         {
             if (System.Diagnostics.Debugger.IsAttached)
                 Console.SetOut(new DebugWriter());
-
-
         }
 #endif
 
         [TestMethod]
         public void AddServer_ReplyNotLeaderIfNotLeader()
         {
-            var transport = new MemoryTransport();
-            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
-            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var mock = new T())
+            using (var s1 = mock.CreateServer())
+            using (var s2 = mock.CreateServer())
             {
 
                 s1.Initialize();
@@ -62,9 +73,9 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void AddServer_ReplicateToLog()
         {
-            var transport = new MemoryTransport();
-            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
-            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var mock = new T())
+            using (var s1 = mock.CreateServer())
+            using (var s2 = mock.CreateServer())
             {
 
                 s1.Initialize();
@@ -99,9 +110,9 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void AddServer_ReplicateToLogWithRollback()
         {
-            var transport = new MemoryTransport();
-            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
-            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var mock = new T())
+            using (var s1 = mock.CreateServer())
+            using (var s2 = mock.CreateServer())
             {
 
                 s1.Initialize();
@@ -155,54 +166,54 @@ namespace Raft.Tests.Unit
             }
         }
 
-        [TestMethod]
-        public void AddServer_ReplicateToLogUdp()
-        {
-            using (var s1 = Helper.CreateServer(new MemoryLog(), new UdpTransport()))
-            using (var s2 = Helper.CreateServer(new MemoryLog(), new UdpTransport()))
-            {
-                s1.Initialize();
-                s2.Initialize();
+        //[TestMethod]
+        //public void AddServer_ReplicateToLogUdp()
+        //{
+        //    using (var s1 = mock.CreateServer())
+        //    using (var s2 = mock.CreateServer())
+        //    {
+        //        s1.Initialize();
+        //        s2.Initialize();
 
-                s1.ChangeState(new LeaderState(s1)); // will push s1 to term 2
-                s1.PersistedStore.AddServer(s1, s1.ID);
+        //        s1.ChangeState(new LeaderState(s1)); // will push s1 to term 2
+        //        s1.PersistedStore.AddServer(s1, s1.ID);
 
-                // applies its own entry and advances commit
-                s1.Advance();
+        //        // applies its own entry and advances commit
+        //        s1.Advance();
 
-                // this sends out an add request
-                s2.ChangeState(new JoinState(s2, new Client(s2, s1.ID)));
+        //        // this sends out an add request
+        //        s2.ChangeState(new JoinState(s2, new Client(s2, s1.ID)));
 
-                var timer = Stopwatch.StartNew();
-                var lastTick = 0L;
-                while (lastTick < 1000)
-                {
-                    var currentTick = timer.ElapsedMilliseconds;
-                    if (lastTick != currentTick)
-                    {
-                        s1.Advance();
-                        s2.Advance();
-                        lastTick = currentTick;
-                    }
+        //        var timer = Stopwatch.StartNew();
+        //        var lastTick = 0L;
+        //        while (lastTick < 1000)
+        //        {
+        //            var currentTick = timer.ElapsedMilliseconds;
+        //            if (lastTick != currentTick)
+        //            {
+        //                s1.Advance();
+        //                s2.Advance();
+        //                lastTick = currentTick;
+        //            }
 
-                    System.Threading.Thread.Sleep(1);
-                }
+        //            System.Threading.Thread.Sleep(1);
+        //        }
 
-                Assert.AreEqual(2, s1.Majority);
-                Assert.AreEqual(2, s2.Majority);
-                Assert.IsTrue(s1.ID.Equals(s2.GetClient(s1.ID).ID));
-                Assert.IsTrue(s2.ID.Equals(s1.GetClient(s2.ID).ID));
-                Assert.IsTrue(s1.PersistedStore.Clients.Any(x => x.Equals(s2.ID)));
-                Assert.IsTrue(s2.PersistedStore.Clients.Any(x => x.Equals(s1.ID)));
-            }
-        }
+        //        Assert.AreEqual(2, s1.Majority);
+        //        Assert.AreEqual(2, s2.Majority);
+        //        Assert.IsTrue(s1.ID.Equals(s2.GetClient(s1.ID).ID));
+        //        Assert.IsTrue(s2.ID.Equals(s1.GetClient(s2.ID).ID));
+        //        Assert.IsTrue(s1.PersistedStore.Clients.Any(x => x.Equals(s2.ID)));
+        //        Assert.IsTrue(s2.PersistedStore.Clients.Any(x => x.Equals(s1.ID)));
+        //    }
+        //}
 
         [TestMethod]
         public void AddServer_Timesout()
         {
-            var transport = new MemoryTransport();
-            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
-            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var mock = new T())
+            using (var s1 = mock.CreateServer())
+            using (var s2 = mock.CreateServer())
             {
 
                 s1.Initialize();
@@ -235,9 +246,9 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void AddServer_StillGrantsVote()
         {
-            var transport = new MemoryTransport();
-            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
-            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var mock = new T())
+            using (var s1 = mock.CreateServer())
+            using (var s2 = mock.CreateServer())
             {
 
                 s1.Initialize();

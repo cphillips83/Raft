@@ -9,7 +9,20 @@ using Raft.Transports;
 namespace Raft.Tests.Unit
 {
     [TestClass]
-    public class LogReplicationTest
+    public class MemoryLogReplicationTest : LogReplicationTest<MemoryTransportImpl>
+    {
+
+    }
+
+    [TestClass]
+    public class UdpLogReplicationTest : LogReplicationTest<UdpTransportImpl>
+    {
+
+    }
+
+    [TestClass]
+    public abstract class LogReplicationTest<T>
+        where T : TransportImpl, new()
     {
 #if DEBUG
         static LogReplicationTest()
@@ -24,9 +37,9 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void LogReplicated()
         {
-            var transport = new MemoryTransport();
-            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
-            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var mock = new T())
+            using (var s1 = mock.CreateServer())
+            using (var s2 = mock.CreateServer())
             {
 
                 s1.Initialize(s2.ID);
@@ -64,9 +77,9 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void LogCommitIndex()
         {
-            var transport = new MemoryTransport();
-            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
-            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var mock = new T())
+            using (var s1 = mock.CreateServer())
+            using (var s2 = mock.CreateServer())
             {
 
                 s1.Initialize(s2.ID);

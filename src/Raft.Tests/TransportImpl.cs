@@ -10,9 +10,10 @@ using Raft.Transports;
 
 namespace Raft.Tests
 {
-    public interface TransportImpl : IDisposable
+    public abstract class TransportImpl : IDisposable
     {
-        Server CreateServer();
+        public abstract Server CreateServer();
+        public abstract void Dispose();
     }
 
     public class MemoryTransportImpl : TransportImpl
@@ -22,7 +23,7 @@ namespace Raft.Tests
         private MemoryTransport transport = new MemoryTransport();
         private List<Server> servers = new List<Server>();
 
-        public Server CreateServer()
+        public override Server CreateServer()
         {
             var sid = ++id;
             var port = sid + 7000;
@@ -38,7 +39,7 @@ namespace Raft.Tests
             return server;
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
             foreach (var s in servers)
                 s.Dispose();
@@ -54,7 +55,7 @@ namespace Raft.Tests
         //private MemoryTransport transport = new MemoryTransport();
         private List<Server> servers = new List<Server>();
 
-        public Server CreateServer()
+        public override Server CreateServer()
         {
             var sid = ++id;
             var port = sid + 7000;
@@ -71,7 +72,7 @@ namespace Raft.Tests
             return server;
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
             foreach (var s in servers)
                 s.Dispose();

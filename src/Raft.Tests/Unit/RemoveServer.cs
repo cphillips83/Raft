@@ -14,7 +14,20 @@ using Raft.Transports;
 namespace Raft.Tests.Unit
 {
     [TestClass]
-    public class RemoveServer
+    public class MemoryRemoveServer : RemoveServer<MemoryTransportImpl>
+    {
+
+    }
+
+    [TestClass]
+    public class UdpRemoveServer : RemoveServer<UdpTransportImpl>
+    {
+
+    }
+
+    [TestClass]
+    public abstract class RemoveServer<T>
+        where T : TransportImpl, new()
     {
 #if DEBUG
         static RemoveServer()
@@ -28,9 +41,9 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void RemoveServer_OK()
         {
-                var transport = new MemoryTransport();
-            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
-            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var mock = new T())
+            using (var s1 = mock.CreateServer())
+            using (var s2 = mock.CreateServer())
             {
 
                 s1.Initialize( s2.ID);

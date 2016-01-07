@@ -16,7 +16,7 @@ namespace Raft.Tests.Unit
     }
 
     [TestClass]
-    public class UdpBasicNodeTest : BasicNodeTest<MemoryTransportImpl>
+    public class UdpBasicNodeTest : BasicNodeTest<UdpTransportImpl>
     {
 
     }
