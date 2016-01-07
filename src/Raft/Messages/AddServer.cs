@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using Raft.Transports;
 
 namespace Raft.Messages
 {
@@ -36,15 +38,41 @@ namespace Raft.Messages
         Ok,        
     }
 
-    public struct AddServerRequest
+    public struct AddServerRequest : IMessage
     {
         public IPEndPoint From;
+
+        public void Read(BinaryReader msg)
+        {
+            From = msg.ReadIPEndPoint();
+        }
+
+        public void Write(BinaryWriter msg)
+        {
+            msg.Write((byte)MessageTypes.AddServerRequest);
+            msg.Write(From);
+        }
     }
 
-    public struct AddServerReply
+    public struct AddServerReply : IMessage
     {
         public IPEndPoint From;
         public AddServerStatus Status;
         public IPEndPoint LeaderHint;
+
+        public void Read(BinaryReader msg)
+        {
+            From = msg.ReadIPEndPoint();
+            Status = (AddServerStatus)msg.ReadUInt32();
+            LeaderHint = msg.ReadIPEndPoint();
+        }
+
+        public void Write(BinaryWriter msg)
+        {
+            msg.Write((byte)MessageTypes.AddServerReply);
+            msg.Write(From);
+            msg.Write((uint)Status);
+            msg.Write(LeaderHint);
+        }
     }
 }

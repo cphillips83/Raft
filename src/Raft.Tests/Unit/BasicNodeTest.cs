@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -9,25 +10,35 @@ using Raft.Transports;
 namespace Raft.Tests.Unit
 {
     [TestClass]
-    public class BasicNodeTest
+    public class MemoryBasicNodeTest : BasicNodeTest<MemoryTransportImpl>
+    {
+
+    }
+
+    [TestClass]
+    public class UdpBasicNodeTest : BasicNodeTest<MemoryTransportImpl>
+    {
+
+    }
+
+    [TestClass]
+    public abstract class BasicNodeTest<T>
+        where T : TransportImpl, new()
     {
 #if DEBUG
         static BasicNodeTest()
         {
             if (System.Diagnostics.Debugger.IsAttached)
                 Console.SetOut(new DebugWriter());
-
-
         }
 #endif
 
         [TestMethod]
         public void IsFollower()
         {
-            var transport = new MemoryTransport();
-            using (var server = Helper.CreateServer(new MemoryLog(), transport))
+            using (var mock = new T())
+            using (var server = mock.CreateServer())
             {
-
                 server.Initialize();
                 server.Advance(1);
 
@@ -38,8 +49,8 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void IsCandidate()
         {
-            var transport = new MemoryTransport();
-            using (var server = Helper.CreateServer(new MemoryLog(), transport))
+            using (var mock = new T())
+            using (var server = mock.CreateServer())
             {
                 server.Initialize();
                 var ticks = server.PersistedStore.ELECTION_TIMEOUT * 2;
@@ -53,8 +64,8 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void IsLeader()
         {
-            var transport = new MemoryTransport();
-            using (var server = Helper.CreateServer(new MemoryLog(), transport))
+            using (var mock = new T())
+            using (var server = mock.CreateServer())
             {
                 server.Initialize();
 
@@ -71,9 +82,9 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void NodeGrantsVote()
         {
-            var transport = new MemoryTransport();
-            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
-            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var mock = new T())
+            using (var s1 = mock.CreateServer())
+            using (var s2 = mock.CreateServer())
             {
 
                 s1.Initialize(s2.ID);
@@ -93,9 +104,9 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void NodeGrantsVoteWithLongerLogOlderTerm()
         {
-            var transport = new MemoryTransport();
-            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
-            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var mock = new T())
+            using (var s1 = mock.CreateServer())
+            using (var s2 = mock.CreateServer())
             {
 
                 s1.Initialize(s2.ID);
@@ -127,9 +138,9 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void NodeDoesntGrantVoteWithSameTermLongerLog()
         {
-            var transport = new MemoryTransport();
-            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
-            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var mock = new T())
+            using (var s1 = mock.CreateServer())
+            using (var s2 = mock.CreateServer())
             {
 
                 s1.Initialize(s2.ID);
@@ -159,9 +170,9 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void NodeDoesntGrantVoteWithNewerTerm()
         {
-            var transport = new MemoryTransport();
-            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
-            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var mock = new T())
+            using (var s1 = mock.CreateServer())
+            using (var s2 = mock.CreateServer())
             {
 
                 s1.Initialize(s2.ID);
@@ -183,9 +194,9 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void NodeGrantsVoteWithSameLog()
         {
-            var transport = new MemoryTransport();
-            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
-            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var mock = new T())
+            using (var s1 = mock.CreateServer())
+            using (var s2 = mock.CreateServer())
             {
 
                 s1.Initialize(s2.ID);
@@ -213,9 +224,9 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void TestChunkedLogs()
         {
-            var transport = new MemoryTransport();
-            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
-            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var mock = new T())
+            using (var s1 = mock.CreateServer())
+            using (var s2 = mock.CreateServer())
             {
 
                 s1.Initialize(s2.ID);
@@ -285,9 +296,9 @@ namespace Raft.Tests.Unit
         [TestMethod]
         public void TestVerify()
         {
-            var transport = new MemoryTransport();
-            using (var s1 = Helper.CreateServer(new MemoryLog(), transport))
-            using (var s2 = Helper.CreateServer(new MemoryLog(), transport))
+            using (var mock = new T())
+            using (var s1 = mock.CreateServer())
+            using (var s2 = mock.CreateServer())
             {
 
                 s1.Initialize(s2.ID);

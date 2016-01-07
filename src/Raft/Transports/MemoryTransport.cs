@@ -61,6 +61,11 @@ namespace Raft.Transports
                 return base.handleMessage(server, msg);
             }
 
+            public override void SendMessage(Client client, IMessage message)
+            {
+                addMessage(message);
+            }
+
             public override void SendMessage(Client client, VoteRequest request)
             {
                 addMessage(request);

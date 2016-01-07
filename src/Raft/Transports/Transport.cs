@@ -14,6 +14,8 @@ namespace Raft.Transports
 
         protected Queue<object> _incomingMessages = new Queue<object>();
 
+        public abstract void SendMessage(Client client, IMessage message);
+
         public abstract void SendMessage(Client client, VoteRequest request);
         public abstract void SendMessage(Client client, VoteReply reply);
         public abstract void SendMessage(Client client, AppendEntriesRequest request);
