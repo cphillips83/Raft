@@ -197,6 +197,8 @@ namespace Raft.Transports
             {
                 try
                 {
+                    _client = new TcpClient();
+                    _client.NoDelay = true;
                     _client.ConnectAsync(config.Address, config.Port).Wait(50);
                     setup();
                 }

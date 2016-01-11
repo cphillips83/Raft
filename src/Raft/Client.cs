@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.ServiceModel;
+using System.ServiceModel.Web;
 using System.Text;
 using System.Threading.Tasks;
 using Raft.Logs;
@@ -9,6 +11,20 @@ using Raft.Messages;
 
 namespace Raft
 {
+    //[ServiceContract(SessionMode = SessionMode.NotAllowed)]
+    //public interface INode
+    //{
+    //    [OperationContract]
+    //    [WebGet()]
+    //    bool Vote();
+
+    //}
+
+    //public class Node
+    //{
+
+    //}
+
     public class Client 
     {
         private IPEndPoint _id;
@@ -21,6 +37,8 @@ namespace Raft
         private uint _nextIndex;
         private long _rpcDue;
         private object _lastMessage;
+
+        //private INode proxy;
 
         public IPEndPoint ID { get { return _id; } }
         //public Configuration Config { get { return _config; } }
@@ -40,7 +58,21 @@ namespace Raft
             //_id = _config.ID;
             _id = id; //new IPEndPoint(config.IP, config.Port);
             _server = server;
+
+            //var binding = new BasicHttpBinding();
+            
+            //var factory = new ChannelFactory<INode>(binding);
         }
+
+        //private static WebHttpBinding CreateDefaultBinding()
+        //{
+        //    var binding = new WebHttpBinding();
+        //    binding.ReaderQuotas.MaxArrayLength = int.MaxValue;
+        //    binding.TransferMode = TransferMode.Streamed;
+        //    binding.MaxReceivedMessageSize = 1024 * 1024 * 25;
+        //    binding.MaxBufferSize = MESSAGE_BUFFER_LENGTH;
+        //    return binding;
+        //}
 
         public void SendVoteRequest()
         {

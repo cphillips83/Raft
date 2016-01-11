@@ -50,12 +50,12 @@ namespace Raft.Tests.Unit
 
                 s1.ChangeState(new CandidateState(s1)); // will push s1 to term 2
 
-                s2.Advance();
-                s1.Advance();
+                s2.Advance(5);
+                s1.Advance(5);
 
                 s1.PersistedStore.CreateData(s1, new byte[] { 5 });
                 s1.Advance(50);
-                s2.Advance();
+                s2.Advance(5);
 
                 LogIndex logIndex;
                 var index = s2.PersistedStore.GetLastIndex(out logIndex);
