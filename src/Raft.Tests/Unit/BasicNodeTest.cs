@@ -93,8 +93,12 @@ namespace Raft.Tests.Unit
 
                 s1.ChangeState(new CandidateState(s1));
 
-                s2.Advance();
-                s1.Advance();
+                var count = s1.PersistedStore.ELECTION_TIMEOUT;
+                while (count-- > 0)
+                {
+                    s2.Advance();
+                    s1.Advance();
+                }
 
                 Assert.AreEqual(s1.ID, s2.PersistedStore.VotedFor);
                 Assert.AreEqual(true, s1.Clients.First().VoteGranted);
@@ -126,8 +130,12 @@ namespace Raft.Tests.Unit
 
                 s1.ChangeState(new CandidateState(s1)); // will push s1 to term 2
 
-                s2.Advance();
-                s1.Advance();
+                var count = s1.PersistedStore.ELECTION_TIMEOUT;
+                while (count-- > 0)
+                {
+                    s2.Advance();
+                    s1.Advance();
+                }
 
                 Assert.AreEqual(s1.ID, s2.PersistedStore.VotedFor);
                 Assert.AreEqual(true, s1.Clients.First().VoteGranted);
@@ -159,8 +167,12 @@ namespace Raft.Tests.Unit
 
                 s1.ChangeState(new CandidateState(s1)); // will push s1 to term 2
 
-                s2.Advance();
-                s1.Advance();
+                var count = s1.PersistedStore.ELECTION_TIMEOUT;
+                while (count-- > 0)
+                {
+                    s2.Advance();
+                    s1.Advance();
+                }
 
                 Assert.AreEqual(null, s2.PersistedStore.VotedFor);
                 Assert.AreEqual(false, s1.Clients.First().VoteGranted);
@@ -183,8 +195,12 @@ namespace Raft.Tests.Unit
 
                 s1.ChangeState(new CandidateState(s1)); // will push s1 to term 2
 
-                s2.Advance();
-                s1.Advance();
+                var count = s1.PersistedStore.ELECTION_TIMEOUT;
+                while (count-- > 0)
+                {
+                    s2.Advance();
+                    s1.Advance();
+                }
 
                 Assert.AreEqual(null, s2.PersistedStore.VotedFor);
                 Assert.AreEqual(false, s1.Clients.First().VoteGranted);

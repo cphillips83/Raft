@@ -42,17 +42,17 @@ namespace Raft.States
 
         }
 
-        public VoteReply VoteRequest2(VoteRequest request)
+        public VoteReply? VoteRequest2(VoteRequest request)
         {
             var client = _server.GetClient(request.From);
             return VoteRequest2(client, request);
         }
 
-        public bool VoteRequest(VoteRequest request)
-        {
-            var client = _server.GetClient(request.From);
-            return VoteRequest(client, request);
-        }
+        //public bool VoteRequest(VoteRequest request)
+        //{
+        //    var client = _server.GetClient(request.From);
+        //    return VoteRequest(client, request);
+        //}
 
         public bool VoteReply(VoteReply reply)
         {
@@ -122,15 +122,10 @@ namespace Raft.States
             }
         }
 
-        protected abstract bool VoteRequest(Client client, VoteRequest request);
-        protected virtual VoteReply VoteRequest2(Client client, VoteRequest request)
+        //protected abstract bool VoteRequest(Client client, VoteRequest request);
+        protected virtual VoteReply? VoteRequest2(Client client, VoteRequest request)
         {
-            return new VoteReply()
-            {
-                From = _server.ID,
-                Term = _server.PersistedStore.Term,
-                Granted = false
-            };
+            return null;
         }
 
         protected abstract bool VoteReply(Client client, VoteReply reply);

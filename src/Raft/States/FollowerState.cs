@@ -40,7 +40,7 @@ namespace Raft.States
             _heatbeatTimeout = _server.Tick + randomTimeout;
         }
 
-        protected override VoteReply VoteRequest2(Client client, VoteRequest request)
+        protected override VoteReply? VoteRequest2(Client client, VoteRequest request)
         {
             var _persistedState = _server.PersistedStore;
             if (_persistedState.Term < request.Term)
@@ -83,44 +83,44 @@ namespace Raft.States
             };
         }
 
-        protected override bool VoteRequest(Client client, VoteRequest request)
-        {
-            var _persistedState = _server.PersistedStore;
-            if (_persistedState.Term < request.Term)
-            {
-                _persistedState.Term = request.Term;
-                if (_heatbeatTimeout <= _server.Tick)
-                    resetHeartbeat();
-            }
+        //protected override bool VoteRequest(Client client, VoteRequest request)
+        //{
+        //    var _persistedState = _server.PersistedStore;
+        //    if (_persistedState.Term < request.Term)
+        //    {
+        //        _persistedState.Term = request.Term;
+        //        if (_heatbeatTimeout <= _server.Tick)
+        //            resetHeartbeat();
+        //    }
 
-            var ourLastLogTerm = _persistedState.GetLastTerm();
-            var termCheck = _persistedState.Term == request.Term;
-            var canVote = _persistedState.VotedFor == null || _persistedState.VotedFor == request.From;
-            var ourLogIsBetter = _persistedState.LogIsBetter(request.LogLength, request.LastTerm);
-            //var logTermFurther = request.LastTerm > ourLastLogTerm;
-            //var logIndexLonger = request.LastTerm == ourLastLogTerm && request.LogLength >= _persistedState.Length;
-            var granted = termCheck && canVote && !ourLogIsBetter;
+        //    var ourLastLogTerm = _persistedState.GetLastTerm();
+        //    var termCheck = _persistedState.Term == request.Term;
+        //    var canVote = _persistedState.VotedFor == null || _persistedState.VotedFor == request.From;
+        //    var ourLogIsBetter = _persistedState.LogIsBetter(request.LogLength, request.LastTerm);
+        //    //var logTermFurther = request.LastTerm > ourLastLogTerm;
+        //    //var logIndexLonger = request.LastTerm == ourLastLogTerm && request.LogLength >= _persistedState.Length;
+        //    var granted = termCheck && canVote && !ourLogIsBetter;
 
-            if (!termCheck)
-                Console.WriteLine("{0}: Can not vote for {1} because term {2}, expected {3}", _server.Name, client.ID, request.Term, _persistedState.Term);
+        //    if (!termCheck)
+        //        Console.WriteLine("{0}: Can not vote for {1} because term {2}, expected {3}", _server.Name, client.ID, request.Term, _persistedState.Term);
 
-            if (!canVote)
-                Console.WriteLine("{0}: Can not vote for {1} because I already voted for {2}", _server.Name, client.ID, _persistedState.VotedFor);
+        //    if (!canVote)
+        //        Console.WriteLine("{0}: Can not vote for {1} because I already voted for {2}", _server.Name, client.ID, _persistedState.VotedFor);
 
-            if (ourLogIsBetter)
-                Console.WriteLine("{0}: Can not vote for {1} because my log is more update to date", _server.Name, client.ID);
+        //    if (ourLogIsBetter)
+        //        Console.WriteLine("{0}: Can not vote for {1} because my log is more update to date", _server.Name, client.ID);
 
-            if (granted)
-            {
-                Console.WriteLine("{0}: Voted for {1}", _server.Name, client.ID);
-                _persistedState.VotedFor = client.ID;
-                _leader = null;
-                resetHeartbeat();
-            }
+        //    if (granted)
+        //    {
+        //        Console.WriteLine("{0}: Voted for {1}", _server.Name, client.ID);
+        //        _persistedState.VotedFor = client.ID;
+        //        _leader = null;
+        //        resetHeartbeat();
+        //    }
 
-            client.SendVoteReply(granted);
-            return true;
-        }
+        //    client.SendVoteReply(granted);
+        //    return true;
+        //}
 
         protected override bool VoteReply(Client client, VoteReply reply)
         {

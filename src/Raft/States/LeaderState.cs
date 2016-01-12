@@ -165,13 +165,21 @@ namespace Raft.States
             return true;
         }
 
-        protected override bool VoteRequest(Client client, VoteRequest request)
+        //protected override bool VoteRequest(Client client, VoteRequest request)
+        //{
+        //    if (StepDown(request.Term))
+        //        return false;
+
+        //    client.SendVoteReply(false);
+        //    return true;
+        //}
+
+        protected override VoteReply? VoteRequest2(Client client, VoteRequest request)
         {
             if (StepDown(request.Term))
-                return false;
+                return null;
 
-            client.SendVoteReply(false);
-            return true;
+            return null;
         }
 
         protected override bool AppendEntriesRequest(Client client, AppendEntriesRequest request)

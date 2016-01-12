@@ -81,10 +81,10 @@ namespace Raft.States
             return true;
         }
 
-        protected override bool VoteRequest(Client client, VoteRequest request)
-        {
-            return true;
-        }
+        //protected override bool VoteRequest(Client client, VoteRequest request)
+        //{
+        //    return true;
+        //}
 
         protected override bool AppendEntriesRequest(Client client, AppendEntriesRequest request)
         {

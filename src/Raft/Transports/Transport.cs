@@ -34,9 +34,10 @@ namespace Raft.Transports
 
         public static bool HandleMessageAsync(Server server, object msg)
         {
-            if (msg is VoteRequest)
-                return server.CurrentState.VoteRequest((VoteRequest)msg);
-            else if (msg is VoteReply)
+            //if (msg is VoteRequest)
+            //    return server.CurrentState.VoteRequest((VoteRequest)msg);
+            //else 
+            if (msg is VoteReply)
                 return server.CurrentState.VoteReply((VoteReply)msg);
             else if (msg is AppendEntriesRequest)
                 return server.CurrentState.AppendEntriesRequest((AppendEntriesRequest)msg);
@@ -61,9 +62,10 @@ namespace Raft.Transports
 
         public static bool HandleMessage(Server server, object msg)
         {
-            if (msg is VoteRequest)
-                return server.CurrentState.VoteRequest((VoteRequest)msg);
-            else if (msg is VoteReply)
+            //if (msg is VoteRequest)
+            //    return server.CurrentState.VoteRequest((VoteRequest)msg);
+            //else 
+            if (msg is VoteReply)
                 return server.CurrentState.VoteReply((VoteReply)msg);
             else if (msg is AppendEntriesRequest)
                 return server.CurrentState.AppendEntriesRequest((AppendEntriesRequest)msg);

@@ -21,11 +21,18 @@ namespace Raft.States
             return true;
         }
 
-        protected override bool VoteRequest(Client client, VoteRequest request)
+        //protected override bool VoteRequest(Client client, VoteRequest request)
+        //{
+        //    LastMessage = request;
+        //    LastClient = client;
+        //    return true;
+        //}
+
+        protected override VoteReply? VoteRequest2(Client client, VoteRequest request)
         {
             LastMessage = request;
             LastClient = client;
-            return true;
+            return null;
         }
 
         protected override bool AppendEntriesRequest(Client client, AppendEntriesRequest request)

@@ -93,35 +93,35 @@ namespace Raft
             _rpcDue = _server.Tick + _server.PersistedStore.RPC_TIMEOUT;
         }
 
-        public void SendVoteRequest()
-        {
-            LogIndex lastIndex;
-            var lastLogIndex = _server.PersistedStore.GetLastIndex(out lastIndex);
+        //public void SendVoteRequest()
+        //{
+        //    LogIndex lastIndex;
+        //    var lastLogIndex = _server.PersistedStore.GetLastIndex(out lastIndex);
 
-            var message = new VoteRequest()
-            {
-                From = _server.ID,
-                Term = _server.PersistedStore.Term,
-                LastTerm = lastIndex.Term,
-                LogLength = _server.PersistedStore.Length
-            };
+        //    var message = new VoteRequest()
+        //    {
+        //        From = _server.ID,
+        //        Term = _server.PersistedStore.Term,
+        //        LastTerm = lastIndex.Term,
+        //        LogLength = _server.PersistedStore.Length
+        //    };
 
-            _lastMessage = message;
-            _server.Transport.SendMessage(this, message);
-            _rpcDue = _server.Tick + _server.PersistedStore.RPC_TIMEOUT;
-        }
+        //    _lastMessage = message;
+        //    _server.Transport.SendMessage(this, message);
+        //    _rpcDue = _server.Tick + _server.PersistedStore.RPC_TIMEOUT;
+        //}
 
-        public void SendVoteReply(bool granted)
-        {
-            var message = new VoteReply()
-            {
-                From = _server.ID,
-                Term = _server.PersistedStore.Term,
-                Granted = granted
-            };
-            _lastMessage = message;
-            _server.Transport.SendMessage(this, message);
-        }
+        //public void SendVoteReply(bool granted)
+        //{
+        //    var message = new VoteReply()
+        //    {
+        //        From = _server.ID,
+        //        Term = _server.PersistedStore.Term,
+        //        Granted = granted
+        //    };
+        //    _lastMessage = message;
+        //    _server.Transport.SendMessage(this, message);
+        //}
 
         public void SendAppendEntriesRequest()
         {

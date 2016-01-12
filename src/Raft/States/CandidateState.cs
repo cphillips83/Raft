@@ -49,32 +49,28 @@ namespace Raft.States
             }
         }
 
-        protected override VoteReply VoteRequest2(Client client, VoteRequest request)
+        protected override VoteReply? VoteRequest2(Client client, VoteRequest request)
         {
             if (StepDown(request.Term))
-                return new VoteReply()
-                {
-                    From = _server.ID,
-                    Term = _server.PersistedStore.Term,
-                    Granted = true
-                };
+                return null;
 
-            return new VoteReply()
-            {
-                From = _server.ID,
-                Term = _server.PersistedStore.Term,
-                Granted = false
-            };
+            //return new VoteReply()
+            //{
+            //    From = _server.ID,
+            //    Term = _server.PersistedStore.Term,
+            //    Granted = false
+            //};
+            return null;
         }
 
-        protected override bool VoteRequest(Client client, VoteRequest request)
-        {
-            if (StepDown(request.Term))
-                return false;
+        //protected override bool VoteRequest(Client client, VoteRequest request)
+        //{
+        //    if (StepDown(request.Term))
+        //        return false;
 
-            client.SendVoteReply(false);
-            return true;
-        }
+        //    client.SendVoteReply(false);
+        //    return true;
+        //}
 
         protected override bool VoteReply(Client client, VoteReply reply)
         {
