@@ -9,25 +9,26 @@ using Raft.Logs;
 using Raft.Messages;
 using Raft.States;
 using Raft.Transports;
+using T = Raft.Tests.MemoryTransportImpl;
 
 
 namespace Raft.Tests.Unit
 {
+    //[TestClass]
+    //public class MemoryRemoveServer : RemoveServer<MemoryTransportImpl>
+    //{
+
+    //}
+
+    //[TestClass]
+    //public class UdpRemoveServer : RemoveServer<UdpTransportImpl>
+    //{
+
+    //}
+
     [TestClass]
-    public class MemoryRemoveServer : RemoveServer<MemoryTransportImpl>
-    {
-
-    }
-
-    [TestClass]
-    public class UdpRemoveServer : RemoveServer<UdpTransportImpl>
-    {
-
-    }
-
-    [TestClass]
-    public abstract class RemoveServer<T>
-        where T : TransportImpl, new()
+    public  class RemoveServer//<T>
+        //where T : TransportImpl, new()
     {
 #if DEBUG
         static RemoveServer()

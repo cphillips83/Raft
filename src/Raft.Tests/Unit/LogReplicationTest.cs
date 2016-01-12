@@ -5,24 +5,25 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Raft.Logs;
 using Raft.States;
 using Raft.Transports;
+using T = Raft.Tests.MemoryTransportImpl;
 
 namespace Raft.Tests.Unit
 {
+    //[TestClass]
+    //public class MemoryLogReplicationTest : LogReplicationTest<MemoryTransportImpl>
+    //{
+
+    //}
+
+    //[TestClass]
+    //public class UdpLogReplicationTest : LogReplicationTest<UdpTransportImpl>
+    //{
+
+    //}
+
     [TestClass]
-    public class MemoryLogReplicationTest : LogReplicationTest<MemoryTransportImpl>
-    {
-
-    }
-
-    [TestClass]
-    public class UdpLogReplicationTest : LogReplicationTest<UdpTransportImpl>
-    {
-
-    }
-
-    [TestClass]
-    public abstract class LogReplicationTest<T>
-        where T : TransportImpl, new()
+    public  class LogReplicationTest//<T>
+        //where T : TransportImpl, new()
     {
 #if DEBUG
         static LogReplicationTest()

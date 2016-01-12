@@ -11,5 +11,6 @@ namespace Raft.Messages
     {
         void Write(BinaryWriter msg);
         void Read(BinaryReader msg);
+        //void HandleMessageAsync
     }
 }

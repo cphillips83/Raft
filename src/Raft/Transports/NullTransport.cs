@@ -12,6 +12,7 @@ namespace Raft.Transports
         public void ResetConnection(Client client) { }
 
         public void SendMessage(Client client, IMessage message) { }
+        public Task<IMessage> SendMessageAsync(Client client, IMessage message) { return null; }
 
         public void Process(Server server)
         {

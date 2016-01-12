@@ -29,7 +29,8 @@ namespace Raft.States
 
             foreach (var client in _server.Voters)
                 if (client.ReadyToSend)
-                    client.SendVoteRequest();
+                    client.VoteRequest();
+                    //client.SendVoteRequest();
         }
 
         public override void Update()
@@ -46,6 +47,24 @@ namespace Raft.States
                 if (votes >= votesNeeded)
                     _server.ChangeState(new LeaderState(_server));
             }
+        }
+
+        protected override VoteReply VoteRequest2(Client client, VoteRequest request)
+        {
+            if (StepDown(request.Term))
+                return new VoteReply()
+                {
+                    From = _server.ID,
+                    Term = _server.PersistedStore.Term,
+                    Granted = true
+                };
+
+            return new VoteReply()
+            {
+                From = _server.ID,
+                Term = _server.PersistedStore.Term,
+                Granted = false
+            };
         }
 
         protected override bool VoteRequest(Client client, VoteRequest request)

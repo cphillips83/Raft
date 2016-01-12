@@ -10,21 +10,22 @@ using Raft.Logs;
 using Raft.Messages;
 using Raft.States;
 using Raft.Transports;
+using T = Raft.Tests.MemoryTransportImpl;
 
 namespace Raft.Tests.Unit
 {
-    [TestClass]
-    public class MemoryAddServer : AddServer<MemoryTransportImpl> { }
+    //[TestClass]
+    //public class MemoryAddServer : AddServer<MemoryTransportImpl> { }
+
+    //[TestClass]
+    //public class UdpAddServer : AddServer<UdpTransportImpl> { }
+
+    //[TestClass]
+    //public class TcpAddServer : AddServer<TcpTransportImpl> { }
 
     [TestClass]
-    public class UdpAddServer : AddServer<UdpTransportImpl> { }
-
-    [TestClass]
-    public class TcpAddServer : AddServer<TcpTransportImpl> { }
-
-    [TestClass]
-    public abstract class AddServer<T>
-        where T : TransportImpl, new()
+    public  class AddServer//<T>
+        //where T : TransportImpl, new()
     {
 #if DEBUG
         static AddServer()

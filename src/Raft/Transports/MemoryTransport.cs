@@ -15,11 +15,11 @@ namespace Raft.Transports
             private class ClientMessage
             {
                 public int Tick;
-                public object Message;
+                public Task Task;
             }
 
             private List<ClientMessage> _clientMessages = new List<ClientMessage>();
-
+            private Server _server;
             private Random _random;
             private int _minRpc, _maxRpc;
             private float _packetDropRate;
@@ -32,24 +32,32 @@ namespace Raft.Transports
                 _packetDropRate = packetDropRate;
             }
 
-            private void addMessage(object message)
+            private Task<IMessage> addMessage(object message)
             {
+                var task = new Task<IMessage>(() =>
+                {
+                    handleMessage(_server, message);
+                    return null;
+                });
+
                 _clientMessages.Add(new ClientMessage()
                 {
                     Tick = _random.Next(_minRpc, _maxRpc),
-                    Message = message
+                    Task = task
                 });
+                return task;
             }
 
             public override void Process(Server server)
             {
+                _server = server;
                 for (var i = 0; i < _clientMessages.Count; i++)
                 {
                     var nextMessage = _clientMessages[i];
                     nextMessage.Tick--;
-
-                    if (nextMessage.Tick <= 0 && handleMessage(server, nextMessage.Message))
-                        _clientMessages.RemoveAt(i--);
+                    nextMessage.Task.RunSynchronously();
+                    //if (nextMessage.Tick <= 0 && handleMessage(server, nextMessage.Message))
+                    _clientMessages.RemoveAt(i--);
                 }
             }
 
@@ -64,6 +72,26 @@ namespace Raft.Transports
             public override void SendMessage(Client client, IMessage message)
             {
                 addMessage(message);
+            }
+
+            public override Task<IMessage> SendMessageAsync(Client client, IMessage message)
+            {
+                if (message is VoteRequest)
+                {
+                    var task = new Task<IMessage>(() =>
+                    {
+                        return _server.CurrentState.VoteRequest2((VoteRequest)message);
+                    });
+
+                    _clientMessages.Add(new ClientMessage()
+                    {
+                        Tick = _random.Next(_minRpc, _maxRpc),
+                        Task = task
+                    });
+                    return task;
+                }
+                else
+                    return addMessage(message);
             }
 
             public override void Start(IPEndPoint config)
@@ -121,6 +149,12 @@ namespace Raft.Transports
         {
             var transport = GetClient(client.ID);
             transport.SendMessage(client, message);
+        }
+
+        public Task<IMessage> SendMessageAsync(Client client, IMessage message)
+        {
+            var transport = GetClient(client.ID);
+            return transport.SendMessageAsync(client, message);
         }
 
         public void Process(Server server)

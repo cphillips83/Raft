@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Raft.Logs;
 using Raft.Messages;
+using Raft.Transports;
 
 namespace Raft
 {
@@ -25,7 +26,7 @@ namespace Raft
 
     //}
 
-    public class Client 
+    public class Client
     {
         private IPEndPoint _id;
         //private Configuration _config;
@@ -37,7 +38,7 @@ namespace Raft
         private uint _nextIndex;
         private long _rpcDue;
         private object _lastMessage;
-
+        private Task<IMessage> _currentMessage;
         //private INode proxy;
 
         public IPEndPoint ID { get { return _id; } }
@@ -52,6 +53,7 @@ namespace Raft
         public bool WaitingForResponse { get { return _rpcDue > 0 && _rpcDue < uint.MaxValue && _rpcDue > _server.Tick; } }
         public IPEndPoint AgentIP { get; set; }
 
+
         public Client(Server server, IPEndPoint id)
         {
             //_config = config;
@@ -60,7 +62,7 @@ namespace Raft
             _server = server;
 
             //var binding = new BasicHttpBinding();
-            
+
             //var factory = new ChannelFactory<INode>(binding);
         }
 
@@ -73,6 +75,23 @@ namespace Raft
         //    binding.MaxBufferSize = MESSAGE_BUFFER_LENGTH;
         //    return binding;
         //}
+        public void VoteRequest()
+        {
+            LogIndex lastIndex;
+            var lastLogIndex = _server.PersistedStore.GetLastIndex(out lastIndex);
+
+            var message = new VoteRequest()
+            {
+                From = _server.ID,
+                Term = _server.PersistedStore.Term,
+                LastTerm = lastIndex.Term,
+                LogLength = _server.PersistedStore.Length
+            };
+
+            _currentMessage = _server.Transport.SendMessageAsync(this, message);
+            _lastMessage = message;
+            _rpcDue = _server.Tick + _server.PersistedStore.RPC_TIMEOUT;
+        }
 
         public void SendVoteRequest()
         {
@@ -240,6 +259,30 @@ namespace Raft
                 Console.WriteLine("{0}: dropped rpc for {1} at {2} ", _server.Name, _id, _server.Tick);
                 _server.Transport.ResetConnection(this);
                 _rpcDue = 0;
+                _currentMessage = null;
+            }
+
+            if (_currentMessage != null)
+            {
+                if (_currentMessage.IsFaulted || _currentMessage.IsCanceled)
+                {
+                    Console.WriteLine("{0}: dropped rpc for {1} at {2} ", _server.Name, _id, _server.Tick);
+                    _server.Transport.ResetConnection(this);
+                    _rpcDue = 0;
+                    _currentMessage = null;
+                }
+                else if (_currentMessage.IsCompleted)
+                {
+                    var result = _currentMessage.Result;
+                    _rpcDue = 0;
+                    _currentMessage = null;
+
+                    if (result == null)
+                        return;
+
+                    Transport.HandleMessage(_server, result);
+
+                }
             }
         }
 

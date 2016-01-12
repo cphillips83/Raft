@@ -42,6 +42,12 @@ namespace Raft.States
 
         }
 
+        public VoteReply VoteRequest2(VoteRequest request)
+        {
+            var client = _server.GetClient(request.From);
+            return VoteRequest2(client, request);
+        }
+
         public bool VoteRequest(VoteRequest request)
         {
             var client = _server.GetClient(request.From);
@@ -117,6 +123,16 @@ namespace Raft.States
         }
 
         protected abstract bool VoteRequest(Client client, VoteRequest request);
+        protected virtual VoteReply VoteRequest2(Client client, VoteRequest request)
+        {
+            return new VoteReply()
+            {
+                From = _server.ID,
+                Term = _server.PersistedStore.Term,
+                Granted = false
+            };
+        }
+
         protected abstract bool VoteReply(Client client, VoteReply reply);
 
         protected abstract bool AppendEntriesRequest(Client client, AppendEntriesRequest request);

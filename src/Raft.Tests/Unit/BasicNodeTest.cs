@@ -6,24 +6,25 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Raft.Logs;
 using Raft.States;
 using Raft.Transports;
+using T = Raft.Tests.MemoryTransportImpl;
 
 namespace Raft.Tests.Unit
 {
+    //[TestClass]
+    //public class MemoryBasicNodeTest : BasicNodeTest<MemoryTransportImpl>
+    //{
+
+    //}
+
+    //[TestClass]
+    //public class UdpBasicNodeTest : BasicNodeTest<UdpTransportImpl>
+    //{
+
+    //}
+
     [TestClass]
-    public class MemoryBasicNodeTest : BasicNodeTest<MemoryTransportImpl>
-    {
-
-    }
-
-    [TestClass]
-    public class UdpBasicNodeTest : BasicNodeTest<UdpTransportImpl>
-    {
-
-    }
-
-    [TestClass]
-    public abstract class BasicNodeTest<T>
-        where T : TransportImpl, new()
+    public  class BasicNodeTest//<T>
+        //where T : TransportImpl, new()
     {
 #if DEBUG
         static BasicNodeTest()
@@ -93,7 +94,6 @@ namespace Raft.Tests.Unit
                 s1.ChangeState(new CandidateState(s1));
 
                 s2.Advance();
-
                 s1.Advance();
 
                 Assert.AreEqual(s1.ID, s2.PersistedStore.VotedFor);

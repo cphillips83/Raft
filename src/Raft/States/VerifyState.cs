@@ -74,6 +74,8 @@ namespace Raft.States
             return base.EntryRequestReply(client, reply);
         }
 
+
+
         protected override bool VoteReply(Client client, VoteReply reply)
         {
             return true;
