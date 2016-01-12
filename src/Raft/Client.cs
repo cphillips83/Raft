@@ -123,6 +123,41 @@ namespace Raft
         //    _server.Transport.SendMessage(this, message);
         //}
 
+
+        public void AppendEntriesRequest()
+        {
+            var _persistedState = _server.PersistedStore;
+            //Console.WriteLine("Send heart beat");
+            var prevIndex = _nextIndex - 1;
+            var lastIndex = Math.Min(prevIndex + 1, _persistedState.Length);
+            if (_matchIndex + 1 < _nextIndex)
+                lastIndex = prevIndex;
+
+            var entries = _persistedState.GetEntries(prevIndex, lastIndex);
+            //if (entries != null && entries.Length > 0)
+            //    Console.WriteLine("{0}: {4} - Send AppendEnties[{1}-{2}] to {3}", _server.ID, prevIndex, lastIndex, ID, _server.Tick);
+            //else
+            //    Console.WriteLine("{0}: Send heart beat to {1}", _server.ID, _id);
+
+            _rpcDue = _server.Tick + _server.PersistedStore.RPC_TIMEOUT;
+            _nextHeartBeat = _server.Tick + (_server.PersistedStore.ELECTION_TIMEOUT / 4);
+
+            var message = new AppendEntriesRequest()
+            {
+                From = _server.ID,
+                Term = _persistedState.Term,
+                PrevIndex = prevIndex,
+                PrevTerm = _persistedState.GetTerm(prevIndex),
+                AgentIP = _server.AgentIP,
+                Entries = entries,
+                CommitIndex = Math.Min(_server.CommitIndex, lastIndex)
+            };
+
+            _lastMessage = message;
+            _currentMessage = _server.Transport.SendMessageAsync(this, message);
+            _rpcDue = _server.Tick + _server.PersistedStore.RPC_TIMEOUT;
+        }
+
         public void SendAppendEntriesRequest()
         {
             var _persistedState = _server.PersistedStore;

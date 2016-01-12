@@ -177,6 +177,7 @@ namespace Raft.States
         protected override VoteReply? VoteRequest2(Client client, VoteRequest request)
         {
             if (StepDown(request.Term))
+                //TODO: push back in to sequencer
                 return null;
 
             return null;

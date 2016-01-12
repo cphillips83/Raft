@@ -76,22 +76,32 @@ namespace Raft.Transports
 
             public override Task<IMessage> SendMessageAsync(Client client, IMessage message)
             {
+                Task<IMessage> task = null;
                 if (message is VoteRequest)
                 {
-                    var task = new Task<IMessage>(() =>
+                    task = new Task<IMessage>(() =>
                     {
                         return _server.CurrentState.VoteRequest2((VoteRequest)message);
                     });
-
-                    _clientMessages.Add(new ClientMessage()
-                    {
-                        Tick = _random.Next(_minRpc, _maxRpc),
-                        Task = task
-                    });
-                    return task;
                 }
-                else
+                //else if (message is AppendEntriesRequest)
+                //{
+                //    task = new Task<IMessage>(() =>
+                //    {
+                //        return _server.CurrentState.AppendEntriesRequest2((AppendEntriesRequest)message);
+                //    });
+                //}
+
+
+                if (task == null)
                     return addMessage(message);
+
+                _clientMessages.Add(new ClientMessage()
+                {
+                    Tick = _random.Next(_minRpc, _maxRpc),
+                    Task = task
+                });
+                return task;
             }
 
             public override void Start(IPEndPoint config)

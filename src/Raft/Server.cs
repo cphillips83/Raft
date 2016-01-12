@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -11,11 +12,41 @@ using Raft.Transports;
 
 namespace Raft
 {
+    public class Coroutine
+    {
+        private IEnumerator<object> _executor;
+        public Coroutine(IEnumerable<object> coroutine)
+        {
+            _executor = coroutine.GetEnumerator();
+        }
+
+        public bool IsDone { get; private set; }
+
+        public void Signal()
+        {
+            if (!IsDone)
+            {
+                if (!_executor.MoveNext())
+                    IsDone = true;
+                else// if(!string.IsNullOrEmpty(_executor.Current))
+                {
+                    //check object type and do something?
+                    //Failed = true;
+                    //IsDone = true;
+                }
+            }
+        }
+    }
+
     public class Server : IDisposable
     {
         private static object _syncLock = new object();
 
         //private NetPeer _rpc;
+        private volatile bool _clearCoroutines = false;
+        private Coroutine _currentSyncRoutine;
+        private ConcurrentQueue<Coroutine> _syncQueue = new ConcurrentQueue<Coroutine>();
+        private List<Coroutine> _asyncCommand = new List<Coroutine>();
 
         private bool _inited = false;
         private IPEndPoint _id;
@@ -51,7 +82,7 @@ namespace Raft
 
         public int Majority { get { return ((_clients.Count() + 1) / 2) + 1; } }
 
-        public long FreeSpaceInBytes { get { return _persistedStore.FreeSpaceInBytes;  } }
+        public long FreeSpaceInBytes { get { return _persistedStore.FreeSpaceInBytes; } }
 
         public float FreeSpace { get { return _persistedStore.FreeSpace; } }
 
@@ -88,7 +119,6 @@ namespace Raft
             _transport = transport;
             _persistedStore = log;
         }
-
 
         public Client GetClient(IPEndPoint id)
         {
@@ -139,7 +169,7 @@ namespace Raft
 
                 foreach (var client in _persistedStore.Clients)
                 {
-                    if(!client.Equals(_id))
+                    if (!client.Equals(_id))
                         _clients.Add(new Client(this, client));
                 }
 
@@ -196,6 +226,77 @@ namespace Raft
                 AdvanceToCommit(Math.Max(CommitIndex, n));
         }
 
+        private void ProcessAsyncCoroutines()
+        {
+            if (_clearCoroutines)
+            {
+                lock (_asyncCommand)
+                {
+                    _asyncCommand.Clear();
+                }
+                return;
+            }
+
+            Coroutine[] routines = null;
+            lock (_asyncCommand)
+            {
+                if (_asyncCommand.Count > 0)
+                    routines = _asyncCommand.ToArray();
+            }
+
+            if (routines != null)
+            {
+                var anyFinished = false;
+                for (var i = 0; i < routines.Length; i++)
+                {
+                    routines[i].Signal();
+
+                    if (routines[i].IsDone)
+                        anyFinished = true;
+                }
+
+                if (anyFinished)
+                {
+                    lock (_asyncCommand)
+                    {
+                        for (int i = routines.Length - 1; i >= 0; i--)
+                        {
+                            if (routines[i].IsDone)
+                                _asyncCommand.RemoveAt(i);
+                        }
+                    }
+                }
+            }
+        }
+
+        public void ProcessSyncCoroutines()
+        {
+            if (_clearCoroutines)
+            {
+                _currentSyncRoutine = null;
+                while (!_syncQueue.IsEmpty)
+                {
+                    Coroutine coroutine;
+                    _syncQueue.TryDequeue(out coroutine);
+                }
+                return;
+            }
+
+            if (_currentSyncRoutine != null)
+            {
+                _currentSyncRoutine.Signal();
+
+                if (_currentSyncRoutine.IsDone)
+                    _currentSyncRoutine = null;
+            }
+
+            if (_syncQueue.IsEmpty)
+                return;
+
+            if (_syncQueue.TryDequeue(out _currentSyncRoutine))
+                ProcessSyncCoroutines();
+        }
+
         public void Process()
         {
             _transport.Process(this);
@@ -204,6 +305,10 @@ namespace Raft
                 client.Update();
 
             _currentState.Update();
+
+            ProcessAsyncCoroutines();
+            ProcessSyncCoroutines();
+            _clearCoroutines = false;
         }
 
         public void Advance()
@@ -251,7 +356,7 @@ namespace Raft
                 newCommitIndex = Math.Max(newCommitIndex, _persistedStore.LastAppliedIndex);
 
                 //Console.WriteLine("{0}: Advancing commit index from {1} to {2}", _id, _commitIndex, newCommitIndex);
-                for (var i = _persistedStore.LastAppliedIndex; i < newCommitIndex ; i++)
+                for (var i = _persistedStore.LastAppliedIndex; i < newCommitIndex; i++)
                 {
                     _persistedStore.ApplyIndex(this, i + 1);
                 }
@@ -261,6 +366,21 @@ namespace Raft
 
             return false;
         }
-    }
 
+        public void QueueCoroutine(IEnumerable<object> coroutine, bool async)
+        {
+            if (async)
+            {
+                lock (_asyncCommand)
+                    _asyncCommand.Add(new Coroutine(coroutine));
+            }
+            else
+                _syncQueue.Enqueue(new Coroutine(coroutine));
+        }
+
+        public void ClearCoroutines()
+        {
+            _clearCoroutines = true;
+        }
+    }
 }

@@ -72,6 +72,12 @@ namespace Raft.States
             return EntryRequestReply(client, reply);
         }
 
+        //public AppendEntriesReply? AppendEntriesRequest2(AppendEntriesRequest request)
+        //{
+        //    var client = _server.GetClient(request.From);
+        //    return AppendEntriesRequest2(client, request);
+        //}
+
         public bool AppendEntriesRequest(AppendEntriesRequest request)
         {
             var client = _server.GetClient(request.From);
@@ -129,8 +135,14 @@ namespace Raft.States
         }
 
         protected abstract bool VoteReply(Client client, VoteReply reply);
-
         protected abstract bool AppendEntriesRequest(Client client, AppendEntriesRequest request);
+
+        //protected abstract AppendEntriesReply? AppendEntriesRequest2(Client client, AppendEntriesRequest request)
+        //;
+        ////{
+        ////    return null;
+        ////}
+
         protected abstract bool AppendEntriesReply(Client client, AppendEntriesReply reply);
 
         protected virtual bool EntryRequest(Client client, EntryRequest request)

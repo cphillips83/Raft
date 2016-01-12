@@ -52,6 +52,7 @@ namespace Raft.States
         protected override VoteReply? VoteRequest2(Client client, VoteRequest request)
         {
             if (StepDown(request.Term))
+                //TODO: push back in to sequencer
                 return null;
 
             //return new VoteReply()
@@ -90,8 +91,19 @@ namespace Raft.States
                 _persistedState.Term = request.Term;
 
             _server.ChangeState(new FollowerState(_server));
-            return false; ;
+            return false;
         }
+
+        //protected override AppendEntriesReply? AppendEntriesRequest2(Client client, AppendEntriesRequest request)
+        //{
+        //    var _persistedState = _server.PersistedStore;
+        //    if (_persistedState.Term < request.Term)
+        //        _persistedState.Term = request.Term;
+
+        //    _server.ChangeState(new FollowerState(_server));
+        //    //TODO: push back in to sequencer
+        //    return null;
+        //}
 
         protected override bool AppendEntriesReply(Client client, AppendEntriesReply reply)
         {
